@@ -96,11 +96,13 @@ const ORBIT_RADIUS = 16;
 const ORBIT_DEPTH = -4;
 
 const SKY_DAY = new Color("#dff3e6");
-const SKY_NIGHT = new Color("#1c2444");
+const SKY_NIGHT = new Color("#2a3560");
 const GROUND_DAY = new Color("#cfead6");
-const GROUND_NIGHT = new Color("#11162a");
+const GROUND_NIGHT = new Color("#1a2038");
 const SUN_COLOR = new Color("#fff1d0");
 const MOON_COLOR = new Color("#9fb4e8");
+const BG_DAY = new Color("#bfe3f5");
+const BG_NIGHT = new Color("#0c1226");
 
 /**
  * Sun and moon orbit the garden once every 60 seconds. The directional light follows whichever
@@ -114,6 +116,7 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
   const hemiRef = useRef<HemisphereLight>(null!);
   const sunRef = useRef<Mesh>(null!);
   const moonRef = useRef<Mesh>(null!);
+  const { scene } = useThree();
 
   useFrame(({ clock }) => {
     const phase = (clock.getElapsedTime() % CYCLE_SECONDS) / CYCLE_SECONDS;
@@ -134,18 +137,24 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
         light.color.copy(SUN_COLOR);
       } else {
         light.position.set(-sunX, Math.max(-sunY, 0.6), ORBIT_DEPTH);
-        light.intensity = 0.05 + -sunHeight * 0.35;
+        light.intensity = 0.12 + -sunHeight * 0.55;
         light.color.copy(MOON_COLOR);
       }
     }
 
+    const dayT = Math.min(1, Math.max(0, (sunHeight + 0.2) / 0.4));
+
     const hemi = hemiRef.current;
     if (hemi) {
-      const dayT = Math.min(1, Math.max(0, (sunHeight + 0.2) / 0.4));
-      hemi.intensity = 0.22 + dayT * 0.6;
+      hemi.intensity = 0.32 + dayT * 0.55;
       hemi.color.copy(SKY_NIGHT).lerp(SKY_DAY, dayT);
       hemi.groundColor.copy(GROUND_NIGHT).lerp(GROUND_DAY, dayT);
     }
+
+    // The Canvas's own background, so the sky visible above the terrain/mountains actually
+    // darkens at night instead of staying a static daytime blue behind the 3D content.
+    if (!(scene.background instanceof Color)) scene.background = new Color();
+    (scene.background as Color).copy(BG_NIGHT).lerp(BG_DAY, dayT);
   });
 
   return (
