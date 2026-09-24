@@ -102,9 +102,12 @@ const SKY_NIGHT = new Color("#2a3560");
 const GROUND_DAY = new Color("#cfead6");
 const GROUND_NIGHT = new Color("#1a2038");
 const SUN_COLOR = new Color("#fff1d0");
+const SUN_HORIZON_COLOR = new Color("#ff7a3d");
 const MOON_COLOR = new Color("#9fb4e8");
+const MOON_HORIZON_COLOR = new Color("#5f6fc4");
 const BG_DAY = new Color("#bfe3f5");
 const BG_NIGHT = new Color("#0c1226");
+const LIGHT_COLOR_TMP = new Color();
 
 /**
  * Sun and moon orbit the garden once every CYCLE_SECONDS. The directional light follows whichever
@@ -134,13 +137,19 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
     const light = lightRef.current;
     if (light) {
       if (sunHeight >= 0) {
+        // Golden-hour effect: light shifts warm/orange in a band near the horizon, fading
+        // toward the pale zenith color as the sun climbs — and gets a brightness boost right
+        // at the horizon band instead of being dimmest there, so low sun reads as dramatic
+        // (long, richly colored shadows) rather than just weak/washed out.
+        const horizonT = 1 - Math.min(1, sunHeight / 0.5);
         light.position.set(sunX, Math.max(sunY, 0.6), ORBIT_DEPTH);
-        light.intensity = 0.15 + sunHeight * 1.5;
-        light.color.copy(SUN_COLOR);
+        light.intensity = 0.55 + sunHeight * 1.1 + horizonT * 0.5;
+        light.color.copy(LIGHT_COLOR_TMP.copy(SUN_COLOR).lerp(SUN_HORIZON_COLOR, horizonT));
       } else {
+        const horizonT = 1 - Math.min(1, -sunHeight / 0.5);
         light.position.set(-sunX, Math.max(-sunY, 0.6), ORBIT_DEPTH);
-        light.intensity = 0.12 + -sunHeight * 0.55;
-        light.color.copy(MOON_COLOR);
+        light.intensity = 0.25 + -sunHeight * 0.45 + horizonT * 0.2;
+        light.color.copy(LIGHT_COLOR_TMP.copy(MOON_COLOR).lerp(MOON_HORIZON_COLOR, horizonT));
       }
     }
 
