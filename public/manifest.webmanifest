@@ -1,6 +1,6 @@
 {
-  "name": "Salah Tracker",
-  "short_name": "Salah",
+  "name": "Istiqamahly",
+  "short_name": "Istiqamahly",
   "description": "Track your five daily prayers, streaks, and progress.",
   "start_url": "/",
   "scope": "/",

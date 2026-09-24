@@ -10,7 +10,7 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Salah Tracker",
+  title: "Istiqamahly",
   description: "Track your five daily prayers, streaks, and progress.",
   manifest: "/manifest.webmanifest",
   icons: {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Salah Tracker",
+    title: "Istiqamahly",
   },
 };
 
