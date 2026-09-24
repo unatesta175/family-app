@@ -367,291 +367,158 @@ function StageGroup({
   );
 }
 
-/** A single small foliage clump, used at the tip of a limb. */
-function Leaf({
-  position,
-  radius,
-  layer,
+/** A tight cluster of overlapping flat-shaded clumps forming one cohesive rounded canopy mass
+ *  — the same formula the full-bloom tree uses, just with fewer/smaller clumps. Overlapping
+ *  clumps (rather than separated leaf balls on bare branches) is what reads as an actual tree
+ *  canopy instead of scattered rocks. */
+function CanopyCluster({
+  clumps,
   p,
 }: {
-  position: [number, number, number];
-  radius: number;
-  layer: "canopyA" | "canopyB" | "canopyC";
+  clumps: [number, number, number, number, "canopyA" | "canopyB" | "canopyC"][];
   p: (typeof CONDITION_PALETTE)[GardenCondition];
 }) {
-  return (
-    <mesh geometry={SMOOTH_LEAF_GEO} position={position} scale={[radius, radius * 0.9, radius]}>
-      <meshStandardMaterial
-        color={p[layer]}
-        roughness={p.metalness ? 0.25 : 0.55}
-        metalness={p.metalness ?? 0}
-        emissive={p.glow ? p[layer] : "#000000"}
-        emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.3) : 0}
-      />
-    </mesh>
-  );
-}
-
-/** A visible limb growing out from a base point at an angle, ending in one or two leaf clumps
- *  at its tip — so branches read as actual branches, not a hidden skeleton under one blob. */
-function Limb({
-  base,
-  axis,
-  angle,
-  length,
-  radius,
-  leaves,
-  p,
-}: {
-  base: [number, number, number];
-  axis: "x" | "z";
-  angle: number;
-  length: number;
-  radius: number;
-  leaves: [number, number, number, number, "canopyA" | "canopyB" | "canopyC"][];
-  p: (typeof CONDITION_PALETTE)[GardenCondition];
-}) {
-  const dir: [number, number, number] =
-    axis === "z" ? [-Math.sin(angle), Math.cos(angle), 0] : [0, Math.cos(angle), Math.sin(angle)];
-  const tip: [number, number, number] = [
-    base[0] + dir[0] * length,
-    base[1] + dir[1] * length,
-    base[2] + dir[2] * length,
-  ];
-  const center: [number, number, number] = [
-    base[0] + dir[0] * (length / 2),
-    base[1] + dir[1] * (length / 2),
-    base[2] + dir[2] * (length / 2),
-  ];
-  const rotation: [number, number, number] = axis === "z" ? [0, 0, angle] : [angle, 0, 0];
   return (
     <>
-      <mesh position={center} rotation={rotation}>
-        <cylinderGeometry args={[radius * 0.55, radius, length, 6]} />
-        <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
-      </mesh>
-      {leaves.map(([dx, dy, dz, r, layer], i) => (
-        <Leaf key={i} p={p} layer={layer} radius={r} position={[tip[0] + dx, tip[1] + dy, tip[2] + dz]} />
+      {clumps.map(([x, y, z, r, layer], i) => (
+        <mesh key={i} geometry={CLUMP_GEO} position={[x, y, z]} scale={[r, r * 0.85, r]}>
+          <meshStandardMaterial
+            color={p[layer]}
+            roughness={p.metalness ? 0.25 : 0.6}
+            metalness={p.metalness ?? 0}
+            flatShading
+            emissive={p.glow ? p[layer] : "#000000"}
+            emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.3) : 0}
+          />
+        </mesh>
       ))}
     </>
   );
 }
 
-/** 1/5 — already a proper little tree: a trunk with two long visible branches, each ending in
- *  its own leaf cluster. A day with any progress at all should read as "something is growing,"
- *  never as barely-there or a plain cone. */
+/** A short branch stub that terminates inside the canopy volume (like the flowering stage's
+ *  two branches) — enough to read as "a tree has branches" without bare arms poking out past
+ *  the foliage. */
+function BranchStub({
+  position,
+  rotation,
+  radius,
+  length,
+  p,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  radius: [number, number];
+  length: number;
+  p: (typeof CONDITION_PALETTE)[GardenCondition];
+}) {
+  return (
+    <mesh position={position} rotation={rotation}>
+      <cylinderGeometry args={[radius[0], radius[1], length, 6]} />
+      <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
+    </mesh>
+  );
+}
+
+/** 1/5 — already a proper little tree, just smaller than the later stages. A day with any
+ *  progress at all should read as "something is growing," never as barely-there. */
 export function SeedStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.1}>
-      <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[0.03, 0.042, 0.24, 7]} />
+    <group scale={1.05}>
+      <mesh position={[0, 0.11, 0]}>
+        <cylinderGeometry args={[0.032, 0.045, 0.22, 7]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.85} metalness={p.metalness ?? 0} />
       </mesh>
-      <Limb
+      <BranchStub position={[0.05, 0.22, 0]} rotation={[0, 0, -0.7]} length={0.14} radius={[0.012, 0.017]} p={p} />
+      <BranchStub position={[-0.045, 0.24, 0.02]} rotation={[0, 0, 0.8]} length={0.13} radius={[0.011, 0.016]} p={p} />
+      <CanopyCluster
         p={p}
-        base={[0, 0.2, 0]}
-        axis="z"
-        angle={-0.9}
-        length={0.24}
-        radius={0.02}
-        leaves={[
-          [0.02, 0.05, 0, 0.13, "canopyA"],
-          [0.06, -0.02, 0.03, 0.1, "canopyB"],
+        clumps={[
+          [0.05, 0.3, 0.02, 0.13, "canopyA"],
+          [-0.05, 0.29, -0.03, 0.12, "canopyA"],
+          [0.01, 0.4, 0.0, 0.13, "canopyB"],
         ]}
-      />
-      <Limb
-        p={p}
-        base={[0, 0.17, 0.01]}
-        axis="x"
-        angle={-0.95}
-        length={0.2}
-        radius={0.018}
-        leaves={[
-          [0, 0.04, -0.05, 0.12, "canopyA"],
-          [-0.03, -0.01, -0.08, 0.09, "canopyB"],
-        ]}
-      />
-      <Limb
-        p={p}
-        base={[0.01, 0.14, 0]}
-        axis="z"
-        angle={0.85}
-        length={0.16}
-        radius={0.015}
-        leaves={[[-0.03, 0.03, 0.02, 0.1, "canopyA"]]}
       />
     </group>
   );
 }
 
-/** 2/5 — a small leafy plant with more, longer branches than the seed stage. */
+/** 2/5 — a small leafy plant, noticeably bigger and fuller than the seed stage. */
 export function SproutStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.3}>
-      <mesh position={[0, 0.16, 0]}>
-        <cylinderGeometry args={[0.036, 0.048, 0.3, 7]} />
+    <group scale={1.2}>
+      <mesh position={[0, 0.14, 0]}>
+        <cylinderGeometry args={[0.038, 0.052, 0.28, 7]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.8} metalness={p.metalness ?? 0} />
       </mesh>
-      <Limb
+      <BranchStub position={[0.07, 0.28, 0]} rotation={[0, 0, -0.72]} length={0.19} radius={[0.016, 0.022]} p={p} />
+      <BranchStub position={[-0.06, 0.3, 0.03]} rotation={[0, 0, 0.78]} length={0.17} radius={[0.015, 0.02]} p={p} />
+      <CanopyCluster
         p={p}
-        base={[0, 0.27, 0]}
-        axis="z"
-        angle={-0.85}
-        length={0.32}
-        radius={0.026}
-        leaves={[
-          [0.03, 0.06, 0, 0.16, "canopyA"],
-          [0.09, -0.01, 0.04, 0.13, "canopyB"],
-        ]}
-      />
-      <Limb
-        p={p}
-        base={[0, 0.24, 0.01]}
-        axis="x"
-        angle={-0.9}
-        length={0.28}
-        radius={0.024}
-        leaves={[
-          [0, 0.05, -0.07, 0.15, "canopyA"],
-          [-0.04, -0.01, -0.11, 0.11, "canopyB"],
-        ]}
-      />
-      <Limb
-        p={p}
-        base={[0.01, 0.21, -0.01]}
-        axis="z"
-        angle={0.8}
-        length={0.24}
-        radius={0.02}
-        leaves={[
-          [-0.05, 0.04, 0.03, 0.13, "canopyA"],
-          [-0.09, -0.02, 0.07, 0.1, "canopyB"],
+        clumps={[
+          [0.08, 0.38, 0.02, 0.17, "canopyA"],
+          [-0.08, 0.37, -0.05, 0.16, "canopyA"],
+          [0.0, 0.36, -0.13, 0.15, "canopyA"],
+          [0.02, 0.51, 0.0, 0.17, "canopyB"],
         ]}
       />
     </group>
   );
 }
 
-/** 3/5 — a proper sapling: a taller trunk with several long branches, each with fuller
- *  foliage clusters at the tips. */
+/** 3/5 — a proper sapling: a taller trunk, visible branch stubs, and a fuller two-tier
+ *  canopy cluster. */
 export function SaplingStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.4}>
-      <mesh position={[0, 0.23, 0]}>
-        <cylinderGeometry args={[0.048, 0.066, 0.46, 8]} />
+    <group scale={1.3}>
+      <mesh position={[0, 0.19, 0]}>
+        <cylinderGeometry args={[0.05, 0.068, 0.38, 8]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
       </mesh>
-      <Limb
+      <BranchStub position={[0.09, 0.36, 0]} rotation={[0, 0, -0.7]} length={0.24} radius={[0.02, 0.028]} p={p} />
+      <BranchStub position={[-0.08, 0.4, 0.03]} rotation={[0, 0, 0.75]} length={0.22} radius={[0.018, 0.026]} p={p} />
+      <CanopyCluster
         p={p}
-        base={[0, 0.38, 0]}
-        axis="z"
-        angle={-0.8}
-        length={0.42}
-        radius={0.032}
-        leaves={[
-          [0.04, 0.08, 0, 0.2, "canopyA"],
-          [0.12, -0.01, 0.05, 0.17, "canopyB"],
+        clumps={[
+          [0.14, 0.48, 0.04, 0.21, "canopyA"],
+          [-0.13, 0.46, -0.07, 0.2, "canopyA"],
+          [0.01, 0.45, -0.17, 0.19, "canopyA"],
+          [-0.02, 0.47, 0.16, 0.19, "canopyA"],
+          [0.06, 0.65, 0.03, 0.2, "canopyB"],
+          [-0.06, 0.63, -0.04, 0.19, "canopyB"],
         ]}
-      />
-      <Limb
-        p={p}
-        base={[0, 0.34, 0.01]}
-        axis="x"
-        angle={-0.85}
-        length={0.38}
-        radius={0.03}
-        leaves={[
-          [0, 0.07, -0.09, 0.19, "canopyA"],
-          [-0.05, -0.01, -0.15, 0.14, "canopyB"],
-        ]}
-      />
-      <Limb
-        p={p}
-        base={[0.01, 0.3, -0.01]}
-        axis="z"
-        angle={0.75}
-        length={0.34}
-        radius={0.026}
-        leaves={[
-          [-0.07, 0.06, 0.04, 0.17, "canopyA"],
-          [-0.12, -0.02, 0.09, 0.13, "canopyB"],
-        ]}
-      />
-      <Limb
-        p={p}
-        base={[-0.01, 0.44, 0]}
-        axis="x"
-        angle={0.6}
-        length={0.2}
-        radius={0.02}
-        leaves={[[0, -0.03, 0.11, 0.15, "canopyC"]]}
       />
     </group>
   );
 }
 
-/** 4/5 — a large, fuller young tree with a spreading, many-branched silhouette, one step
- *  short of the full flowering canopy. */
+/** 4/5 — a large, fuller young tree with a spreading two-tier canopy, one step short of the
+ *  full flowering stage's canopy. */
 export function TreeStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.55}>
-      <mesh position={[0, 0.27, 0]}>
-        <cylinderGeometry args={[0.06, 0.084, 0.54, 8]} />
+    <group scale={1.5}>
+      <mesh position={[0, 0.24, 0]}>
+        <cylinderGeometry args={[0.062, 0.086, 0.48, 8]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
       </mesh>
-      <Limb
+      <BranchStub position={[0.11, 0.46, 0]} rotation={[0, 0, -0.68]} length={0.3} radius={[0.024, 0.033]} p={p} />
+      <BranchStub position={[-0.1, 0.51, 0.03]} rotation={[0, 0, 0.72]} length={0.28} radius={[0.022, 0.03]} p={p} />
+      <CanopyCluster
         p={p}
-        base={[0, 0.44, 0]}
-        axis="z"
-        angle={-0.78}
-        length={0.5}
-        radius={0.038}
-        leaves={[
-          [0.05, 0.09, 0, 0.24, "canopyA"],
-          [0.15, -0.01, 0.06, 0.19, "canopyB"],
+        clumps={[
+          [0.19, 0.62, 0.05, 0.24, "canopyA"],
+          [-0.18, 0.6, -0.09, 0.23, "canopyA"],
+          [0.02, 0.6, -0.21, 0.21, "canopyA"],
+          [-0.03, 0.62, 0.2, 0.21, "canopyA"],
+          [0.1, 0.84, 0.06, 0.23, "canopyB"],
+          [-0.11, 0.86, -0.05, 0.22, "canopyB"],
+          [0.0, 1.02, 0.0, 0.19, "canopyC"],
         ]}
       />
-      <Limb
-        p={p}
-        base={[0, 0.4, 0.01]}
-        axis="x"
-        angle={-0.82}
-        length={0.46}
-        radius={0.035}
-        leaves={[
-          [0, 0.08, -0.11, 0.22, "canopyA"],
-          [-0.06, -0.01, -0.18, 0.16, "canopyB"],
-        ]}
-      />
-      <Limb
-        p={p}
-        base={[0.01, 0.36, -0.01]}
-        axis="z"
-        angle={0.74}
-        length={0.42}
-        radius={0.032}
-        leaves={[
-          [-0.08, 0.07, 0.05, 0.2, "canopyA"],
-          [-0.14, -0.02, 0.1, 0.15, "canopyB"],
-        ]}
-      />
-      <Limb
-        p={p}
-        base={[-0.01, 0.52, 0]}
-        axis="x"
-        angle={0.55}
-        length={0.26}
-        radius={0.024}
-        leaves={[
-          [0, -0.03, 0.13, 0.17, "canopyC"],
-          [0.04, 0.04, 0.16, 0.12, "canopyB"],
-        ]}
-      />
-      <Leaf p={p} layer="canopyC" radius={0.16} position={[0, 1.0, 0]} />
     </group>
   );
 }
@@ -675,9 +542,6 @@ const BLOOM_POINTS: [number, number, number][] = CANOPY_CLUMPS.flatMap(([x, y, z
 
 const CLUMP_GEO = new IcosahedronGeometry(1, 1);
 const BLOOM_GEO = new SphereGeometry(1, 6, 5);
-/** Smooth (non-faceted) sphere for young-tree foliage clusters, so they read as soft rounded
- *  leaves rather than the low-poly rock look of the flat-shaded icosahedron clumps. */
-const SMOOTH_LEAF_GEO = new SphereGeometry(1, 12, 10);
 
 const TIER_SCALE: Record<GardenTier, number> = { none: 1.75, bronze: 1.9, silver: 2.05, gold: 2.25 };
 const TIER_BLOOM_COLOR: Record<GardenTier, string> = {
