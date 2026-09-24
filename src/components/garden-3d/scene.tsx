@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
-import type { Mesh } from "three";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import { Color, type DirectionalLight, type HemisphereLight, type Mesh } from "three";
 import { OrbitControls } from "@react-three/drei";
 import { Plots, StageLayer, PlotRing, GardenGround, GardenFence, gridPosition, type GardenCell } from "./plant";
 import { GardenSurroundings } from "./surroundings";
@@ -91,8 +91,92 @@ function ShadowSetup({ deps }: { deps: unknown }) {
   return null;
 }
 
-/** Direction the sun sits in (from the garden's center); shadows fall away from it. */
-const SUN_DIR: [number, number, number] = [-6, 10, -5];
+const CYCLE_SECONDS = 60;
+const ORBIT_RADIUS = 16;
+const ORBIT_DEPTH = -4;
+
+const SKY_DAY = new Color("#dff3e6");
+const SKY_NIGHT = new Color("#1c2444");
+const GROUND_DAY = new Color("#cfead6");
+const GROUND_NIGHT = new Color("#11162a");
+const SUN_COLOR = new Color("#fff1d0");
+const MOON_COLOR = new Color("#9fb4e8");
+
+/**
+ * Sun and moon orbit the garden once every 60 seconds. The directional light follows whichever
+ * body is above the horizon (so shadows sweep across the land as it moves), fading out near the
+ * horizon and swapping to the other body's warmer/cooler tone — sun during the day, dim moon at
+ * night. The ambient hemisphere light and each body's own glow fade the same way, so the whole
+ * scene reads as day turning to night and back, not just a moving shadow.
+ */
+function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
+  const lightRef = useRef<DirectionalLight>(null!);
+  const hemiRef = useRef<HemisphereLight>(null!);
+  const sunRef = useRef<Mesh>(null!);
+  const moonRef = useRef<Mesh>(null!);
+
+  useFrame(({ clock }) => {
+    const phase = (clock.getElapsedTime() % CYCLE_SECONDS) / CYCLE_SECONDS;
+    const angle = phase * Math.PI * 2;
+    const sunHeight = Math.sin(angle);
+    const sunHoriz = -Math.cos(angle);
+    const sunX = sunHoriz * ORBIT_RADIUS;
+    const sunY = sunHeight * ORBIT_RADIUS;
+
+    sunRef.current?.position.set(sunX, sunY, ORBIT_DEPTH);
+    moonRef.current?.position.set(-sunX, -sunY, ORBIT_DEPTH);
+
+    const light = lightRef.current;
+    if (light) {
+      if (sunHeight >= 0) {
+        light.position.set(sunX, Math.max(sunY, 0.6), ORBIT_DEPTH);
+        light.intensity = 0.15 + sunHeight * 1.5;
+        light.color.copy(SUN_COLOR);
+      } else {
+        light.position.set(-sunX, Math.max(-sunY, 0.6), ORBIT_DEPTH);
+        light.intensity = 0.05 + -sunHeight * 0.35;
+        light.color.copy(MOON_COLOR);
+      }
+    }
+
+    const hemi = hemiRef.current;
+    if (hemi) {
+      const dayT = Math.min(1, Math.max(0, (sunHeight + 0.2) / 0.4));
+      hemi.intensity = 0.22 + dayT * 0.6;
+      hemi.color.copy(SKY_NIGHT).lerp(SKY_DAY, dayT);
+      hemi.groundColor.copy(GROUND_NIGHT).lerp(GROUND_DAY, dayT);
+    }
+  });
+
+  return (
+    <>
+      <hemisphereLight ref={hemiRef} args={["#dff3e6", "#cfead6", 0.8]} />
+      <directionalLight
+        ref={lightRef}
+        intensity={1.5}
+        color="#fff1d0"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-shadowHalf}
+        shadow-camera-right={shadowHalf}
+        shadow-camera-top={shadowHalf}
+        shadow-camera-bottom={-shadowHalf}
+        shadow-camera-near={1}
+        shadow-camera-far={50}
+        shadow-bias={-0.0004}
+        shadow-normalBias={0.03}
+      />
+      <mesh ref={sunRef}>
+        <sphereGeometry args={[1.6, 16, 16]} />
+        <meshBasicMaterial color="#fff4c2" toneMapped={false} />
+      </mesh>
+      <mesh ref={moonRef}>
+        <sphereGeometry args={[1.1, 16, 16]} />
+        <meshBasicMaterial color="#e8ecf7" toneMapped={false} />
+      </mesh>
+    </>
+  );
+}
 
 export function Garden3DScene({ cells, cols, todayDate, selectedDate, onSelect }: Garden3DProps) {
   const rows = Math.ceil(cells.length / cols);
@@ -125,28 +209,7 @@ export function Garden3DScene({ cells, cols, todayDate, selectedDate, onSelect }
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ position: [0, 11, 10.5], fov: 42 }}
       >
-        {/* softer ambient fill so the sun's shadows actually read */}
-        <hemisphereLight args={["#dff3e6", "#cfead6", 0.8]} />
-        <directionalLight
-          position={SUN_DIR}
-          intensity={1.5}
-          color="#fff1d0"
-          castShadow
-          shadow-mapSize={[2048, 2048]}
-          shadow-camera-left={-shadowHalf}
-          shadow-camera-right={shadowHalf}
-          shadow-camera-top={shadowHalf}
-          shadow-camera-bottom={-shadowHalf}
-          shadow-camera-near={1}
-          shadow-camera-far={40}
-          shadow-bias={-0.0004}
-          shadow-normalBias={0.03}
-        />
-        {/* the sun itself, far along the light direction */}
-        <mesh position={[SUN_DIR[0] * 2.6, SUN_DIR[1] * 2.6, SUN_DIR[2] * 2.6]}>
-          <sphereGeometry args={[1.6, 16, 16]} />
-          <meshBasicMaterial color="#fff4c2" toneMapped={false} />
-        </mesh>
+        <DayNightCycle shadowHalf={shadowHalf} />
         <ShadowSetup deps={gridCells} />
 
         <GardenSurroundings cols={cols} rows={rows} />
