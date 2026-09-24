@@ -405,7 +405,7 @@ function MeadowGrass({
   avoidR: number;
   heightFn: (x: number, z: number) => number;
 }) {
-  const count = 13200;
+  const count = 4400;
   const tufts: [number, number, number, number, number][] = [];
   for (let i = 0; i < count; i++) {
     const a = seededRandom(i * 3.1) * Math.PI * 2;
@@ -503,7 +503,7 @@ export function GardenSurroundings({ cols, rows }: { cols: number; rows: number 
   // (see InstancedPineTrees/InstancedRoundTrees) so a count this high stays cheap to draw.
   const pineTrees: PlacedTree[] = [];
   const roundTrees: PlacedTree[] = [];
-  const treeCount = 1680;
+  const treeCount = 400;
   for (let i = 0; i < treeCount; i++) {
     const a = seededRandom(i * 1.7 + 10) * Math.PI * 2;
     const gapFront = Math.cos(a) > -0.3 && Math.sin(a) > 0.45;
@@ -511,6 +511,7 @@ export function GardenSurroundings({ cols, rows }: { cols: number; rows: number 
     const r = maxHalf * (1.15 + seededRandom(i * 2.3 + 20) * 1.2);
     const x = Math.sin(a) * r;
     const z = Math.cos(a) * r;
+    if (Math.hypot(x - lakeCenter[0], z - lakeCenter[1]) < 2.4) continue;
     const isPine = seededRandom(i + 77) > 0.45;
     const scale = 0.85 + seededRandom(i + 50) * 0.5;
     const entry: PlacedTree = { position: [x, heightFn(x, z), z], scale: isPine ? scale : scale * 1.3, seed: i };
@@ -520,7 +521,7 @@ export function GardenSurroundings({ cols, rows }: { cols: number; rows: number 
   // Rock clusters scattered around the meadow. Rendered as one instanced batch regardless of
   // count (see InstancedRocks).
   const rockClusters: PlacedRocks[] = [];
-  const rockCount = 180;
+  const rockCount = 60;
   for (let i = 0; i < rockCount; i++) {
     const a = seededRandom(i * 4.1 + 900) * Math.PI * 2;
     const r = maxHalf * (1.05 + seededRandom(i * 3.3 + 950) * 1.3);
