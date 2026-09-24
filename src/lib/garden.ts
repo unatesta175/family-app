@@ -18,14 +18,18 @@ export function gardenStage(pct: number): GardenStage {
 }
 
 /**
- * A day's quality (0-100): the average STATUS_QUALITY across all 5 prayers,
- * independent of `gardenStage`, which only counts how many were performed.
- * Two days can both be "4/5 performed" (same stage/size) yet score very
+ * A day's quality (0-100): the average STATUS_QUALITY across only the prayers logged so far,
+ * independent of `gardenStage`, which separately shows how many were performed (via size).
+ * Unlogged prayers are excluded from the average rather than counted as 0 — otherwise a single
+ * on-time Fajr early in the day would score as if it were mostly missed, when really nothing
+ * else has happened yet. Two days can both be "4/5 performed" (same stage/size) yet score very
  * differently here (4x on_time_jamaah vs 4x qada) — that's the whole point.
  */
 export function gardenQuality(day: DayLogMap): number {
-  const total = PRAYER_ORDER.reduce((sum, p) => sum + STATUS_QUALITY[day[p] ?? "not_yet"], 0);
-  return Math.round(total / PRAYER_ORDER.length);
+  const logged = PRAYER_ORDER.filter((p) => (day[p] ?? "not_yet") !== "not_yet");
+  if (logged.length === 0) return 0;
+  const total = logged.reduce((sum, p) => sum + STATUS_QUALITY[day[p]!], 0);
+  return Math.round(total / logged.length);
 }
 
 export type GardenCondition = "golden" | "thriving" | "healthy" | "stressed" | "wilting";
