@@ -91,7 +91,7 @@ function ShadowSetup({ deps }: { deps: unknown }) {
   return null;
 }
 
-const CYCLE_SECONDS = 20;
+const CYCLE_SECONDS = 600;
 // Well beyond the mountain ring (~15-19 units out) so both bodies rise/set from behind the
 // distant horizon instead of visibly popping up out of the nearby land.
 const ORBIT_RADIUS = 34;
