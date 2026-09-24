@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Color, type DirectionalLight, type HemisphereLight, type Mesh } from "three";
+import { Color, type DirectionalLight, type HemisphereLight, type Mesh, type MeshBasicMaterial } from "three";
 import { OrbitControls } from "@react-three/drei";
 import { Plots, StageLayer, PlotRing, GardenGround, GardenFence, gridPosition, type GardenCell } from "./plant";
 import { GardenSurroundings } from "./surroundings";
@@ -91,7 +91,7 @@ function ShadowSetup({ deps }: { deps: unknown }) {
   return null;
 }
 
-const CYCLE_SECONDS = 60;
+const CYCLE_SECONDS = 20;
 // Well beyond the mountain ring (~15-19 units out) so both bodies rise/set from behind the
 // distant horizon instead of visibly popping up out of the nearby land.
 const ORBIT_RADIUS = 34;
@@ -107,7 +107,7 @@ const BG_DAY = new Color("#bfe3f5");
 const BG_NIGHT = new Color("#0c1226");
 
 /**
- * Sun and moon orbit the garden once every 60 seconds. The directional light follows whichever
+ * Sun and moon orbit the garden once every CYCLE_SECONDS. The directional light follows whichever
  * body is above the horizon (so shadows sweep across the land as it moves), fading out near the
  * horizon and swapping to the other body's warmer/cooler tone — sun during the day, dim moon at
  * night. The ambient hemisphere light and each body's own glow fade the same way, so the whole
@@ -118,6 +118,8 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
   const hemiRef = useRef<HemisphereLight>(null!);
   const sunRef = useRef<Mesh>(null!);
   const moonRef = useRef<Mesh>(null!);
+  const sunMatRef = useRef<MeshBasicMaterial>(null!);
+  const moonMatRef = useRef<MeshBasicMaterial>(null!);
   const { scene } = useThree();
 
   useFrame(({ clock }) => {
@@ -130,6 +132,14 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
 
     sunRef.current?.position.set(sunX, sunY, ORBIT_DEPTH);
     moonRef.current?.position.set(-sunX, -sunY, ORBIT_DEPTH);
+
+    // Fade each body out before it gets low enough to visually sit at/near ground level —
+    // from this camera angle a distant point at height 0 reads as "in the land," not "on the
+    // horizon," so we hide the body entirely while low and only reveal it once already
+    // comfortably up in the sky (and fade it out again before it gets low on the way down).
+    const fadeIn = (h: number) => Math.min(1, Math.max(0, (h - 1.5) / 3.5));
+    if (sunMatRef.current) sunMatRef.current.opacity = fadeIn(sunY);
+    if (moonMatRef.current) moonMatRef.current.opacity = fadeIn(-sunY);
 
     const light = lightRef.current;
     if (light) {
@@ -179,11 +189,11 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
       />
       <mesh ref={sunRef}>
         <sphereGeometry args={[1.6, 16, 16]} />
-        <meshBasicMaterial color="#fff4c2" toneMapped={false} />
+        <meshBasicMaterial ref={sunMatRef} color="#fff4c2" toneMapped={false} transparent depthWrite={false} />
       </mesh>
       <mesh ref={moonRef}>
         <sphereGeometry args={[1.1, 16, 16]} />
-        <meshBasicMaterial color="#e8ecf7" toneMapped={false} />
+        <meshBasicMaterial ref={moonMatRef} color="#e8ecf7" toneMapped={false} transparent depthWrite={false} />
       </mesh>
     </>
   );
