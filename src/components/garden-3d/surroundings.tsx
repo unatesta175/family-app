@@ -1,4 +1,5 @@
-import { DoubleSide } from "three";
+import { useMemo } from "react";
+import { BufferAttribute, Color, DoubleSide, PlaneGeometry } from "three";
 import { Instance, Instances } from "@react-three/drei";
 
 const COL_SPACING = 1.4;
@@ -90,20 +91,84 @@ function RockCluster({ position, scale = 1, seed = 0 }: { position: [number, num
   );
 }
 
-/** A tall rocky peak with a snow cap, placed far beyond the tree ring to frame the horizon. */
-function Mountain({ position, scale = 1, seed = 0 }: { position: [number, number, number]; scale?: number; seed?: number }) {
-  const rock = seededRandom(seed) > 0.5 ? "#8b8378" : "#7c766c";
+function smoothstep(a: number, b: number, r: number): number {
+  const t = Math.min(1, Math.max(0, (r - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+}
+
+type MountainCluster = { cx: number; cz: number; height: number; spread: number };
+
+/**
+ * Builds the terrain height function: gentle rolling undulation across the whole meadow, plus
+ * big rounded mountain bumps (overlapping gaussian humps, so adjacent ones blend into a
+ * connected ridge instead of isolated peaks) concentrated in a ring beyond the tree line.
+ * Flattened to exactly 0 within the garden's fenced footprint and around the lake, so those
+ * stay level. Returned as a plain function (not a component) so both the terrain mesh and the
+ * decorative object placement below can sample the same ground height.
+ */
+function makeTerrainHeight(flatR: number, lakeCenter: [number, number], clusters: MountainCluster[]) {
+  return function terrainHeight(x: number, z: number): number {
+    let h = (Math.sin(x * 0.6 + 1.3) + Math.cos(z * 0.55 - 0.7) + Math.sin((x + z) * 0.35 + 2.1)) * 0.07;
+    for (const c of clusters) {
+      const dx = x - c.cx;
+      const dz = z - c.cz;
+      const d2 = dx * dx + dz * dz;
+      h += c.height * Math.exp(-d2 / (2 * c.spread * c.spread));
+    }
+    const r = Math.hypot(x, z);
+    h *= smoothstep(flatR, flatR + 1.2, r);
+    const lakeD = Math.hypot(x - lakeCenter[0], z - lakeCenter[1]);
+    h *= smoothstep(1.6, 2.6, lakeD);
+    return h;
+  };
+}
+
+/** The ground itself: a displaced plane colored from meadow green at low elevation, through
+ *  rock grey, up to a snowy cap at the highest points — rounded rolling hills and connected
+ *  mountain ridges instead of separate sharp-peaked pyramids. */
+function Terrain({
+  size,
+  segments,
+  heightFn,
+}: {
+  size: number;
+  segments: number;
+  heightFn: (x: number, z: number) => number;
+}) {
+  const geometry = useMemo(() => {
+    const geo = new PlaneGeometry(size, size, segments, segments);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const low = new Color("#9fd189");
+    const mid = new Color("#8a8f6e");
+    const rockC = new Color("#8b8378");
+    const snow = new Color("#f5f7fa");
+    const tmp = new Color();
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i);
+      const y = pos.getY(i);
+      const worldZ = -y;
+      const h = heightFn(x, worldZ);
+      pos.setZ(i, h);
+      const t = Math.min(1, Math.max(0, h / 3.2));
+      if (t < 0.35) tmp.copy(low).lerp(mid, t / 0.35);
+      else if (t < 0.75) tmp.copy(mid).lerp(rockC, (t - 0.35) / 0.4);
+      else tmp.copy(rockC).lerp(snow, (t - 0.75) / 0.25);
+      colors[i * 3] = tmp.r;
+      colors[i * 3 + 1] = tmp.g;
+      colors[i * 3 + 2] = tmp.b;
+    }
+    geo.rotateX(-Math.PI / 2);
+    geo.computeVertexNormals();
+    geo.setAttribute("color", new BufferAttribute(colors, 3));
+    return geo;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [size, segments]);
+
   return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 1.3, 0]} rotation={[0, seededRandom(seed + 1) * Math.PI, 0]}>
-        <coneGeometry args={[1.3, 2.7, 5]} />
-        <meshStandardMaterial color={rock} roughness={0.95} flatShading />
-      </mesh>
-      <mesh position={[0, 2.35, 0]} rotation={[0, seededRandom(seed + 2) * Math.PI, 0]}>
-        <coneGeometry args={[0.5, 0.75, 5]} />
-        <meshStandardMaterial color="#f5f7fa" roughness={0.9} flatShading />
-      </mesh>
-    </group>
+    <mesh geometry={geometry} position={[0, -0.05, 0]} receiveShadow>
+      <meshStandardMaterial vertexColors roughness={0.95} />
+    </mesh>
   );
 }
 
@@ -277,41 +342,63 @@ function CropField({ position, rotationY = 0, rows = 3, cols = 4 }: { position: 
 const GRASS_TUFT_GEO_ARGS: [number, number, number] = [0.02, 0.14, 4];
 
 /** Scattered grass tufts across the meadow so the ground reads as textured turf, not a flat
- *  green disc. Instanced for performance since there can be a couple hundred of them. */
-function MeadowGrass({ clearingR, avoidR }: { clearingR: number; avoidR: number }) {
-  const count = 220;
-  const tufts: [number, number, number, number][] = [];
+ *  green disc. Instanced for performance since there can be several hundred of them. Follows
+ *  the terrain's elevation so tufts on the hillsides sit on the slope, not floating/sunken. */
+function MeadowGrass({
+  clearingR,
+  avoidR,
+  heightFn,
+}: {
+  clearingR: number;
+  avoidR: number;
+  heightFn: (x: number, z: number) => number;
+}) {
+  const count = 660;
+  const tufts: [number, number, number, number, number][] = [];
   for (let i = 0; i < count; i++) {
     const a = seededRandom(i * 3.1) * Math.PI * 2;
     const r = avoidR + seededRandom(i * 5.7 + 1) * (clearingR * 0.95 - avoidR);
     const x = Math.sin(a) * r;
     const z = Math.cos(a) * r;
     const h = 0.7 + seededRandom(i * 9.3) * 0.8;
-    tufts.push([x, z, h, seededRandom(i * 2.2) * Math.PI]);
+    tufts.push([x, z, h, seededRandom(i * 2.2) * Math.PI, heightFn(x, z)]);
   }
   return (
     <Instances limit={count}>
       <coneGeometry args={GRASS_TUFT_GEO_ARGS} />
       <meshStandardMaterial roughness={0.85} color="#6fae52" />
-      {tufts.map(([x, z, h, rot], i) => (
-        <Instance key={i} position={[x, 0.03, z]} rotation={[0, rot, 0.08]} scale={[1, h, 1]} />
+      {tufts.map(([x, z, h, rot, gy], i) => (
+        <Instance key={i} position={[x, gy + 0.03, z]} rotation={[0, rot, 0.08]} scale={[1, h, 1]} />
       ))}
     </Instances>
   );
 }
 
 /** A short stone pavement path leading from the edge of the scene up to the fence gate. */
-function PavementPath({ startZ, endZ, x }: { startZ: number; endZ: number; x: number }) {
+function PavementPath({
+  startZ,
+  endZ,
+  x,
+  heightFn,
+}: {
+  startZ: number;
+  endZ: number;
+  x: number;
+  heightFn: (x: number, z: number) => number;
+}) {
   const count = 5;
   const tiles = Array.from({ length: count }, (_, i) => startZ + ((endZ - startZ) * i) / (count - 1));
   return (
     <>
-      {tiles.map((z, i) => (
-        <mesh key={i} position={[x + (seededRandom(i * 3) - 0.5) * 0.08, 0.005, z]} rotation={[-Math.PI / 2, 0, seededRandom(i) * 0.3]}>
-          <circleGeometry args={[0.22, 6]} />
-          <meshStandardMaterial color="#b9b3a4" roughness={0.95} side={DoubleSide} />
-        </mesh>
-      ))}
+      {tiles.map((z, i) => {
+        const tx = x + (seededRandom(i * 3) - 0.5) * 0.08;
+        return (
+          <mesh key={i} position={[tx, heightFn(tx, z) + 0.005, z]} rotation={[-Math.PI / 2, 0, seededRandom(i) * 0.3]}>
+            <circleGeometry args={[0.22, 6]} />
+            <meshStandardMaterial color="#b9b3a4" roughness={0.95} side={DoubleSide} />
+          </mesh>
+        );
+      })}
     </>
   );
 }
@@ -326,84 +413,129 @@ function PavementPath({ startZ, endZ, x }: { startZ: number; endZ: number; x: nu
 export function GardenSurroundings({ cols, rows }: { cols: number; rows: number }) {
   const halfW = (cols * COL_SPACING) / 2 + FENCE_MARGIN;
   const halfD = (rows * ROW_SPACING) / 2 + FENCE_MARGIN;
-  const clearingR = Math.max(halfW, halfD) * 2.6;
+  const maxHalf = Math.max(halfW, halfD);
+  const clearingR = maxHalf * 2.6;
+  const flatR = maxHalf * 1.1;
+  const lakeCenter: [number, number] = [-halfW - 1.9, -halfD * 0.3];
 
-  // Ring of pine trees just outside the fence, skipping a gap at the front (+Z) for the path.
-  const treeRing: [number, number, number][] = [];
-  const treeCount = 26;
+  // Mountain humps overlap their neighbors (spread wide relative to their spacing) so the
+  // range reads as one connected, rounded ridge rather than isolated peaks. Left open across
+  // the front (+Z, positive sin/cos band) so the view toward the path stays clear.
+  const clusters: MountainCluster[] = useMemo(() => {
+    const list: MountainCluster[] = [];
+    const count = 16;
+    for (let i = 0; i < count; i++) {
+      const a = (i / count) * Math.PI * 2;
+      const gapFront = Math.cos(a) > -0.3 && Math.sin(a) > 0.45;
+      if (gapFront) continue;
+      const r = clearingR * (1.1 + seededRandom(i + 300) * 0.3);
+      list.push({
+        cx: Math.sin(a) * r,
+        cz: Math.cos(a) * r,
+        height: 2.1 + seededRandom(i + 400) * 1.5,
+        spread: 2.0 + seededRandom(i + 500) * 0.8,
+      });
+    }
+    return list;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clearingR]);
+
+  const heightFn = useMemo(
+    () => makeTerrainHeight(flatR, lakeCenter, clusters),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [flatR, lakeCenter[0], lakeCenter[1], clusters]
+  );
+
+  // Scattered forest around the meadow (organic, not a perfect ring), skipping the same front
+  // gap as the mountains so the view toward the path stays open.
+  const trees: [number, number, number, boolean][] = [];
+  const treeCount = 84;
   for (let i = 0; i < treeCount; i++) {
-    const a = (i / treeCount) * Math.PI * 2;
-    const gapFront = Math.cos(a) > -0.35 && Math.sin(a) > 0.5;
+    const a = seededRandom(i * 1.7 + 10) * Math.PI * 2;
+    const gapFront = Math.cos(a) > -0.3 && Math.sin(a) > 0.45;
     if (gapFront) continue;
-    const r = Math.max(halfW, halfD) * (1.3 + seededRandom(i) * 0.5);
-    treeRing.push([Math.sin(a) * r, 0, Math.cos(a) * r]);
+    const r = maxHalf * (1.2 + seededRandom(i * 2.3 + 20) * 1.15);
+    const x = Math.sin(a) * r;
+    const z = Math.cos(a) * r;
+    trees.push([x, z, heightFn(x, z), seededRandom(i + 77) > 0.45]);
   }
 
-  // Ring of distant mountains beyond the tree line.
-  const mountains: [number, number, number][] = [];
-  const mountainCount = 10;
-  for (let i = 0; i < mountainCount; i++) {
-    const a = (i / mountainCount) * Math.PI * 2 + 0.3;
-    const r = clearingR * (1.05 + seededRandom(i + 100) * 0.35);
-    mountains.push([Math.sin(a) * r, 0, Math.cos(a) * r]);
-  }
+  const rockPositions: [number, number, number][] = [
+    [-halfW - 0.9, halfD * 0.2, 1],
+    [halfW + 1.1, -halfD * 0.85, 2],
+    [-halfW * 0.5, -halfD - 1.2, 3],
+    [halfW + 0.4, halfD + 1.5, 4],
+    [-halfW - 1.6, halfD * 1.1, 5],
+    [halfW - 0.3, -halfD - 1.6, 6],
+    [-halfW - 0.3, -halfD - 0.6, 7],
+    [halfW + 2.0, -halfD * 0.2, 8],
+    [0.4, -halfD - 1.9, 9],
+  ];
 
   return (
     <>
-      {/* wide meadow clearing under everything */}
-      <mesh position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[clearingR, 48]} />
-        <meshStandardMaterial color="#9fd189" roughness={0.95} />
-      </mesh>
+      <Terrain size={clearingR * 3.4} segments={72} heightFn={heightFn} />
 
-      <MeadowGrass clearingR={clearingR} avoidR={Math.max(halfW, halfD) * 1.05} />
+      <MeadowGrass clearingR={clearingR} avoidR={maxHalf * 1.05} heightFn={heightFn} />
 
-      {mountains.map(([x, , z], i) => (
-        <Mountain key={`m${i}`} position={[x, -0.3, z]} scale={2.6 + seededRandom(i + 200) * 1.6} seed={i} />
-      ))}
-
-      {treeRing.map(([x, , z], i) => {
-        const isPine = seededRandom(i + 77) > 0.45;
+      {trees.map(([x, z, gy, isPine], i) => {
         const scale = 0.85 + seededRandom(i + 50) * 0.5;
         return isPine ? (
-          <PineTree key={`t${i}`} position={[x, 0, z]} scale={scale} seed={i} />
+          <PineTree key={`t${i}`} position={[x, gy, z]} scale={scale} seed={i} />
         ) : (
-          <RoundTree key={`t${i}`} position={[x, 0, z]} scale={scale * 1.3} seed={i} />
+          <RoundTree key={`t${i}`} position={[x, gy, z]} scale={scale * 1.3} seed={i} />
         );
       })}
 
-      <RockCluster position={[-halfW - 0.9, 0, halfD * 0.2]} scale={1} seed={1} />
-      <RockCluster position={[halfW + 1.1, 0, -halfD * 0.85]} scale={0.8} seed={2} />
-      <RockCluster position={[-halfW * 0.5, 0, -halfD - 1.2]} scale={0.9} seed={3} />
+      {rockPositions.map(([x, z, seed], i) => (
+        <RockCluster key={`r${i}`} position={[x, heightFn(x, z), z]} scale={0.8 + seededRandom(seed) * 0.4} seed={seed} />
+      ))}
 
-      {/* village cluster: one barn, two cottages of different sizes */}
-      <Barn position={[halfW + 2.1, 0, halfD * 0.75]} rotationY={-0.5} scale={1} />
-      <Cottage position={[halfW + 1.3, 0, halfD * 1.3]} rotationY={-0.9} scale={1.05} />
+      {/* village cluster: one barn, three cottages of different sizes */}
+      <Barn position={[halfW + 2.1, heightFn(halfW + 2.1, halfD * 0.75), halfD * 0.75]} rotationY={-0.5} scale={1} />
       <Cottage
-        position={[halfW + 2.6, 0, halfD * 1.6]}
+        position={[halfW + 1.3, heightFn(halfW + 1.3, halfD * 1.3), halfD * 1.3]}
+        rotationY={-0.9}
+        scale={1.05}
+      />
+      <Cottage
+        position={[halfW + 2.6, heightFn(halfW + 2.6, halfD * 1.6), halfD * 1.6]}
         rotationY={-0.2}
         scale={0.78}
         wall="#dfe3d0"
         roof="#5b7a5e"
       />
       <Cottage
-        position={[halfW + 0.6, 0, halfD * 1.85]}
+        position={[halfW + 0.6, heightFn(halfW + 0.6, halfD * 1.85), halfD * 1.85]}
         rotationY={0.5}
         scale={0.65}
         wall="#f2e2c4"
         roof="#7a4a3a"
       />
 
-      <CropField position={[halfW + 1.8, 0, halfD * 0.25]} rotationY={-0.5} rows={3} cols={5} />
+      <CropField
+        position={[halfW + 1.8, heightFn(halfW + 1.8, halfD * 0.25), halfD * 0.25]}
+        rotationY={-0.5}
+        rows={3}
+        cols={5}
+      />
 
-      <Lake position={[-halfW - 1.9, 0, -halfD * 0.3]} radius={1.15} />
-      <Bench position={[-halfW - 0.7, 0, -halfD * 0.3]} rotationY={1.4} scale={1.1} />
-      <Bench position={[-halfW - 1.9, 0, -halfD * 0.3 - 1.35]} rotationY={0} scale={1.1} />
+      <Lake position={[lakeCenter[0], heightFn(lakeCenter[0], lakeCenter[1]), lakeCenter[1]]} radius={1.15} />
+      <Bench
+        position={[-halfW - 0.7, heightFn(-halfW - 0.7, -halfD * 0.3), -halfD * 0.3]}
+        rotationY={1.4}
+        scale={1.1}
+      />
+      <Bench
+        position={[-halfW - 1.9, heightFn(-halfW - 1.9, -halfD * 0.3 - 1.35), -halfD * 0.3 - 1.35]}
+        rotationY={0}
+        scale={1.1}
+      />
 
-      <Sheep position={[halfW + 0.9, 0, -halfD * 0.1]} rotationY={0.4} scale={1} />
-      <Sheep position={[halfW + 1.3, 0, 0.4]} rotationY={-0.3} scale={0.9} />
+      <Sheep position={[halfW + 0.9, heightFn(halfW + 0.9, -halfD * 0.1), -halfD * 0.1]} rotationY={0.4} scale={1} />
+      <Sheep position={[halfW + 1.3, heightFn(halfW + 1.3, 0.4), 0.4]} rotationY={-0.3} scale={0.9} />
 
-      <PavementPath x={-0.2} startZ={halfD + 1.6} endZ={halfD + 0.35} />
+      <PavementPath x={-0.2} startZ={halfD + 1.6} endZ={halfD + 0.35} heightFn={heightFn} />
     </>
   );
 }
