@@ -367,105 +367,156 @@ function StageGroup({
   );
 }
 
-/** 1/5 — already a proper little tree, just smaller than the later stages. A day with any
- *  progress at all should read as "something is growing," never as barely-there. */
+/** Shared rounded foliage clump, reused by every non-flowering stage so a "tree" always reads
+ *  as an actual branching tree (irregular rounded canopy) instead of a Christmas-tree cone. */
+function Canopy({
+  clumps,
+  p,
+}: {
+  clumps: [number, number, number, number, "canopyA" | "canopyB" | "canopyC"][];
+  p: (typeof CONDITION_PALETTE)[GardenCondition];
+}) {
+  return (
+    <>
+      {clumps.map(([x, y, z, r, layer], i) => (
+        <mesh key={i} geometry={CLUMP_GEO} position={[x, y, z]} scale={[r, r * 0.85, r]}>
+          <meshStandardMaterial
+            color={p[layer]}
+            roughness={p.metalness ? 0.25 : 0.6}
+            metalness={p.metalness ?? 0}
+            flatShading
+            emissive={p.glow ? p[layer] : "#000000"}
+            emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.3) : 0}
+          />
+        </mesh>
+      ))}
+    </>
+  );
+}
+
+/** A single angled branch connecting the trunk to a canopy clump. */
+function Branch({
+  position,
+  rotation,
+  length,
+  radius,
+  p,
+}: {
+  position: [number, number, number];
+  rotation: [number, number, number];
+  length: number;
+  radius: number;
+  p: (typeof CONDITION_PALETTE)[GardenCondition];
+}) {
+  return (
+    <mesh position={position} rotation={rotation}>
+      <cylinderGeometry args={[radius * 0.6, radius, length, 6]} />
+      <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
+    </mesh>
+  );
+}
+
+/** 1/5 — already a proper little tree with real branches and a rounded canopy, just smaller
+ *  than the later stages. A day with any progress at all should read as "something is
+ *  growing," never as barely-there or a plain cone. */
 export function SeedStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={0.95}>
-      <mesh position={[0, 0.11, 0]}>
-        <cylinderGeometry args={[0.032, 0.045, 0.22, 7]} />
+    <group scale={1.05}>
+      <mesh position={[0, 0.13, 0]}>
+        <cylinderGeometry args={[0.032, 0.045, 0.26, 7]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.85} metalness={p.metalness ?? 0} />
       </mesh>
-      <mesh position={[0, 0.3, 0]}>
-        <coneGeometry args={[0.2, 0.34, 8]} />
-        <meshStandardMaterial
-          color={p.canopyB}
-          roughness={p.metalness ? 0.3 : 0.65}
-          metalness={p.metalness ?? 0}
-          emissive={p.glow ? p.canopyA : "#000000"}
-          emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.25) : 0}
-        />
-      </mesh>
+      <Branch position={[0.06, 0.27, 0]} rotation={[0, 0, -0.7]} length={0.16} radius={0.018} p={p} />
+      <Branch position={[-0.05, 0.25, 0.03]} rotation={[0.3, 0, 0.75]} length={0.14} radius={0.016} p={p} />
+      <Canopy
+        p={p}
+        clumps={[
+          [0.03, 0.34, 0.01, 0.14, "canopyA"],
+          [-0.06, 0.32, -0.04, 0.12, "canopyA"],
+          [0.02, 0.4, -0.02, 0.13, "canopyB"],
+        ]}
+      />
     </group>
   );
 }
 
-/** 2/5 — a small leafy plant, noticeably bigger than the seed stage. */
+/** 2/5 — a small leafy plant, noticeably bigger and more branched than the seed stage. */
 export function SproutStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.05}>
-      <mesh position={[0, 0.14, 0]}>
-        <cylinderGeometry args={[0.028, 0.038, 0.28, 6]} />
+    <group scale={1.25}>
+      <mesh position={[0, 0.17, 0]}>
+        <cylinderGeometry args={[0.038, 0.05, 0.32, 7]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.8} metalness={p.metalness ?? 0} />
       </mesh>
-      <mesh position={[0, 0.34, 0]}>
-        <coneGeometry args={[0.16, 0.28, 8]} />
-        <meshStandardMaterial
-          color={p.canopyB}
-          roughness={p.metalness ? 0.3 : 0.7}
-          metalness={p.metalness ?? 0}
-          emissive={p.glow ? p.canopyA : "#000000"}
-          emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.25) : 0}
-        />
-      </mesh>
+      <Branch position={[0.09, 0.34, 0.02]} rotation={[0, 0, -0.75]} length={0.2} radius={0.022} p={p} />
+      <Branch position={[-0.08, 0.32, -0.04]} rotation={[0.2, 0, 0.7]} length={0.18} radius={0.02} p={p} />
+      <Branch position={[0.01, 0.36, -0.08]} rotation={[-0.7, 0, 0.05]} length={0.16} radius={0.018} p={p} />
+      <Canopy
+        p={p}
+        clumps={[
+          [0.05, 0.44, 0.02, 0.18, "canopyA"],
+          [-0.09, 0.41, -0.05, 0.16, "canopyA"],
+          [0.02, 0.51, -0.06, 0.17, "canopyB"],
+          [-0.03, 0.46, 0.09, 0.15, "canopyB"],
+        ]}
+      />
     </group>
   );
 }
 
-/** 3/5 — a proper sapling with a visible trunk and single canopy. */
+/** 3/5 — a proper sapling with a visible branching trunk and a fuller rounded canopy. */
 export function SaplingStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.25}>
-      <mesh position={[0, 0.22, 0]}>
-        <cylinderGeometry args={[0.045, 0.06, 0.44, 7]} />
+    <group scale={1.4}>
+      <mesh position={[0, 0.24, 0]}>
+        <cylinderGeometry args={[0.05, 0.07, 0.48, 7]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
       </mesh>
-      <mesh position={[0, 0.58, 0]}>
-        <coneGeometry args={[0.26, 0.48, 9]} />
-        <meshStandardMaterial
-          color={p.canopyB}
-          roughness={p.metalness ? 0.3 : 0.65}
-          metalness={p.metalness ?? 0}
-          emissive={p.glow ? p.canopyA : "#000000"}
-          emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.25) : 0}
-        />
-      </mesh>
+      <Branch position={[0.13, 0.48, 0.02]} rotation={[0, 0, -0.75]} length={0.28} radius={0.028} p={p} />
+      <Branch position={[-0.12, 0.46, -0.05]} rotation={[0.15, 0, 0.72]} length={0.26} radius={0.026} p={p} />
+      <Branch position={[0.02, 0.5, -0.11]} rotation={[-0.65, 0, 0]} length={0.22} radius={0.022} p={p} />
+      <Canopy
+        p={p}
+        clumps={[
+          [0.16, 0.66, 0.04, 0.24, "canopyA"],
+          [-0.15, 0.63, -0.07, 0.22, "canopyA"],
+          [0.02, 0.6, -0.18, 0.2, "canopyA"],
+          [0.04, 0.76, 0.02, 0.22, "canopyB"],
+          [-0.08, 0.72, 0.12, 0.19, "canopyB"],
+        ]}
+      />
     </group>
   );
 }
 
-/** 4/5 — a large, fuller young tree with a two-tier canopy. */
+/** 4/5 — a large, fuller young tree, one step short of the full flowering canopy. */
 export function TreeStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.5}>
-      <mesh position={[0, 0.26, 0]}>
-        <cylinderGeometry args={[0.06, 0.085, 0.52, 7]} />
+    <group scale={1.6}>
+      <mesh position={[0, 0.28, 0]}>
+        <cylinderGeometry args={[0.065, 0.09, 0.56, 8]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
       </mesh>
-      <mesh position={[0, 0.66, 0]}>
-        <coneGeometry args={[0.32, 0.46, 9]} />
-        <meshStandardMaterial
-          color={p.canopyA}
-          roughness={p.metalness ? 0.25 : 0.6}
-          metalness={p.metalness ?? 0}
-          emissive={p.glow ? p.canopyA : "#000000"}
-          emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.3) : 0}
-        />
-      </mesh>
-      <mesh position={[0, 0.92, 0]}>
-        <coneGeometry args={[0.23, 0.34, 9]} />
-        <meshStandardMaterial
-          color={p.canopyB}
-          roughness={p.metalness ? 0.25 : 0.6}
-          metalness={p.metalness ?? 0}
-          emissive={p.glow ? p.canopyB : "#000000"}
-          emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.3) : 0}
-        />
-      </mesh>
+      <Branch position={[0.16, 0.56, 0.03]} rotation={[0, 0, -0.72]} length={0.34} radius={0.034} p={p} />
+      <Branch position={[-0.15, 0.54, -0.06]} rotation={[0.15, 0, 0.7]} length={0.32} radius={0.032} p={p} />
+      <Branch position={[0.02, 0.58, -0.14]} rotation={[-0.62, 0, 0]} length={0.28} radius={0.028} p={p} />
+      <Branch position={[-0.04, 0.6, 0.14]} rotation={[0.6, 0, -0.1]} length={0.26} radius={0.026} p={p} />
+      <Canopy
+        p={p}
+        clumps={[
+          [0.2, 0.78, 0.05, 0.28, "canopyA"],
+          [-0.19, 0.75, -0.08, 0.26, "canopyA"],
+          [0.02, 0.72, -0.22, 0.24, "canopyA"],
+          [-0.05, 0.74, 0.2, 0.24, "canopyA"],
+          [0.11, 0.96, 0.06, 0.25, "canopyB"],
+          [-0.12, 0.94, -0.06, 0.24, "canopyB"],
+          [0.0, 1.14, 0.0, 0.2, "canopyC"],
+        ]}
+      />
     </group>
   );
 }
