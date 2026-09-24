@@ -1,0 +1,15 @@
+services:
+  familyapp:
+    image: familyapp:latest
+    build: .
+    container_name: familyapp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: file:/app/data/familyapp.db
+    volumes:
+      - familyapp_data:/app/data
+
+volumes:
+  familyapp_data:

@@ -1,0 +1,10 @@
+node_modules
+.next
+.git
+.history
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+npm-debug.log*
