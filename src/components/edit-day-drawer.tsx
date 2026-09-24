@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Check as DoneIcon } from "lucide-react";
+import { Check as DoneIcon, Eraser } from "lucide-react";
 import { setDayStatusesAction } from "@/lib/actions";
 import { PRAYER_ORDER, PRAYER_META, STATUS_ORDER, STATUS_ICON, STATUS_META } from "@/lib/prayers";
 import type { Prayer, Status } from "@/lib/db/schema";
@@ -63,6 +63,14 @@ export function EditDayDrawer({
     setStatuses((prev) => ({ ...prev, [prayer]: value }));
   }
 
+  function clearAll() {
+    setStatuses(() => {
+      const next = {} as Record<Prayer, EditStatus>;
+      for (const prayer of PRAYER_ORDER) next[prayer] = null;
+      return next;
+    });
+  }
+
   function handleDone() {
     const payload: Partial<Record<Prayer, Status>> = {};
     for (const prayer of PRAYER_ORDER) {
@@ -82,9 +90,20 @@ export function EditDayDrawer({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-neutral-200" />
-        <p className="text-center text-[11px] font-bold uppercase tracking-widest text-neutral-400">
-          Edit Day Records
-        </p>
+        <div className="flex items-center justify-center gap-2">
+          <p className="text-center text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+            Edit Day Records
+          </p>
+          <button
+            type="button"
+            onClick={clearAll}
+            className="flex items-center gap-1 rounded-full bg-neutral-100 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-neutral-500 hover:bg-neutral-200"
+            aria-label="Clear all prayer statuses for this day"
+          >
+            <Eraser className="h-3 w-3" />
+            Clear all
+          </button>
+        </div>
 
         <div className={cn("mt-4 grid gap-1 rounded-full bg-black/5 p-1", haydEnabled ? "grid-cols-7" : "grid-cols-6")}>
           {options.map((value) => {
