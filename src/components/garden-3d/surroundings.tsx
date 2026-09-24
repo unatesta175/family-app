@@ -12,31 +12,8 @@ function seededRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-/** A simple low-poly pine, distinct from the prayer trees so the two never get confused. */
-function PineTree({ position, scale = 1, seed = 0 }: { position: [number, number, number]; scale?: number; seed?: number }) {
-  const hueJitter = seededRandom(seed) * 0.1 - 0.05;
-  const green = hueJitter > 0 ? "#1f7a3f" : "#1c6e38";
-  return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 0.12, 0]}>
-        <cylinderGeometry args={[0.05, 0.07, 0.24, 6]} />
-        <meshStandardMaterial color="#6b4527" roughness={0.9} />
-      </mesh>
-      <mesh position={[0, 0.42, 0]}>
-        <coneGeometry args={[0.34, 0.5, 7]} />
-        <meshStandardMaterial color={green} roughness={0.75} />
-      </mesh>
-      <mesh position={[0, 0.68, 0]}>
-        <coneGeometry args={[0.26, 0.42, 7]} />
-        <meshStandardMaterial color={green} roughness={0.75} />
-      </mesh>
-      <mesh position={[0, 0.9, 0]}>
-        <coneGeometry args={[0.17, 0.32, 7]} />
-        <meshStandardMaterial color={green} roughness={0.75} />
-      </mesh>
-    </group>
-  );
-}
+type PlacedTree = { position: [number, number, number]; scale: number; seed: number };
+type PlacedRocks = { position: [number, number, number]; scale: number; seed: number };
 
 const ROUND_TREE_PALETTES: [string, string][] = [
   ["#2f8a44", "#6b4527"], // healthy green
@@ -46,48 +23,123 @@ const ROUND_TREE_PALETTES: [string, string][] = [
   ["#8a9a3f", "#7a6135"], // olive
 ];
 
-/** A round-canopy deciduous tree, distinct from the conical pines, in one of a few color
- *  variants (green, autumn orange, gold, olive) so the forest edge doesn't read as uniform. */
-function RoundTree({ position, scale = 1, seed = 0 }: { position: [number, number, number]; scale?: number; seed?: number }) {
-  const [canopy, trunk] = ROUND_TREE_PALETTES[Math.floor(seededRandom(seed) * ROUND_TREE_PALETTES.length)];
+/**
+ * All pine trees rendered as GPU instances: one shared geometry per tier (trunk + 3 canopy
+ * cones) reused across every tree, so hundreds or thousands of pines cost only 4 draw calls
+ * total instead of 4 meshes each. Each tier still gets its own per-instance position/scale/
+ * color, matching what the old per-tree component produced visually.
+ */
+function InstancedPineTrees({ trees }: { trees: PlacedTree[] }) {
+  const n = Math.max(trees.length, 1);
+  const greenOf = (seed: number) => (seededRandom(seed) * 0.1 - 0.05 > 0 ? "#1f7a3f" : "#1c6e38");
   return (
-    <group position={position} scale={scale}>
-      <mesh position={[0, 0.16, 0]}>
-        <cylinderGeometry args={[0.045, 0.065, 0.32, 6]} />
-        <meshStandardMaterial color={trunk} roughness={0.9} />
-      </mesh>
-      <mesh position={[0.07, 0.42, 0.02]}>
-        <icosahedronGeometry args={[0.22, 0]} />
-        <meshStandardMaterial color={canopy} roughness={0.7} flatShading />
-      </mesh>
-      <mesh position={[-0.08, 0.4, -0.05]}>
-        <icosahedronGeometry args={[0.19, 0]} />
-        <meshStandardMaterial color={canopy} roughness={0.7} flatShading />
-      </mesh>
-      <mesh position={[0, 0.52, -0.02]}>
-        <icosahedronGeometry args={[0.2, 0]} />
-        <meshStandardMaterial color={canopy} roughness={0.7} flatShading />
-      </mesh>
-    </group>
+    <>
+      <Instances limit={n}>
+        <cylinderGeometry args={[0.05, 0.07, 0.24, 6]} />
+        <meshStandardMaterial color="#6b4527" roughness={0.9} />
+        {trees.map((t, i) => (
+          <Instance
+            key={i}
+            position={[t.position[0], t.position[1] + 0.12 * t.scale, t.position[2]]}
+            scale={t.scale}
+          />
+        ))}
+      </Instances>
+      {[0.42, 0.68, 0.9].map((y, tier) => {
+        const radius = [0.34, 0.26, 0.17][tier];
+        const height = [0.5, 0.42, 0.32][tier];
+        return (
+          <Instances key={tier} limit={n}>
+            <coneGeometry args={[radius, height, 7]} />
+            <meshStandardMaterial roughness={0.75} />
+            {trees.map((t, i) => (
+              <Instance
+                key={i}
+                position={[t.position[0], t.position[1] + y * t.scale, t.position[2]]}
+                scale={t.scale}
+                color={greenOf(t.seed)}
+              />
+            ))}
+          </Instances>
+        );
+      })}
+    </>
   );
 }
 
-/** A cluster of two or three low-poly rocks. */
-function RockCluster({ position, scale = 1, seed = 0 }: { position: [number, number, number]; scale?: number; seed?: number }) {
-  const rocks: [number, number, number, number][] = [
-    [0, 0, 0, 0.14],
-    [0.16, 0, 0.08, 0.09],
-    [-0.13, 0, -0.1, 0.1],
-  ];
+const ROUND_CANOPY_OFFSETS: [number, number, number, number][] = [
+  [0.07, 0.42, 0.02, 0.22],
+  [-0.08, 0.4, -0.05, 0.19],
+  [0, 0.52, -0.02, 0.2],
+];
+
+/** All round-canopy deciduous trees as GPU instances (trunk block + one reused canopy-blob
+ *  block placed 3x per tree), in one of a few color variants so the forest edge doesn't read
+ *  as uniform, at any count. */
+function InstancedRoundTrees({ trees }: { trees: PlacedTree[] }) {
+  const n = Math.max(trees.length, 1);
+  const paletteOf = (seed: number) => ROUND_TREE_PALETTES[Math.floor(seededRandom(seed) * ROUND_TREE_PALETTES.length)];
   return (
-    <group position={position} scale={scale}>
-      {rocks.map(([x, , z, r], i) => (
-        <mesh key={i} position={[x, r * 0.5, z]} rotation={[seededRandom(seed + i) * 2, seededRandom(seed + i + 5) * 2, 0]}>
-          <dodecahedronGeometry args={[r, 0]} />
-          <meshStandardMaterial color="#8c8c80" roughness={0.95} flatShading />
-        </mesh>
-      ))}
-    </group>
+    <>
+      <Instances limit={n}>
+        <cylinderGeometry args={[0.045, 0.065, 0.32, 6]} />
+        <meshStandardMaterial roughness={0.9} />
+        {trees.map((t, i) => (
+          <Instance
+            key={i}
+            position={[t.position[0], t.position[1] + 0.16 * t.scale, t.position[2]]}
+            scale={t.scale}
+            color={paletteOf(t.seed)[1]}
+          />
+        ))}
+      </Instances>
+      <Instances limit={n * ROUND_CANOPY_OFFSETS.length}>
+        <icosahedronGeometry args={[1, 0]} />
+        <meshStandardMaterial roughness={0.7} flatShading />
+        {trees.flatMap((t, i) => {
+          const canopy = paletteOf(t.seed)[0];
+          return ROUND_CANOPY_OFFSETS.map(([dx, dy, dz, r], j) => (
+            <Instance
+              key={`${i}-${j}`}
+              position={[t.position[0] + dx * t.scale, t.position[1] + dy * t.scale, t.position[2] + dz * t.scale]}
+              scale={r * t.scale}
+              color={canopy}
+            />
+          ));
+        })}
+      </Instances>
+    </>
+  );
+}
+
+const ROCK_OFFSETS: [number, number, number][] = [
+  [0, 0, 0.14],
+  [0.16, 0.08, 0.09],
+  [-0.13, -0.1, 0.1],
+];
+
+/** Every rock, across every cluster, as one instanced batch (a single draw call regardless of
+ *  how many clusters there are). */
+function InstancedRocks({ clusters }: { clusters: PlacedRocks[] }) {
+  const n = Math.max(clusters.length * ROCK_OFFSETS.length, 1);
+  return (
+    <Instances limit={n}>
+      <dodecahedronGeometry args={[1, 0]} />
+      <meshStandardMaterial color="#8c8c80" roughness={0.95} flatShading />
+      {clusters.flatMap((c, i) =>
+        ROCK_OFFSETS.map(([dx, dz, r], j) => {
+          const s = c.seed + j;
+          return (
+            <Instance
+              key={`${i}-${j}`}
+              position={[c.position[0] + dx * c.scale, c.position[1] + r * 0.5 * c.scale, c.position[2] + dz * c.scale]}
+              rotation={[seededRandom(s) * 2, seededRandom(s + 5) * 2, 0]}
+              scale={r * c.scale}
+            />
+          );
+        })
+      )}
+    </Instances>
   );
 }
 
@@ -353,7 +405,7 @@ function MeadowGrass({
   avoidR: number;
   heightFn: (x: number, z: number) => number;
 }) {
-  const count = 660;
+  const count = 13200;
   const tufts: [number, number, number, number, number][] = [];
   for (let i = 0; i < count; i++) {
     const a = seededRandom(i * 3.1) * Math.PI * 2;
@@ -447,30 +499,39 @@ export function GardenSurroundings({ cols, rows }: { cols: number; rows: number 
   );
 
   // Scattered forest around the meadow (organic, not a perfect ring), skipping the same front
-  // gap as the mountains so the view toward the path stays open.
-  const trees: [number, number, number, boolean][] = [];
-  const treeCount = 84;
+  // gap as the mountains so the view toward the path stays open. Rendered via GPU instancing
+  // (see InstancedPineTrees/InstancedRoundTrees) so a count this high stays cheap to draw.
+  const pineTrees: PlacedTree[] = [];
+  const roundTrees: PlacedTree[] = [];
+  const treeCount = 1680;
   for (let i = 0; i < treeCount; i++) {
     const a = seededRandom(i * 1.7 + 10) * Math.PI * 2;
     const gapFront = Math.cos(a) > -0.3 && Math.sin(a) > 0.45;
     if (gapFront) continue;
-    const r = maxHalf * (1.2 + seededRandom(i * 2.3 + 20) * 1.15);
+    const r = maxHalf * (1.15 + seededRandom(i * 2.3 + 20) * 1.2);
     const x = Math.sin(a) * r;
     const z = Math.cos(a) * r;
-    trees.push([x, z, heightFn(x, z), seededRandom(i + 77) > 0.45]);
+    const isPine = seededRandom(i + 77) > 0.45;
+    const scale = 0.85 + seededRandom(i + 50) * 0.5;
+    const entry: PlacedTree = { position: [x, heightFn(x, z), z], scale: isPine ? scale : scale * 1.3, seed: i };
+    (isPine ? pineTrees : roundTrees).push(entry);
   }
 
-  const rockPositions: [number, number, number][] = [
-    [-halfW - 0.9, halfD * 0.2, 1],
-    [halfW + 1.1, -halfD * 0.85, 2],
-    [-halfW * 0.5, -halfD - 1.2, 3],
-    [halfW + 0.4, halfD + 1.5, 4],
-    [-halfW - 1.6, halfD * 1.1, 5],
-    [halfW - 0.3, -halfD - 1.6, 6],
-    [-halfW - 0.3, -halfD - 0.6, 7],
-    [halfW + 2.0, -halfD * 0.2, 8],
-    [0.4, -halfD - 1.9, 9],
-  ];
+  // Rock clusters scattered around the meadow. Rendered as one instanced batch regardless of
+  // count (see InstancedRocks).
+  const rockClusters: PlacedRocks[] = [];
+  const rockCount = 180;
+  for (let i = 0; i < rockCount; i++) {
+    const a = seededRandom(i * 4.1 + 900) * Math.PI * 2;
+    const r = maxHalf * (1.05 + seededRandom(i * 3.3 + 950) * 1.3);
+    const x = Math.sin(a) * r;
+    const z = Math.cos(a) * r;
+    rockClusters.push({
+      position: [x, heightFn(x, z), z],
+      scale: 0.7 + seededRandom(i + 1000) * 0.5,
+      seed: i + 1,
+    });
+  }
 
   return (
     <>
@@ -478,18 +539,9 @@ export function GardenSurroundings({ cols, rows }: { cols: number; rows: number 
 
       <MeadowGrass clearingR={clearingR} avoidR={maxHalf * 1.05} heightFn={heightFn} />
 
-      {trees.map(([x, z, gy, isPine], i) => {
-        const scale = 0.85 + seededRandom(i + 50) * 0.5;
-        return isPine ? (
-          <PineTree key={`t${i}`} position={[x, gy, z]} scale={scale} seed={i} />
-        ) : (
-          <RoundTree key={`t${i}`} position={[x, gy, z]} scale={scale * 1.3} seed={i} />
-        );
-      })}
-
-      {rockPositions.map(([x, z, seed], i) => (
-        <RockCluster key={`r${i}`} position={[x, heightFn(x, z), z]} scale={0.8 + seededRandom(seed) * 0.4} seed={seed} />
-      ))}
+      <InstancedPineTrees trees={pineTrees} />
+      <InstancedRoundTrees trees={roundTrees} />
+      <InstancedRocks clusters={rockClusters} />
 
       {/* village cluster: one barn, three cottages of different sizes */}
       <Barn position={[halfW + 2.1, heightFn(halfW + 2.1, halfD * 0.75), halfD * 0.75]} rotationY={-0.5} scale={1} />
