@@ -5,6 +5,7 @@ import { Canvas, useThree } from "@react-three/fiber";
 import type { Mesh } from "three";
 import { OrbitControls } from "@react-three/drei";
 import { Plots, StageLayer, PlotRing, GardenGround, GardenFence, gridPosition, type GardenCell } from "./plant";
+import { GardenSurroundings } from "./surroundings";
 
 export type Garden3DProps = {
   cells: {
@@ -148,6 +149,7 @@ export function Garden3DScene({ cells, cols, todayDate, selectedDate, onSelect }
         </mesh>
         <ShadowSetup deps={gridCells} />
 
+        <GardenSurroundings cols={cols} rows={rows} />
         <GardenGround cols={cols} rows={rows} />
         <GardenFence cols={cols} rows={rows} />
         <Plots cells={gridCells} cols={cols} rows={rows} />
