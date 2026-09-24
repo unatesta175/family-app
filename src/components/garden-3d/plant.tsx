@@ -367,30 +367,21 @@ function StageGroup({
   );
 }
 
-/** 1/5 — a tiny budding sprout, barely peeking out of the soil. */
+/** 1/5 — already a proper little tree, just smaller than the later stages. A day with any
+ *  progress at all should read as "something is growing," never as barely-there. */
 export function SeedStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={0.7}>
-      <mesh position={[0, 0.05, 0]}>
-        <cylinderGeometry args={[0.015, 0.02, 0.1, 6]} />
-        <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.8} metalness={p.metalness ?? 0} />
+    <group scale={0.95}>
+      <mesh position={[0, 0.11, 0]}>
+        <cylinderGeometry args={[0.032, 0.045, 0.22, 7]} />
+        <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.85} metalness={p.metalness ?? 0} />
       </mesh>
-      <mesh position={[0.02, 0.1, 0]} rotation={[0, 0, 0.5]}>
-        <coneGeometry args={[0.035, 0.09, 6]} />
+      <mesh position={[0, 0.3, 0]}>
+        <coneGeometry args={[0.2, 0.34, 8]} />
         <meshStandardMaterial
           color={p.canopyB}
-          roughness={p.metalness ? 0.3 : 0.7}
-          metalness={p.metalness ?? 0}
-          emissive={p.glow ? p.canopyA : "#000000"}
-          emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.25) : 0}
-        />
-      </mesh>
-      <mesh position={[-0.02, 0.08, 0]} rotation={[0, 0, -0.6]}>
-        <coneGeometry args={[0.03, 0.07, 6]} />
-        <meshStandardMaterial
-          color={p.canopyB}
-          roughness={p.metalness ? 0.3 : 0.7}
+          roughness={p.metalness ? 0.3 : 0.65}
           metalness={p.metalness ?? 0}
           emissive={p.glow ? p.canopyA : "#000000"}
           emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.25) : 0}
@@ -404,7 +395,7 @@ export function SeedStage({ condition = "healthy" }: { condition?: GardenConditi
 export function SproutStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={0.85}>
+    <group scale={1.05}>
       <mesh position={[0, 0.14, 0]}>
         <cylinderGeometry args={[0.028, 0.038, 0.28, 6]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.8} metalness={p.metalness ?? 0} />
@@ -427,7 +418,7 @@ export function SproutStage({ condition = "healthy" }: { condition?: GardenCondi
 export function SaplingStage({ condition = "healthy" }: { condition?: GardenCondition }) {
   const p = CONDITION_PALETTE[condition];
   return (
-    <group scale={1.15}>
+    <group scale={1.25}>
       <mesh position={[0, 0.22, 0]}>
         <cylinderGeometry args={[0.045, 0.06, 0.44, 7]} />
         <meshStandardMaterial color={p.trunk} roughness={p.metalness ? 0.3 : 0.9} metalness={p.metalness ?? 0} />
