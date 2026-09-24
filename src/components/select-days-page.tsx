@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, ChevronsUpDown, Check, ListChecks, Eraser } from "lucide-react";
@@ -54,6 +54,69 @@ export function SelectDaysPage({
     });
   }
 
+  // Drag-to-select a range of days: press down on a day, drag across others, release to add
+  // the whole span to the selection. A press-and-release on the same day still acts as a
+  // simple toggle (add/remove that one day), so the existing tap behavior is unchanged.
+  const [dragStartIndex, setDragStartIndex] = useState<number | null>(null);
+  const [dragEndIndex, setDragEndIndex] = useState<number | null>(null);
+  const isDragging = dragStartIndex !== null;
+  const draggedRef = useRef(false);
+
+  function beginDrag(index: number) {
+    draggedRef.current = false;
+    setDragStartIndex(index);
+    setDragEndIndex(index);
+  }
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    function indexAt(clientX: number, clientY: number): number | null {
+      const el = document.elementFromPoint(clientX, clientY)?.closest<HTMLElement>("[data-day-index]");
+      if (!el) return null;
+      return Number(el.dataset.dayIndex);
+    }
+
+    function handleMove(e: PointerEvent) {
+      const index = indexAt(e.clientX, e.clientY);
+      if (index === null) return;
+      draggedRef.current = draggedRef.current || index !== dragStartIndex;
+      setDragEndIndex(index);
+    }
+
+    function handleUp(e: PointerEvent) {
+      const index = indexAt(e.clientX, e.clientY) ?? dragEndIndex;
+      if (dragStartIndex !== null && index !== null && draggedRef.current) {
+        const [lo, hi] = [dragStartIndex, index].sort((a, b) => a - b);
+        setSelected((prev) => {
+          const next = new Set(prev);
+          for (let i = lo; i <= hi; i++) {
+            const d = days[i]?.date;
+            if (d && d <= today) next.add(d);
+          }
+          return next;
+        });
+      } else if (dragStartIndex !== null) {
+        toggleDate(days[dragStartIndex].date);
+      }
+      setDragStartIndex(null);
+      setDragEndIndex(null);
+    }
+
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDragging, dragStartIndex, days, today]);
+
+  const dragRange =
+    dragStartIndex !== null && dragEndIndex !== null
+      ? [Math.min(dragStartIndex, dragEndIndex), Math.max(dragStartIndex, dragEndIndex)]
+      : null;
+
   const selectedDates = Array.from(selected).sort();
 
   function handleClear() {
@@ -102,7 +165,11 @@ export function SelectDaysPage({
           </button>
         </div>
 
-        <div className="mt-3 grid grid-cols-7 gap-1 text-center">
+        <p className="mt-3 text-center text-[10px] text-neutral-400">
+          Tap a day to toggle it, or press and drag across days to select a range
+        </p>
+
+        <div className="mt-2 grid grid-cols-7 gap-1 text-center">
           {WEEKDAY_LABELS.map((label, i) => (
             <p
               key={label}
@@ -114,22 +181,29 @@ export function SelectDaysPage({
           {Array.from({ length: leadingBlanks }).map((_, i) => (
             <div key={`blank-${i}`} />
           ))}
-          {days.map(({ day, date }) => {
+          {days.map(({ day, date }, index) => {
             const isToday = date === today;
             const isSelected = selected.has(date);
             const isFuture = date > today;
+            const inDragPreview = !!dragRange && index >= dragRange[0] && index <= dragRange[1];
             return (
               <button
                 key={date}
                 type="button"
-                onClick={() => toggleDate(date)}
+                data-day-index={index}
+                onPointerDown={(e) => {
+                  if (isFuture) return;
+                  e.preventDefault();
+                  beginDrag(index);
+                }}
                 disabled={isFuture}
                 className={cn(
-                  "relative mx-auto mt-1 flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors",
+                  "relative mx-auto mt-1 flex h-9 w-9 touch-none select-none items-center justify-center rounded-full text-sm font-semibold transition-colors",
                   isFuture && "pointer-events-none text-neutral-300",
                   !isFuture && isToday && "bg-emerald-700 text-white",
                   !isFuture && !isToday && isSelected && "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-300",
-                  !isFuture && !isToday && !isSelected && "text-neutral-700 hover:bg-neutral-50"
+                  !isFuture && !isToday && !isSelected && "text-neutral-700 hover:bg-neutral-50",
+                  inDragPreview && !isToday && "bg-emerald-100 ring-1 ring-emerald-400"
                 )}
               >
                 {day}
