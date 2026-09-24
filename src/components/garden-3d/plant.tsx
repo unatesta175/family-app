@@ -380,12 +380,11 @@ function Leaf({
   p: (typeof CONDITION_PALETTE)[GardenCondition];
 }) {
   return (
-    <mesh geometry={CLUMP_GEO} position={position} scale={[radius, radius * 0.85, radius]}>
+    <mesh geometry={SMOOTH_LEAF_GEO} position={position} scale={[radius, radius * 0.9, radius]}>
       <meshStandardMaterial
         color={p[layer]}
-        roughness={p.metalness ? 0.25 : 0.6}
+        roughness={p.metalness ? 0.25 : 0.55}
         metalness={p.metalness ?? 0}
-        flatShading
         emissive={p.glow ? p[layer] : "#000000"}
         emissiveIntensity={p.glow ? (p.emissiveIntensity ?? 0.3) : 0}
       />
@@ -676,6 +675,9 @@ const BLOOM_POINTS: [number, number, number][] = CANOPY_CLUMPS.flatMap(([x, y, z
 
 const CLUMP_GEO = new IcosahedronGeometry(1, 1);
 const BLOOM_GEO = new SphereGeometry(1, 6, 5);
+/** Smooth (non-faceted) sphere for young-tree foliage clusters, so they read as soft rounded
+ *  leaves rather than the low-poly rock look of the flat-shaded icosahedron clumps. */
+const SMOOTH_LEAF_GEO = new SphereGeometry(1, 12, 10);
 
 const TIER_SCALE: Record<GardenTier, number> = { none: 1.75, bronze: 1.9, silver: 2.05, gold: 2.25 };
 const TIER_BLOOM_COLOR: Record<GardenTier, string> = {
