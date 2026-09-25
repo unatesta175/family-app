@@ -22,6 +22,7 @@ export function LocationSettingsForm({
     latitude?: number | null;
     longitude?: number | null;
     locationLabel?: string | null;
+    timezone?: string | null;
     calcMethod?: CalcMethod | null;
     madhab?: Madhab | null;
   };
@@ -45,8 +46,9 @@ export function LocationSettingsForm({
         setIsLocating(false);
         const { latitude, longitude } = position.coords;
         const label = `${latitude.toFixed(3)}, ${longitude.toFixed(3)}`;
+        const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
         startTransition(() =>
-          updateProfileAction({ profileId: profile.id, latitude, longitude, locationLabel: label })
+          updateProfileAction({ profileId: profile.id, latitude, longitude, locationLabel: label, timezone })
         );
       },
       (err) => {
@@ -77,6 +79,7 @@ export function LocationSettingsForm({
           {hasLocation && (
             <p className="text-[11px] text-neutral-400">
               {profile.latitude!.toFixed(4)}, {profile.longitude!.toFixed(4)}
+              {profile.timezone ? ` · ${profile.timezone}` : ""}
             </p>
           )}
         </div>
@@ -145,6 +148,11 @@ export function LocationSettingsForm({
       {!hasLocation && (
         <p className="mt-3 text-[11px] text-neutral-400">
           Set a location to see today&apos;s azan times on the Home tab.
+        </p>
+      )}
+      {hasLocation && !profile.timezone && (
+        <p className="mt-3 text-[11px] font-medium text-amber-600">
+          Missing timezone from an older location save &mdash; tap &quot;Update&quot; above to fix azan times.
         </p>
       )}
     </div>

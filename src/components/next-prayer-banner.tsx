@@ -15,7 +15,17 @@ function formatCountdown(ms: number): string {
 }
 
 /** Live-updating "next azan" banner; server passes the target time, client just counts down. */
-export function NextPrayerBanner({ prayer, at, now }: { prayer: Prayer; at: string; now: string }) {
+export function NextPrayerBanner({
+  prayer,
+  at,
+  now,
+  timezone,
+}: {
+  prayer: Prayer;
+  at: string;
+  now: string;
+  timezone: string;
+}) {
   const target = new Date(at).getTime();
   const [remaining, setRemaining] = useState(() => target - new Date(now).getTime());
 
@@ -26,7 +36,7 @@ export function NextPrayerBanner({ prayer, at, now }: { prayer: Prayer; at: stri
 
   const meta = PRAYER_META[prayer];
   const Icon = meta.icon;
-  const time = new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const time = new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: timezone });
 
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-neutral-900 px-4 py-3 text-white shadow-sm">

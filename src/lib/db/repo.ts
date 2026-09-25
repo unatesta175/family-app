@@ -215,6 +215,7 @@ export async function updateProfile(
     latitude?: number | null;
     longitude?: number | null;
     locationLabel?: string | null;
+    timezone?: string | null;
     calcMethod?: CalcMethod | null;
     madhab?: Madhab;
   }

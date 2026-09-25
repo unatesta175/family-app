@@ -14,7 +14,7 @@ import { formatHijri } from "@/lib/hijri";
 import { PRAYER_ORDER } from "@/lib/prayers";
 import { currentStreak, dayCompletionPct } from "@/lib/streaks";
 import { evaluateChallenge } from "@/lib/challenge-progress";
-import { computePrayerTimes, nextPrayer } from "@/lib/prayer-times";
+import { computePrayerTimes, nextPrayer, formatPrayerTime } from "@/lib/prayer-times";
 import Link from "next/link";
 import { PrayerCard } from "@/components/prayer-card";
 import { NextPrayerBanner } from "@/components/next-prayer-banner";
@@ -79,13 +79,14 @@ export default async function HomePage() {
     longitude: profile?.longitude ?? null,
     calcMethod: profile?.calcMethod ?? null,
     madhab: profile?.madhab ?? "shafi",
-  } as const;
+    timezone: profile?.timezone ?? null,
+  };
   const todayTimes = computePrayerTimes(locationPrefs, now);
   const tomorrow = new Date(now);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowTimes = todayTimes ? computePrayerTimes(locationPrefs, tomorrow) : null;
   const upcoming = todayTimes && tomorrowTimes ? nextPrayer(locationPrefs, now, todayTimes, tomorrowTimes) : null;
-  const timeFmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const timeFmt = (d: Date) => formatPrayerTime(d, locationPrefs.timezone!);
 
   return (
     <div className="flex flex-col gap-5">
@@ -119,7 +120,12 @@ export default async function HomePage() {
       </div>
 
       {upcoming ? (
-        <NextPrayerBanner prayer={upcoming.prayer} at={upcoming.at.toISOString()} now={now.toISOString()} />
+        <NextPrayerBanner
+          prayer={upcoming.prayer}
+          at={upcoming.at.toISOString()}
+          now={now.toISOString()}
+          timezone={locationPrefs.timezone!}
+        />
       ) : (
         <Link
           href="/settings"

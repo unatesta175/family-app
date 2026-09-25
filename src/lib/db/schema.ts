@@ -49,6 +49,7 @@ export const profiles = sqliteTable(
     latitude: real("latitude"),
     longitude: real("longitude"),
     locationLabel: text("location_label"),
+    timezone: text("timezone"),
     calcMethod: text("calc_method", { enum: CALC_METHODS }),
     madhab: text("madhab", { enum: MADHABS }).notNull().default("shafi"),
     createdAt: text("created_at")

@@ -55,6 +55,7 @@ const updateProfileSchema = z.object({
   latitude: z.number().min(-90).max(90).nullable().optional(),
   longitude: z.number().min(-180).max(180).nullable().optional(),
   locationLabel: z.string().max(120).nullable().optional(),
+  timezone: z.string().max(60).nullable().optional(),
   calcMethod: z.enum(CALC_METHODS).nullable().optional(),
   madhab: z.enum(MADHABS).optional(),
 });
@@ -70,6 +71,7 @@ export async function updateProfileAction(input: {
   latitude?: number | null;
   longitude?: number | null;
   locationLabel?: string | null;
+  timezone?: string | null;
   calcMethod?: CalcMethod | null;
   madhab?: Madhab;
 }) {
@@ -85,6 +87,7 @@ export async function updateProfileAction(input: {
     latitude: parsed.latitude,
     longitude: parsed.longitude,
     locationLabel: parsed.locationLabel,
+    timezone: parsed.timezone,
     calcMethod: parsed.calcMethod,
     madhab: parsed.madhab,
   });

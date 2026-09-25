@@ -11,6 +11,7 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "profiles", column: "latitude", ddl: "ALTER TABLE profiles ADD COLUMN latitude REAL" },
   { table: "profiles", column: "longitude", ddl: "ALTER TABLE profiles ADD COLUMN longitude REAL" },
   { table: "profiles", column: "location_label", ddl: "ALTER TABLE profiles ADD COLUMN location_label TEXT" },
+  { table: "profiles", column: "timezone", ddl: "ALTER TABLE profiles ADD COLUMN timezone TEXT" },
   { table: "profiles", column: "calc_method", ddl: "ALTER TABLE profiles ADD COLUMN calc_method TEXT" },
   {
     table: "profiles",
