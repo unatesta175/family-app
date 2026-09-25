@@ -1,6 +1,7 @@
 import { getProfile } from "@/lib/db/repo";
 import { getOwnProfileId } from "@/lib/auth";
 import { ProfileSettingsForm } from "@/components/profile-settings-form";
+import { LocationSettingsForm } from "@/components/location-settings-form";
 import { ExportDataButton } from "@/components/export-data-button";
 
 export default async function SettingsPage() {
@@ -17,6 +18,8 @@ export default async function SettingsPage() {
           <ProfileSettingsForm profile={ownProfile} isActive />
         </div>
       )}
+
+      {ownProfile && <LocationSettingsForm profile={ownProfile} />}
 
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="mb-1 text-sm font-semibold text-neutral-900">Data</p>

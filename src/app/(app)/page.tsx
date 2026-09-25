@@ -14,8 +14,10 @@ import { formatHijri } from "@/lib/hijri";
 import { PRAYER_ORDER } from "@/lib/prayers";
 import { currentStreak, dayCompletionPct } from "@/lib/streaks";
 import { evaluateChallenge } from "@/lib/challenge-progress";
+import { computePrayerTimes, nextPrayer } from "@/lib/prayer-times";
 import Link from "next/link";
 import { PrayerCard } from "@/components/prayer-card";
+import { NextPrayerBanner } from "@/components/next-prayer-banner";
 import { ProgressRing } from "@/components/progress-ring";
 import { DailyOverviewButton } from "@/components/daily-overview-button";
 import { QuoteCard } from "@/components/quote-card";
@@ -72,6 +74,19 @@ export default async function HomePage() {
   const lateCount = statuses.filter((s) => LATE_STATUSES.includes(s)).length;
   const missedCount = statuses.filter((s) => s === "missed").length;
 
+  const locationPrefs = {
+    latitude: profile?.latitude ?? null,
+    longitude: profile?.longitude ?? null,
+    calcMethod: profile?.calcMethod ?? null,
+    madhab: profile?.madhab ?? "shafi",
+  } as const;
+  const todayTimes = computePrayerTimes(locationPrefs, now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowTimes = todayTimes ? computePrayerTimes(locationPrefs, tomorrow) : null;
+  const upcoming = todayTimes && tomorrowTimes ? nextPrayer(locationPrefs, now, todayTimes, tomorrowTimes) : null;
+  const timeFmt = (d: Date) => d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between">
@@ -102,6 +117,18 @@ export default async function HomePage() {
           </Link>
         )}
       </div>
+
+      {upcoming ? (
+        <NextPrayerBanner prayer={upcoming.prayer} at={upcoming.at.toISOString()} now={now.toISOString()} />
+      ) : (
+        <Link
+          href="/settings"
+          className="flex items-center justify-between rounded-2xl bg-white px-3.5 py-2.5 text-xs font-medium text-neutral-500 shadow-sm hover:bg-neutral-50"
+        >
+          Set your location to see accurate azan times
+          <span className="font-semibold text-emerald-700">Set up &rarr;</span>
+        </Link>
+      )}
 
       <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
         <ProgressRing pct={pct} />
@@ -143,6 +170,8 @@ export default async function HomePage() {
             allTags={allTags}
             readOnly={readOnly}
             haydEnabled={haydEnabled}
+            time={todayTimes ? timeFmt(todayTimes[prayer]) : undefined}
+            isNext={upcoming?.prayer === prayer}
           />
         ))}
       </div>

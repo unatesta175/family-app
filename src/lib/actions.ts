@@ -12,8 +12,8 @@ import {
   createChallenge,
   resetChallenge,
 } from "@/lib/db/repo";
-import type { Prayer, Status } from "@/lib/db/schema";
-import { PRAYERS, STATUSES, CHALLENGE_TYPES } from "@/lib/db/schema";
+import type { Prayer, Status, CalcMethod, Madhab } from "@/lib/db/schema";
+import { PRAYERS, STATUSES, CHALLENGE_TYPES, CALC_METHODS, MADHABS } from "@/lib/db/schema";
 import { todayIso } from "@/lib/date";
 import { assertOwnProfile } from "@/lib/auth";
 import { z } from "zod";
@@ -52,6 +52,11 @@ const updateProfileSchema = z.object({
     .nullable()
     .optional(),
   haydMode: z.boolean().optional(),
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
+  locationLabel: z.string().max(120).nullable().optional(),
+  calcMethod: z.enum(CALC_METHODS).nullable().optional(),
+  madhab: z.enum(MADHABS).optional(),
 });
 
 export async function updateProfileAction(input: {
@@ -62,6 +67,11 @@ export async function updateProfileAction(input: {
   gender?: "male" | "female" | null;
   dateOfBirth?: string | null;
   haydMode?: boolean;
+  latitude?: number | null;
+  longitude?: number | null;
+  locationLabel?: string | null;
+  calcMethod?: CalcMethod | null;
+  madhab?: Madhab;
 }) {
   const parsed = updateProfileSchema.parse(input);
   await assertOwnProfile(parsed.profileId);
@@ -72,6 +82,11 @@ export async function updateProfileAction(input: {
     gender: parsed.gender,
     dateOfBirth: parsed.dateOfBirth,
     haydMode: parsed.haydMode,
+    latitude: parsed.latitude,
+    longitude: parsed.longitude,
+    locationLabel: parsed.locationLabel,
+    calcMethod: parsed.calcMethod,
+    madhab: parsed.madhab,
   });
   revalidatePath("/");
   revalidatePath("/settings");

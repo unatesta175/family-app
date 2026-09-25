@@ -72,6 +72,8 @@ export function PrayerCard({
   allTags,
   readOnly = false,
   haydEnabled = false,
+  time,
+  isNext = false,
 }: {
   profileId: number;
   date: string;
@@ -81,6 +83,8 @@ export function PrayerCard({
   allTags: Tag[];
   readOnly?: boolean;
   haydEnabled?: boolean;
+  time?: string;
+  isNext?: boolean;
 }) {
   const meta = PRAYER_META[prayer];
   const Icon = meta.icon;
@@ -112,7 +116,19 @@ export function PrayerCard({
             <Icon className={cn("h-5 w-5", meta.fg)} strokeWidth={2} />
           </div>
           <div>
-            <p className="text-sm font-semibold text-neutral-900">{meta.label}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-sm font-semibold text-neutral-900">{meta.label}</p>
+              {time && (
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums",
+                    isNext ? "bg-emerald-700 text-white" : "bg-black/5 text-neutral-500"
+                  )}
+                >
+                  {time}
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <p
                 className={cn(

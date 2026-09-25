@@ -1,8 +1,28 @@
-import { sqliteTable, text, integer, uniqueIndex, primaryKey } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, real, uniqueIndex, primaryKey } from "drizzle-orm/sqlite-core";
 import { sql } from "drizzle-orm";
 
 export const PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
 export type Prayer = (typeof PRAYERS)[number];
+
+/** Calculation methods supported by the `adhan` astronomical engine. */
+export const CALC_METHODS = [
+  "MuslimWorldLeague",
+  "Egyptian",
+  "Karachi",
+  "UmmAlQura",
+  "Dubai",
+  "MoonsightingCommittee",
+  "NorthAmerica",
+  "Kuwait",
+  "Qatar",
+  "Singapore",
+  "Tehran",
+  "Turkey",
+] as const;
+export type CalcMethod = (typeof CALC_METHODS)[number];
+
+export const MADHABS = ["shafi", "hanafi"] as const;
+export type Madhab = (typeof MADHABS)[number];
 
 export const STATUSES = [
   "on_time_jamaah",
@@ -26,6 +46,11 @@ export const profiles = sqliteTable(
     gender: text("gender", { enum: ["male", "female"] }),
     dateOfBirth: text("date_of_birth"),
     haydMode: integer("hayd_mode", { mode: "boolean" }).notNull().default(false),
+    latitude: real("latitude"),
+    longitude: real("longitude"),
+    locationLabel: text("location_label"),
+    calcMethod: text("calc_method", { enum: CALC_METHODS }),
+    madhab: text("madhab", { enum: MADHABS }).notNull().default("shafi"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(current_timestamp)`),

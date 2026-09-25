@@ -2,7 +2,7 @@ import "server-only";
 import { and, eq, isNull, gte, lte, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { profiles, prayerLogs, qadaLedger, tags, prayerLogTags, challenges } from "@/lib/db/schema";
-import type { Prayer, Status, ChallengeType } from "@/lib/db/schema";
+import type { Prayer, Status, ChallengeType, CalcMethod, Madhab } from "@/lib/db/schema";
 import { PRAYER_ORDER } from "@/lib/prayers";
 import type { DayLogMap } from "@/lib/streaks";
 
@@ -212,6 +212,11 @@ export async function updateProfile(
     gender?: "male" | "female" | null;
     dateOfBirth?: string | null;
     haydMode?: boolean;
+    latitude?: number | null;
+    longitude?: number | null;
+    locationLabel?: string | null;
+    calcMethod?: CalcMethod | null;
+    madhab?: Madhab;
   }
 ) {
   await db.update(profiles).set(updates).where(eq(profiles.id, profileId));
