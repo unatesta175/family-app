@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { Color, type DirectionalLight, type HemisphereLight, type Mesh } from "three";
+import { Color, type DirectionalLight, type HemisphereLight, type Mesh, type MeshBasicMaterial } from "three";
 import { OrbitControls } from "@react-three/drei";
 import { Plots, StageLayer, PlotRing, GardenGround, GardenFence, gridPosition, type GardenCell } from "./plant";
 import { GardenSurroundings } from "./surroundings";
@@ -22,6 +22,14 @@ export type Garden3DProps = {
   todayDate: string;
   selectedDate: string | null;
   onSelect: (date: string) => void;
+  /** Whether the sun/moon cycle is frozen. Defaults to false (running). */
+  cyclePaused?: boolean;
+  /** Sun/moon orbit position, 0-1. Only used while paused; ignored while running. */
+  cyclePhase?: number;
+  /** Reports the current orbit position every frame so a parent can drive a scrub slider. */
+  onCyclePhaseChange?: (phase: number) => void;
+  /** Moon light/glow intensity multiplier. Defaults to 1. */
+  moonBrightness?: number;
 };
 
 function SelectPlane({
@@ -109,22 +117,39 @@ const BG_DAY = new Color("#bfe3f5");
 const BG_NIGHT = new Color("#0c1226");
 const LIGHT_COLOR_TMP = new Color();
 
+export type DayNightControls = {
+  paused: boolean;
+  phase: number;
+  moonBrightness: number;
+  onPhaseChange: (phase: number) => void;
+};
+
 /**
  * Sun and moon orbit the garden once every CYCLE_SECONDS. The directional light follows whichever
  * body is above the horizon (so shadows sweep across the land as it moves), fading out near the
  * horizon and swapping to the other body's warmer/cooler tone — sun during the day, dim moon at
  * night. The ambient hemisphere light and each body's own glow fade the same way, so the whole
  * scene reads as day turning to night and back, not just a moving shadow.
+ *
+ * `controls` lets the UI pause the cycle, scrub the sun/moon position directly (phase 0-1), and
+ * dim/brighten the moon's light and glow independent of that position.
  */
-function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
+function DayNightCycle({ shadowHalf, controls }: { shadowHalf: number; controls: DayNightControls }) {
   const lightRef = useRef<DirectionalLight>(null!);
   const hemiRef = useRef<HemisphereLight>(null!);
   const sunRef = useRef<Mesh>(null!);
   const moonRef = useRef<Mesh>(null!);
   const { scene } = useThree();
+  const phaseRef = useRef(controls.phase);
 
-  useFrame(({ clock }) => {
-    const phase = (clock.getElapsedTime() % CYCLE_SECONDS) / CYCLE_SECONDS;
+  useFrame((_, delta) => {
+    if (controls.paused) {
+      phaseRef.current = controls.phase;
+    } else {
+      phaseRef.current = (phaseRef.current + delta / CYCLE_SECONDS) % 1;
+      controls.onPhaseChange(phaseRef.current);
+    }
+    const phase = phaseRef.current;
     const angle = phase * Math.PI * 2;
     const sunHeight = Math.sin(angle);
     const sunHoriz = -Math.cos(angle);
@@ -148,7 +173,7 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
       } else {
         const horizonT = 1 - Math.min(1, -sunHeight / 0.5);
         light.position.set(-sunX, Math.max(-sunY, 0.6), ORBIT_DEPTH);
-        light.intensity = 0.25 + -sunHeight * 0.45 + horizonT * 0.2;
+        light.intensity = (0.25 + -sunHeight * 0.45 + horizonT * 0.2) * controls.moonBrightness;
         light.color.copy(LIGHT_COLOR_TMP.copy(MOON_COLOR).lerp(MOON_HORIZON_COLOR, horizonT));
       }
     }
@@ -166,6 +191,12 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
     // darkens at night instead of staying a static daytime blue behind the 3D content.
     if (!(scene.background instanceof Color)) scene.background = new Color();
     (scene.background as Color).copy(BG_NIGHT).lerp(BG_DAY, dayT);
+
+    const moonMat = moonRef.current?.material as MeshBasicMaterial | undefined;
+    if (moonMat) {
+      const b = Math.max(0, controls.moonBrightness);
+      moonMat.color.setRGB(0.91 * b, 0.925 * b, 0.969 * b);
+    }
   });
 
   return (
@@ -198,7 +229,17 @@ function DayNightCycle({ shadowHalf }: { shadowHalf: number }) {
   );
 }
 
-export function Garden3DScene({ cells, cols, todayDate, selectedDate, onSelect }: Garden3DProps) {
+export function Garden3DScene({
+  cells,
+  cols,
+  todayDate,
+  selectedDate,
+  onSelect,
+  cyclePaused = false,
+  cyclePhase = 0.25,
+  onCyclePhaseChange,
+  moonBrightness = 1,
+}: Garden3DProps) {
   const rows = Math.ceil(cells.length / cols);
   const [hovering, setHovering] = useState(false);
 
@@ -229,7 +270,15 @@ export function Garden3DScene({ cells, cols, todayDate, selectedDate, onSelect }
         gl={{ antialias: true, powerPreference: "high-performance" }}
         camera={{ position: [0, 11, 10.5], fov: 42 }}
       >
-        <DayNightCycle shadowHalf={shadowHalf} />
+        <DayNightCycle
+          shadowHalf={shadowHalf}
+          controls={{
+            paused: cyclePaused,
+            phase: cyclePhase,
+            moonBrightness,
+            onPhaseChange: onCyclePhaseChange ?? (() => {}),
+          }}
+        />
         <ShadowSetup deps={gridCells} />
 
         <GardenSurroundings cols={cols} rows={rows} />

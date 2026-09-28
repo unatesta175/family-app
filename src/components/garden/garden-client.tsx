@@ -2,8 +2,21 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, ChevronRight, Flame, Trophy, TreePine, Sparkles } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Flame,
+  Trophy,
+  TreePine,
+  Sparkles,
+  Play,
+  Pause,
+  Moon,
+} from "lucide-react";
 import { Garden3D } from "@/components/garden-3d/loader";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
 import { PRAYER_ORDER, PRAYER_META } from "@/lib/prayers";
 import { formatHijri } from "@/lib/hijri";
 import { parseIso } from "@/lib/date";
@@ -93,6 +106,10 @@ export function GardenClient({
   const [selected, setSelected] = useState<string | null>(
     dayDetails[todayDate] ? todayDate : null
   );
+  const [cyclePaused, setCyclePaused] = useState(false);
+  const [cyclePhase, setCyclePhase] = useState(0.25);
+  const [moonBrightness, setMoonBrightness] = useState(1);
+  const [skyControlsOpen, setSkyControlsOpen] = useState(false);
 
   const isNewRecord = currentStreak > 0 && currentStreak === bestStreak;
   const selectedDetail = selected ? dayDetails[selected] : null;
@@ -172,6 +189,10 @@ export function GardenClient({
           todayDate={todayDate}
           selectedDate={selected}
           onSelect={setSelected}
+          cyclePaused={cyclePaused}
+          cyclePhase={cyclePhase}
+          onCyclePhaseChange={setCyclePhase}
+          moonBrightness={moonBrightness}
         />
         <div className="flex items-center justify-between border-t border-neutral-100 px-4 py-2.5">
           <div className="flex items-center gap-3 text-[10px] text-neutral-400">
@@ -183,6 +204,88 @@ export function GardenClient({
             </span>
           </div>
           <p className="text-[10px] text-neutral-400">Drag to rotate &middot; tap a plot</p>
+        </div>
+        <div className="border-t border-neutral-100">
+          <button
+            type="button"
+            onClick={() => setSkyControlsOpen((o) => !o)}
+            aria-expanded={skyControlsOpen}
+            className="flex w-full items-center justify-between px-4 py-2.5"
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+              Sky controls
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-3.5 w-3.5 text-neutral-400 transition-transform",
+                skyControlsOpen && "rotate-180"
+              )}
+            />
+          </button>
+
+          {skyControlsOpen && (
+            <div className="flex flex-col gap-4 px-4 pb-4">
+              <div className="flex items-center justify-end">
+                <Button
+                  type="button"
+                  variant={cyclePaused ? "default" : "secondary"}
+                  size="sm"
+                  onClick={() => setCyclePaused((p) => !p)}
+                  className="gap-1.5"
+                >
+                  {cyclePaused ? (
+                    <Play className="h-3 w-3 fill-current" />
+                  ) : (
+                    <Pause className="h-3 w-3 fill-current" />
+                  )}
+                  {cyclePaused ? "Resume" : "Pause"}
+                </Button>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-medium text-neutral-600">Sun &amp; moon position</span>
+                  <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-neutral-500">
+                    {Math.round(cyclePhase * 360)}&deg;
+                  </span>
+                </div>
+                <Slider
+                  value={[cyclePhase]}
+                  min={0}
+                  max={1}
+                  step={0.001}
+                  onValueChange={([v]) => {
+                    setCyclePhase(v);
+                    setCyclePaused(true);
+                  }}
+                  trackClassName="bg-gradient-to-r from-amber-300 via-indigo-300 to-slate-700"
+                  rangeClassName="bg-transparent"
+                  aria-label="Sun and moon position"
+                />
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-600">
+                    <Moon className="h-3 w-3 fill-current text-indigo-500" />
+                    Moon brightness
+                  </span>
+                  <span className="rounded-full bg-neutral-100 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-neutral-500">
+                    {Math.round(moonBrightness * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  value={[moonBrightness]}
+                  min={0}
+                  max={2}
+                  step={0.05}
+                  onValueChange={([v]) => setMoonBrightness(v)}
+                  rangeClassName="bg-indigo-500"
+                  aria-label="Moon brightness"
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
