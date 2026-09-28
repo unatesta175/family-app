@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { ChevronDown, Undo2, X } from "lucide-react";
+import { ChevronDown, HandHeart, Undo2, X } from "lucide-react";
 import { setPrayerStatus, toggleLogTagAction } from "@/lib/actions";
 import { PRAYER_META, STATUS_META, STATUS_ORDER, STATUS_ICON } from "@/lib/prayers";
 import type { Prayer, Status } from "@/lib/db/schema";
 import type { Tag } from "@/lib/db/repo";
 import { cn } from "@/lib/utils";
 import { TagSheet } from "@/components/tag-sheet";
+import { PrayerVirtueDialog } from "@/components/prayer-virtue-dialog";
+import { PrayerBenefitDialog } from "@/components/prayer-benefit-dialog";
+import { PrayNowOverlay } from "@/components/pray-now-overlay";
+import { benefitForStatus, type PrayerBenefit } from "@/lib/prayer-benefits";
 
 const CARD_TONE: Record<"good" | "bad" | "neutral", string> = {
   good: "border-emerald-200 bg-emerald-50/60",
@@ -92,6 +96,10 @@ export function PrayerCard({
   const [isPending, startTransition] = useTransition();
   const [expanded, setExpanded] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [virtueOpen, setVirtueOpen] = useState(false);
+  const [prayNowOpen, setPrayNowOpen] = useState(false);
+  const [benefit, setBenefit] = useState<PrayerBenefit | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
   const options = haydEnabled ? ([...STATUS_ORDER, "excused"] as const) : STATUS_ORDER;
 
   const showReasonSection = NEEDS_REASON.includes(status);
@@ -100,6 +108,27 @@ export function PrayerCard({
     startTransition(() => {
       setPrayerStatus({ profileId, date, prayer, status: next });
     });
+    if (next !== "not_yet") {
+      setPendingStatus(next);
+      setVirtueOpen(true);
+    }
+  }
+
+  function closeVirtue() {
+    setVirtueOpen(false);
+    const b = pendingStatus ? benefitForStatus(pendingStatus) : null;
+    if (b) setBenefit(b);
+  }
+
+  function startPrayNow() {
+    setVirtueOpen(false);
+    setPrayNowOpen(true);
+  }
+
+  function finishPrayNow() {
+    setPrayNowOpen(false);
+    const b = pendingStatus ? benefitForStatus(pendingStatus) : null;
+    if (b) setBenefit(b);
   }
 
   function detachTag(tagId: number) {
@@ -153,6 +182,17 @@ export function PrayerCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
+          {!readOnly && (
+            <button
+              type="button"
+              onClick={() => setPrayNowOpen(true)}
+              className="flex items-center gap-1 rounded-full bg-emerald-700/10 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-700/20"
+              aria-label={`Pray ${meta.label} now`}
+            >
+              <HandHeart className="h-3.5 w-3.5" />
+              Pray Now
+            </button>
+          )}
           {status !== "not_yet" && !readOnly && (
             <button
               type="button"
@@ -249,6 +289,14 @@ export function PrayerCard({
           onClose={() => setSheetOpen(false)}
         />
       )}
+
+      {virtueOpen && (
+        <PrayerVirtueDialog prayer={prayer} onPrayNow={startPrayNow} onClose={closeVirtue} />
+      )}
+
+      {prayNowOpen && <PrayNowOverlay onDone={finishPrayNow} />}
+
+      {benefit && <PrayerBenefitDialog benefit={benefit} onClose={() => setBenefit(null)} />}
     </div>
   );
 }

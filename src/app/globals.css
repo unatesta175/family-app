@@ -30,3 +30,39 @@ body {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+@keyframes pray-particle-rise {
+  0% {
+    transform: translateY(0) translateX(0) scale(var(--particle-scale, 1));
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-420px) translateX(var(--particle-drift, 0px)) scale(var(--particle-scale, 1));
+    opacity: 0;
+  }
+}
+
+@keyframes pray-message-fade {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  12% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  88% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
