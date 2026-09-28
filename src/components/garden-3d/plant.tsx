@@ -48,10 +48,19 @@ export function gridPosition(col: number, row: number, cols: number, rows: numbe
   return [x, 0, z];
 }
 
-/** Deterministic pseudo-random in [0, 1) so decorations jitter but stay stable across re-renders. */
+/**
+ * Deterministic pseudo-random in [0, 1) so decorations jitter but stay stable across re-renders.
+ * Uses a 32-bit integer bit-mixing hash (murmur3-style finalizer) rather than the classic
+ * `fract(sin(x)*43758.5453)` trick — that one produces visible diagonal banding when fed
+ * regularly-spaced seeds like `col * 131 + row * 977`, which is exactly how every decoration here
+ * is seeded across the grid. This hash has no such periodicity.
+ */
 function seededRandom(seed: number): number {
-  const x = Math.sin(seed * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
+  let x = Math.imul(Math.floor(seed) ^ 0x9e3779b9, 0x85ebca6b);
+  x ^= x >>> 13;
+  x = Math.imul(x, 0xc2b2ae35);
+  x ^= x >>> 16;
+  return (x >>> 0) / 4294967296;
 }
 
 const FLOWER_PALETTES: [string, string][] = [
