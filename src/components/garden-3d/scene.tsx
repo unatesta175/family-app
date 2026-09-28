@@ -26,8 +26,14 @@ export type Garden3DProps = {
   cyclePaused?: boolean;
   /** Sun/moon orbit position, 0-1. Only used while paused; ignored while running. */
   cyclePhase?: number;
-  /** Reports the current orbit position every frame so a parent can drive a scrub slider. */
+  /**
+   * Reports the current orbit position (throttled, not every frame) so a parent can drive a scrub
+   * slider. Only called while `syncPhase` is true — skip this entirely while the controls UI
+   * showing that slider is collapsed/hidden, since each call is a React state update.
+   */
   onCyclePhaseChange?: (phase: number) => void;
+  /** Whether to report phase changes at all. Defaults to false (no per-frame React updates). */
+  syncPhase?: boolean;
   /** Moon light/glow intensity multiplier. Defaults to 1. */
   moonBrightness?: number;
 };
@@ -122,7 +128,13 @@ export type DayNightControls = {
   phase: number;
   moonBrightness: number;
   onPhaseChange: (phase: number) => void;
+  /** Whether to call onPhaseChange at all (throttled). False = no React updates from the cycle. */
+  syncPhase: boolean;
 };
+
+/** How often (ms) to push the running phase into React state while `syncPhase` is on — enough for
+ * a smooth-looking slider without re-rendering the scene 60x/sec. */
+const PHASE_SYNC_INTERVAL_MS = 150;
 
 /**
  * Sun and moon orbit the garden once every CYCLE_SECONDS. The directional light follows whichever
@@ -141,13 +153,20 @@ function DayNightCycle({ shadowHalf, controls }: { shadowHalf: number; controls:
   const moonRef = useRef<Mesh>(null!);
   const { scene } = useThree();
   const phaseRef = useRef(controls.phase);
+  const lastSyncRef = useRef(0);
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     if (controls.paused) {
       phaseRef.current = controls.phase;
     } else {
       phaseRef.current = (phaseRef.current + delta / CYCLE_SECONDS) % 1;
-      controls.onPhaseChange(phaseRef.current);
+      if (controls.syncPhase) {
+        const now = state.clock.elapsedTime * 1000;
+        if (now - lastSyncRef.current >= PHASE_SYNC_INTERVAL_MS) {
+          lastSyncRef.current = now;
+          controls.onPhaseChange(phaseRef.current);
+        }
+      }
     }
     const phase = phaseRef.current;
     const angle = phase * Math.PI * 2;
@@ -239,6 +258,7 @@ export function Garden3DScene({
   cyclePhase = 0.25,
   onCyclePhaseChange,
   moonBrightness = 1,
+  syncPhase = false,
 }: Garden3DProps) {
   const rows = Math.ceil(cells.length / cols);
   const [hovering, setHovering] = useState(false);
@@ -277,6 +297,7 @@ export function Garden3DScene({
             phase: cyclePhase,
             moonBrightness,
             onPhaseChange: onCyclePhaseChange ?? (() => {}),
+            syncPhase: syncPhase && !!onCyclePhaseChange,
           }}
         />
         <ShadowSetup deps={gridCells} />
@@ -284,9 +305,17 @@ export function Garden3DScene({
         <GardenSurroundings cols={cols} rows={rows} />
         <GardenGround cols={cols} rows={rows} />
         <GardenFence cols={cols} rows={rows} />
-        <Plots cells={gridCells} cols={cols} rows={rows} />
+        <Plots cells={gridCells} cols={cols} rows={rows} todayDate={todayDate} />
         <StageLayer cells={gridCells} cols={cols} rows={rows} />
-        {todayCell && <PlotRing cell={todayCell} cols={cols} rows={rows} color="#0f7a4c" />}
+        {todayCell && (
+          <PlotRing
+            cell={todayCell}
+            cols={cols}
+            rows={rows}
+            color={todayCell.plotState === "empty" ? "#f59e0b" : "#0f7a4c"}
+            pulse={todayCell.plotState === "empty"}
+          />
+        )}
         {selectedCell && <PlotRing cell={selectedCell} cols={cols} rows={rows} color="#f59e0b" />}
         <SelectPlane cells={gridCells} cols={cols} rows={rows} onSelect={onSelect} onHover={setHovering} />
 

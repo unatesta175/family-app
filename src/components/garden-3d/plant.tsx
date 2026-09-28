@@ -74,6 +74,20 @@ const PETAL_RING: [number, number][] = [
   [0, -0.032],
 ];
 
+const BARREN_CRACK_OFFSETS: [number, number][] = [
+  [0, 0],
+  [0.34, 0.18],
+  [-0.3, 0.24],
+  [0.22, -0.32],
+  [-0.36, -0.2],
+  [0.05, 0.4],
+];
+const BARREN_STICK_OFFSETS: [number, number][] = [
+  [0.3, -0.1],
+  [-0.22, 0.26],
+  [-0.1, -0.34],
+];
+
 const GRASS_TUFT_OFFSETS: [number, number][] = [
   [0.42, 0],
   [-0.42, 0],
@@ -173,10 +187,23 @@ export function GardenGround({ cols, rows }: { cols: number; rows: number }) {
  * grid reads as one connected lawn, with a slightly darker inset border per
  * plot so individual days stay visually distinguishable.
  */
-export function Plots({ cells, cols, rows }: { cells: GardenCell[]; cols: number; rows: number }) {
+export function Plots({
+  cells,
+  cols,
+  rows,
+  todayDate,
+}: {
+  cells: GardenCell[];
+  cols: number;
+  rows: number;
+  /** Only days strictly before today ever get the barren look — today and future days stay neutral. */
+  todayDate: string;
+}) {
   const dayCells = cells.filter((c) => c.date);
-  const tuftCells = dayCells.filter((c) => c.plotState !== "burning");
+  const isBarren = (c: GardenCell) => c.plotState === "empty" && !!c.date && c.date < todayDate;
+  const tuftCells = dayCells.filter((c) => c.plotState !== "burning" && !isBarren(c));
   const flowerCells = dayCells.filter((c) => c.plotState === "growing");
+  const barrenCells = dayCells.filter(isBarren);
 
   return (
     <>
@@ -192,9 +219,11 @@ export function Plots({ cells, cols, rows }: { cells: GardenCell[]; cols: number
               ? "#3a2a22"
               : c.plotState === "tombstoned"
                 ? mixColor("#a89468", "#8a7350", 0.5)
-                : c.pct > 0
-                  ? mixColor("#9bd47f", "#4c9e50", t)
-                  : "#b8dba0";
+                : isBarren(c)
+                  ? "#a98457"
+                  : c.pct > 0
+                    ? mixColor("#9bd47f", "#4c9e50", t)
+                    : "#b8dba0";
           return <Instance key={i} position={[x, 0, z]} color={shade(base, checker)} />;
         })}
       </Instances>
@@ -211,9 +240,11 @@ export function Plots({ cells, cols, rows }: { cells: GardenCell[]; cols: number
               ? "#241812"
               : c.plotState === "tombstoned"
                 ? mixColor("#c7b384", "#a8916a", 0.5)
-                : c.pct > 0
-                  ? mixColor("#e3f7cd", "#8fd97a", t)
-                  : "#d6efc0";
+                : isBarren(c)
+                  ? "#c19a68"
+                  : c.pct > 0
+                    ? mixColor("#e3f7cd", "#8fd97a", t)
+                    : "#d6efc0";
           return <Instance key={i} position={[x, 0.04, z]} color={shade(base, checker)} />;
         })}
       </Instances>
@@ -242,6 +273,60 @@ export function Plots({ cells, cols, rows }: { cells: GardenCell[]; cols: number
                 color={color}
               />
             ));
+          });
+        })}
+      </Instances>
+
+      {/*
+       * Barren-plot detail: cracked dirt plus scattered dead twigs, so an unlogged past day reads
+       * as neglected ground rather than just unmown grass. Denser and more varied than a simple
+       * crack pattern so it holds up next to lush neighboring plots.
+       */}
+      <Instances limit={Math.max(barrenCells.length * BARREN_CRACK_OFFSETS.length, 1)}>
+        <boxGeometry args={[0.5, 0.01, 0.028]} />
+        <meshStandardMaterial color="#6e4f30" roughness={1} />
+        {barrenCells.flatMap((c, i) => {
+          const [x, , z] = gridPosition(c.col, c.row, cols, rows);
+          const seed = c.col * 131 + c.row * 977;
+          return BARREN_CRACK_OFFSETS.map(([bx, bz], j) => {
+            const s = seed + j * 41;
+            const ox = bx + (seededRandom(s) - 0.5) * 0.22;
+            const oz = bz + (seededRandom(s + 1) - 0.5) * 0.22;
+            const rot = seededRandom(s + 2) * Math.PI;
+            const len = 0.35 + seededRandom(s + 3) * 0.55;
+            return (
+              <Instance
+                key={`crack${i}-${j}`}
+                position={[x + ox, 0.052, z + oz]}
+                rotation={[0, rot, 0]}
+                scale={[len, 1, 1]}
+              />
+            );
+          });
+        })}
+      </Instances>
+
+      <Instances limit={Math.max(barrenCells.length * BARREN_STICK_OFFSETS.length, 1)}>
+        <cylinderGeometry args={[0.009, 0.014, 0.3, 5]} />
+        <meshStandardMaterial color="#8a6a42" roughness={0.95} />
+        {barrenCells.flatMap((c, i) => {
+          const [x, , z] = gridPosition(c.col, c.row, cols, rows);
+          const seed = c.col * 311 + c.row * 53;
+          return BARREN_STICK_OFFSETS.map(([bx, bz], j) => {
+            const s = seed + j * 29;
+            const ox = bx + (seededRandom(s) - 0.5) * 0.18;
+            const oz = bz + (seededRandom(s + 1) - 0.5) * 0.18;
+            const lean = 0.9 + seededRandom(s + 2) * 0.7;
+            const spin = seededRandom(s + 3) * Math.PI * 2;
+            const len = 0.55 + seededRandom(s + 4) * 0.8;
+            return (
+              <Instance
+                key={`stick${i}-${j}`}
+                position={[x + ox, 0.09, z + oz]}
+                rotation={[lean, spin, 0]}
+                scale={[1, len, 1]}
+              />
+            );
           });
         })}
       </Instances>
@@ -1272,17 +1357,31 @@ export function PlotRing({
   cols,
   rows,
   color,
+  pulse = false,
 }: {
   cell: GardenCell;
   cols: number;
   rows: number;
   color: string;
+  /** Gently breathes the ring's scale/opacity, nudging attention to an unlogged "today" plot. */
+  pulse?: boolean;
 }) {
   const [x, , z] = gridPosition(cell.col, cell.row, cols, rows);
+  const meshRef = useRef<Mesh>(null!);
+  const matRef = useRef<MeshBasicMaterial>(null!);
+
+  useFrame(({ clock }) => {
+    if (!pulse) return;
+    const t = (Math.sin(clock.getElapsedTime() * 2.4) + 1) / 2;
+    const s = 1 + t * 0.18;
+    meshRef.current?.scale.set(s, s, 1);
+    if (matRef.current) matRef.current.opacity = 0.55 + t * 0.45;
+  });
+
   return (
-    <mesh position={[x, 0.11, z]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh ref={meshRef} position={[x, 0.11, z]} rotation={[-Math.PI / 2, 0, 0]}>
       <ringGeometry args={[0.64, 0.72, 32]} />
-      <meshBasicMaterial color={color} transparent opacity={0.85} />
+      <meshBasicMaterial ref={matRef} color={color} transparent opacity={0.85} />
     </mesh>
   );
 }

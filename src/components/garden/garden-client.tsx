@@ -193,6 +193,7 @@ export function GardenClient({
           cyclePhase={cyclePhase}
           onCyclePhaseChange={setCyclePhase}
           moonBrightness={moonBrightness}
+          syncPhase={skyControlsOpen}
         />
         <div className="flex items-center justify-between border-t border-neutral-100 px-4 py-2.5">
           <div className="flex items-center gap-3 text-[10px] text-neutral-400">
