@@ -8,13 +8,14 @@ import {
   getTags,
   getLogTagsMap,
   getActiveChallenge,
+  autoMarkExpiredMissed,
 } from "@/lib/db/repo";
 import { todayIso, addDays } from "@/lib/date";
 import { formatHijri } from "@/lib/hijri";
 import { PRAYER_ORDER } from "@/lib/prayers";
 import { currentStreak, dayCompletionPct } from "@/lib/streaks";
 import { evaluateChallenge } from "@/lib/challenge-progress";
-import { computePrayerTimes, nextPrayer, formatPrayerTime } from "@/lib/prayer-times";
+import { computePrayerTimes, nextPrayer, formatPrayerTime, prayerWindowEnd } from "@/lib/prayer-times";
 import Link from "next/link";
 import { PrayerCard } from "@/components/prayer-card";
 import { NextPrayerBanner } from "@/components/next-prayer-banner";
@@ -54,6 +55,36 @@ export default async function HomePage() {
     getActiveChallenge(profileId),
   ]);
 
+  const locationPrefs = {
+    latitude: profile?.latitude ?? null,
+    longitude: profile?.longitude ?? null,
+    calcMethod: profile?.calcMethod ?? null,
+    madhab: profile?.madhab ?? "shafi",
+    timezone: profile?.timezone ?? null,
+  };
+  const todayTimes = computePrayerTimes(locationPrefs, now);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowTimes = todayTimes ? computePrayerTimes(locationPrefs, tomorrow) : null;
+  const upcoming = todayTimes && tomorrowTimes ? nextPrayer(locationPrefs, now, todayTimes, tomorrowTimes) : null;
+  const timeFmt = (d: Date) => formatPrayerTime(d, locationPrefs.timezone!);
+
+  // Auto-heal today's unlogged prayers to "missed" once their window has fully closed (e.g. Fajr
+  // past sunrise), so the day's status reflects reality without the user needing to open the app
+  // right when a prayer time ends.
+  if (todayTimes && tomorrowTimes) {
+    const expired = PRAYER_ORDER.filter(
+      (prayer) =>
+        (dayLog[prayer] ?? "not_yet") === "not_yet" &&
+        now.getTime() > prayerWindowEnd(prayer, todayTimes, tomorrowTimes).getTime()
+    );
+    if (expired.length > 0) {
+      await autoMarkExpiredMissed(profileId, date, expired);
+      for (const prayer of expired) dayLog[prayer] = "missed";
+      allLogs[date] = { ...allLogs[date], ...Object.fromEntries(expired.map((p) => [p, "missed"])) };
+    }
+  }
+
   const challengeEndsOn = activeChallenge
     ? addDays(activeChallenge.startDate, activeChallenge.durationDays - 1)
     : null;
@@ -73,20 +104,6 @@ export default async function HomePage() {
   const onTimeCount = statuses.filter((s) => ON_TIME_STATUSES.includes(s)).length;
   const lateCount = statuses.filter((s) => LATE_STATUSES.includes(s)).length;
   const missedCount = statuses.filter((s) => s === "missed").length;
-
-  const locationPrefs = {
-    latitude: profile?.latitude ?? null,
-    longitude: profile?.longitude ?? null,
-    calcMethod: profile?.calcMethod ?? null,
-    madhab: profile?.madhab ?? "shafi",
-    timezone: profile?.timezone ?? null,
-  };
-  const todayTimes = computePrayerTimes(locationPrefs, now);
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  const tomorrowTimes = todayTimes ? computePrayerTimes(locationPrefs, tomorrow) : null;
-  const upcoming = todayTimes && tomorrowTimes ? nextPrayer(locationPrefs, now, todayTimes, tomorrowTimes) : null;
-  const timeFmt = (d: Date) => formatPrayerTime(d, locationPrefs.timezone!);
 
   return (
     <div className="flex flex-col gap-5">

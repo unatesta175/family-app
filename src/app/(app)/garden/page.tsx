@@ -8,6 +8,8 @@ import {
   gardenQuality,
   gardenCondition,
   gardenPlotState,
+  gardenGoldenFraction,
+  gardenMissedCount,
   type GardenStage,
   type GardenTier,
   type GardenCondition,
@@ -53,6 +55,8 @@ export default async function GardenPage({
     plotState: PlotState;
     bonus: boolean;
     tier: GardenTier;
+    goldenFraction: number;
+    missedCount: number;
   }[] = [];
   const dayDetails: Record<
     string,
@@ -75,6 +79,8 @@ export default async function GardenPage({
       plotState: "empty",
       bonus: false,
       tier: "none",
+      goldenFraction: 0,
+      missedCount: 0,
     });
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -86,10 +92,12 @@ export default async function GardenPage({
     const quality = date <= today ? gardenQuality(day) : 0;
     const condition = gardenCondition(quality, day);
     const plotState = date <= today ? gardenPlotState(day) : "empty";
+    const goldenFraction = date <= today ? gardenGoldenFraction(day) : 0;
+    const missedCount = date <= today ? gardenMissedCount(day) : 0;
     // Streak/jamaah flourishes only apply to a plot that's actually growing a tree.
     const tier = plotState === "growing" && stage === "flowering" ? gardenTier(streakLengthEndingOn(logsByDate, date)) : "none";
     const bonus = plotState === "growing" && pct === 100 && hasJamaah;
-    cells.push({ date, stage, pct, quality, condition, plotState, bonus, tier });
+    cells.push({ date, stage, pct, quality, condition, plotState, bonus, tier, goldenFraction, missedCount });
     if (date <= today) dayDetails[date] = { pct, quality, condition, plotState, prayers: day };
   }
 

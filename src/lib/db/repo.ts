@@ -115,6 +115,13 @@ export async function upsertPrayerLog(
   }
 }
 
+/** Auto-heals expired-but-unlogged prayers to "missed" (e.g. today's Fajr once sunrise has passed). */
+export async function autoMarkExpiredMissed(profileId: number, date: string, prayers: Prayer[]) {
+  for (const prayer of prayers) {
+    await upsertPrayerLog(profileId, date, prayer, "missed");
+  }
+}
+
 /** Remove a prayer's log entirely, returning it to "no status", and drop any qada it had created. */
 export async function clearPrayerLog(profileId: number, date: string, prayer: Prayer) {
   await db

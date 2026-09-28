@@ -17,6 +17,8 @@ export type Garden3DProps = {
     plotState: GardenCell["plotState"];
     bonus: boolean;
     tier: GardenCell["tier"];
+    goldenFraction: GardenCell["goldenFraction"];
+    missedCount: GardenCell["missedCount"];
   }[];
   cols: number;
   todayDate: string;

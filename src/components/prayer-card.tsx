@@ -115,9 +115,9 @@ export function PrayerCard({
   }
 
   function closeVirtue() {
+    // Dismissing the virtue popup (X or tapping outside) is just a close, not a completion —
+    // the benefit popup should only follow the Pray Now overlay, not skip straight to it.
     setVirtueOpen(false);
-    const b = pendingStatus ? benefitForStatus(pendingStatus) : null;
-    if (b) setBenefit(b);
   }
 
   function startPrayNow() {
@@ -182,7 +182,7 @@ export function PrayerCard({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {!readOnly && (
+          {status === "not_yet" && !readOnly && (
             <button
               type="button"
               onClick={() => setPrayNowOpen(true)}
@@ -296,7 +296,13 @@ export function PrayerCard({
 
       {prayNowOpen && <PrayNowOverlay onDone={finishPrayNow} />}
 
-      {benefit && <PrayerBenefitDialog benefit={benefit} onClose={() => setBenefit(null)} />}
+      {benefit && (
+        <PrayerBenefitDialog
+          benefit={benefit}
+          status={pendingStatus ?? "not_yet"}
+          onClose={() => setBenefit(null)}
+        />
+      )}
     </div>
   );
 }

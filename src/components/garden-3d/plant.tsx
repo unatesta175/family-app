@@ -4,12 +4,16 @@ import { Instance, Instances } from "@react-three/drei";
 import {
   AdditiveBlending,
   CanvasTexture,
+  CapsuleGeometry,
   Color,
+  CylinderGeometry,
   DoubleSide,
   IcosahedronGeometry,
   MeshBasicMaterial,
   MeshStandardMaterial,
   PlaneGeometry,
+  Shape,
+  ShapeGeometry,
   SphereGeometry,
   Vector3,
   type Group,
@@ -33,6 +37,11 @@ export type GardenCell = {
   plotState: PlotState;
   bonus: boolean;
   tier: GardenTier;
+  /** 0-1: fraction of the day's 5 prayers that were on_time_jamaah. Blends the canopy toward gold
+   *  and scales in butterflies/glow continuously, so even 1/5 already reads as a reward. */
+  goldenFraction: number;
+  /** How many of the day's 5 prayers are actively marked missed (1-4 for a tombstoned plot). */
+  missedCount: number;
   col: number;
   row: number;
 };
@@ -420,6 +429,32 @@ function mixColor(a: string, b: string, t: number): string {
   return `rgb(${r}, ${g}, ${bl})`;
 }
 
+/**
+ * Blends a condition's palette toward the golden palette by `goldenFraction` (0-1), so even a
+ * single on_time_jamaah prayer today already tints the canopy warmer, rather than gold only ever
+ * appearing once every one of the day's 5 prayers is on_time_jamaah. At fraction 0 this is just
+ * the base palette; at 1 it's fully gold (metal canopy, shine, the works).
+ */
+function blendGolden(
+  condition: GardenCondition,
+  goldenFraction: number
+): (typeof CONDITION_PALETTE)[GardenCondition] {
+  const base = CONDITION_PALETTE[condition];
+  const t = Math.max(0, Math.min(1, goldenFraction));
+  if (condition === "golden" || t <= 0) return base;
+  const gold = CONDITION_PALETTE.golden;
+  return {
+    canopyA: mixColor(base.canopyA, gold.canopyA, t),
+    canopyB: mixColor(base.canopyB, gold.canopyB, t),
+    canopyC: mixColor(base.canopyC, gold.canopyC, t),
+    trunk: mixColor(base.trunk, gold.trunk, t),
+    droop: base.droop,
+    glow: base.glow || t > 0.15,
+    emissiveIntensity: (base.emissiveIntensity ?? 0.25) + t * ((gold.emissiveIntensity ?? 0.5) - (base.emissiveIntensity ?? 0.25)),
+    metalness: (base.metalness ?? 0) + t * ((gold.metalness ?? 0.7) - (base.metalness ?? 0)),
+  };
+}
+
 function hexToRgb(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16);
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
@@ -516,8 +551,14 @@ function BranchStub({
 
 /** 1/5 — already a proper little tree, just smaller than the later stages. A day with any
  *  progress at all should read as "something is growing," never as barely-there. */
-export function SeedStage({ condition = "healthy" }: { condition?: GardenCondition }) {
-  const p = CONDITION_PALETTE[condition];
+export function SeedStage({
+  condition = "healthy",
+  goldenFraction = 0,
+}: {
+  condition?: GardenCondition;
+  goldenFraction?: number;
+}) {
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.05}>
       <mesh position={[0, 0.11, 0]}>
@@ -539,8 +580,14 @@ export function SeedStage({ condition = "healthy" }: { condition?: GardenConditi
 }
 
 /** 2/5 — a small leafy plant, noticeably bigger and fuller than the seed stage. */
-export function SproutStage({ condition = "healthy" }: { condition?: GardenCondition }) {
-  const p = CONDITION_PALETTE[condition];
+export function SproutStage({
+  condition = "healthy",
+  goldenFraction = 0,
+}: {
+  condition?: GardenCondition;
+  goldenFraction?: number;
+}) {
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.2}>
       <mesh position={[0, 0.14, 0]}>
@@ -564,8 +611,14 @@ export function SproutStage({ condition = "healthy" }: { condition?: GardenCondi
 
 /** 3/5 — a proper sapling: a taller trunk, visible branch stubs, and a fuller two-tier
  *  canopy cluster. */
-export function SaplingStage({ condition = "healthy" }: { condition?: GardenCondition }) {
-  const p = CONDITION_PALETTE[condition];
+export function SaplingStage({
+  condition = "healthy",
+  goldenFraction = 0,
+}: {
+  condition?: GardenCondition;
+  goldenFraction?: number;
+}) {
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.3}>
       <mesh position={[0, 0.19, 0]}>
@@ -591,8 +644,14 @@ export function SaplingStage({ condition = "healthy" }: { condition?: GardenCond
 
 /** 4/5 — a large, fuller young tree with a spreading two-tier canopy, one step short of the
  *  full flowering stage's canopy. */
-export function TreeStage({ condition = "healthy" }: { condition?: GardenCondition }) {
-  const p = CONDITION_PALETTE[condition];
+export function TreeStage({
+  condition = "healthy",
+  goldenFraction = 0,
+}: {
+  condition?: GardenCondition;
+  goldenFraction?: number;
+}) {
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.5}>
       <mesh position={[0, 0.24, 0]}>
@@ -723,10 +782,70 @@ const FAR_SPARK_COUNT = 4;
 
 const PETAL_GEO = new PlaneGeometry(1, 1);
 const PETAL_MAT_GOLD = new MeshBasicMaterial({ color: "#ffd23f", side: DoubleSide });
-const BFLY_BODY_MAT = new MeshStandardMaterial({ color: "#2b1d12", roughness: 0.6 });
-const BFLY_WING_MATS = ["#ff9f45", "#7cc4ff", "#ffe14d"].map(
-  (color) => new MeshBasicMaterial({ color, side: DoubleSide, transparent: true, opacity: 0.95 })
-);
+
+/** A real butterfly silhouette (forewing + hindwing lobe in one shape) instead of a flat rectangle,
+ *  hinged at the origin so it attaches to the body the same way the old plane did. */
+function butterflyWingShape(): Shape {
+  const s = new Shape();
+  s.moveTo(0, 0);
+  s.bezierCurveTo(0.05, 0.28, 0.34, 0.42, 0.5, 0.22);
+  s.bezierCurveTo(0.58, 0.1, 0.5, -0.02, 0.36, 0.02);
+  s.bezierCurveTo(0.46, -0.22, 0.32, -0.46, 0.14, -0.34);
+  s.bezierCurveTo(0.02, -0.26, -0.02, -0.1, 0, 0);
+  s.closePath();
+  return s;
+}
+const BFLY_WING_GEO = new ShapeGeometry(butterflyWingShape(), 8).rotateX(-Math.PI / 2);
+const BFLY_BODY_GEO = new CapsuleGeometry(0.0075, 0.024, 3, 8).rotateX(Math.PI / 2);
+const BFLY_HEAD_GEO = new SphereGeometry(0.0075, 8, 6);
+const BFLY_ANTENNA_GEO = new CylinderGeometry(0.0006, 0.0003, 0.016, 4);
+const BFLY_BODY_MAT = new MeshStandardMaterial({ color: "#2b1d12", roughness: 0.45, metalness: 0.1 });
+const BFLY_ANTENNA_MAT = new MeshStandardMaterial({ color: "#1a120a", roughness: 0.4 });
+
+/** [base, vein/edge, spot] per species-like color scheme. */
+const BFLY_WING_PALETTES: [string, string, string][] = [
+  ["#ff9f45", "#7a3b0a", "#fff3d6"],
+  ["#7cc4ff", "#1c4a73", "#eaf6ff"],
+  ["#ffe14d", "#8a6d00", "#fffbe0"],
+];
+
+let bflyWingMatsCache: MeshBasicMaterial[] | null = null;
+
+/** A painted wing texture (base tone, a vein, and a soft eyespot) instead of a flat solid color,
+ *  so the butterflies read as patterned insects rather than colored paper cutouts. Built lazily
+ *  and cached (client-only, like getSoftTexture below) since it needs a canvas element. */
+function getButterflyWingMats(): MeshBasicMaterial[] {
+  if (bflyWingMatsCache) return bflyWingMatsCache;
+  if (typeof document === "undefined") return [];
+  bflyWingMatsCache = BFLY_WING_PALETTES.map(([base, edge, spot]) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return new MeshBasicMaterial({ color: base, side: DoubleSide, transparent: true });
+    ctx.fillStyle = base;
+    ctx.fillRect(0, 0, 64, 64);
+    const spotGrad = ctx.createRadialGradient(40, 18, 1, 40, 18, 15);
+    spotGrad.addColorStop(0, spot);
+    spotGrad.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = spotGrad;
+    ctx.beginPath();
+    ctx.arc(40, 18, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = edge;
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(2, 30);
+    ctx.quadraticCurveTo(28, 8, 60, 26);
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.strokeRect(1, 1, 62, 62);
+    const tex = new CanvasTexture(canvas);
+    tex.needsUpdate = true;
+    return new MeshBasicMaterial({ map: tex, side: DoubleSide, transparent: true, alphaTest: 0.02 });
+  });
+  return bflyWingMatsCache;
+}
 const GROUND_FLOWER_MATS = ["#ff7eb6", "#fff6a8", "#ffffff", "#b79bff"].map(
   (color) => new MeshStandardMaterial({ color, roughness: 0.5 })
 );
@@ -747,12 +866,15 @@ function butterflyPath(tt: number, i: number, time: number, out: Vector3) {
 }
 
 /**
- * The reward for a perfect day (5/5, mostly on time + jamaah): a pulsing golden halo, drifting
- * petals, butterflies, twinkling sparkles, a perched bird, ground flowers and a lit patch of grass.
- * One useFrame for everything; far-away trees draw fewer petals/butterflies/sparkles.
+ * The reward for on_time_jamaah prayers today: a pulsing golden halo, drifting petals,
+ * butterflies, and twinkling sparkles — all scaled by `fraction` (on_time_jamaah count / 5), so a
+ * single on_time_jamaah prayer already earns a butterfly and a glow, not just a perfect 5/5 day.
+ * The bird and ground flowers stay reserved for a fully golden day, so there's still something
+ * exclusive to reach for. One useFrame for everything; far-away trees draw fewer particles.
  */
-function TreeBlessing({ seed }: { seed: number }) {
+function TreeBlessing({ seed, fraction }: { seed: number; fraction: number }) {
   const tex = getSoftTexture();
+  const wingMats = getButterflyWingMats();
   const root = useRef<Group>(null);
   const glow = useRef<Sprite>(null);
   const petals = useRef<(Mesh | null)[]>([]);
@@ -761,6 +883,7 @@ function TreeBlessing({ seed }: { seed: number }) {
   const rightWings = useRef<(Mesh | null)[]>([]);
   const sparks = useRef<(Sprite | null)[]>([]);
   const birdHead = useRef<Group>(null);
+  const perfect = fraction >= 1;
   // Every blessed tree is a golden-condition tree now, so the flourish is always the shiny gold set.
   const petalMat = PETAL_MAT_GOLD;
   const petalTotal = PETAL_COUNT + 2;
@@ -777,10 +900,10 @@ function TreeBlessing({ seed }: { seed: number }) {
     if (gl) {
       const f = 0.85 + 0.15 * Math.sin(time * 1.2 + seed);
       gl.scale.setScalar(2.3 * f);
-      gl.material.opacity = 0.34 * f;
+      gl.material.opacity = 0.34 * f * (0.4 + 0.6 * fraction);
     }
 
-    const petalLimit = far ? FAR_PETAL_COUNT : petalTotal;
+    const petalLimit = Math.max(2, Math.round((far ? FAR_PETAL_COUNT : petalTotal) * fraction));
     for (let i = 0; i < petalTotal; i++) {
       const m = petals.current[i];
       if (!m) continue;
@@ -793,7 +916,9 @@ function TreeBlessing({ seed }: { seed: number }) {
       m.rotation.set(time * 1.2 + i, time * 0.9 + i * 2, time * 0.7);
     }
 
-    const bLimit = far ? FAR_BFLY_COUNT : BFLY_COUNT;
+    // At least one butterfly as soon as there's any blessing at all — this is the flourish a
+    // single on_time_jamaah prayer earns, scaling up to the full swarm at a perfect day.
+    const bLimit = Math.max(1, Math.round((far ? FAR_BFLY_COUNT : BFLY_COUNT) * fraction));
     for (let i = 0; i < BFLY_COUNT; i++) {
       const g = bflies.current[i];
       if (!g) continue;
@@ -811,7 +936,7 @@ function TreeBlessing({ seed }: { seed: number }) {
       if (rt) rt.rotation.z = flap;
     }
 
-    const sparkLimit = far ? FAR_SPARK_COUNT : SPARK_COUNT;
+    const sparkLimit = Math.max(2, Math.round((far ? FAR_SPARK_COUNT : SPARK_COUNT) * fraction));
     for (let i = 0; i < SPARK_COUNT; i++) {
       const sp = sparks.current[i];
       if (!sp) continue;
@@ -843,8 +968,8 @@ function TreeBlessing({ seed }: { seed: number }) {
       </sprite>
       <pointLight position={[0, 1.05, 0]} color="#ffcc4d" intensity={25} distance={3} decay={2} />
 
-      {/* little flowers around the base */}
-      {GROUND_FLOWERS.map(([x, y, z], i) => (
+      {/* little flowers around the base — more of them the closer to a fully golden day */}
+      {GROUND_FLOWERS.slice(0, Math.max(1, Math.round(GROUND_FLOWERS.length * fraction))).map(([x, y, z], i) => (
         <mesh
           key={i}
           geometry={BLOOM_GEO}
@@ -865,26 +990,47 @@ function TreeBlessing({ seed }: { seed: number }) {
         />
       ))}
 
-      {/* butterflies */}
-      {Array.from({ length: BFLY_COUNT }, (_, i) => (
-        <group key={i} ref={(el) => void (bflies.current[i] = el)}>
-          <mesh geometry={FLY_BODY_GEO} material={BFLY_BODY_MAT} scale={[0.009, 0.009, 0.035]} />
-          <mesh
-            ref={(el) => void (rightWings.current[i] = el)}
-            geometry={FLY_WING_GEO}
-            material={BFLY_WING_MATS[i % BFLY_WING_MATS.length]}
-            position={[0.005, 0.004, 0]}
-            scale={[0.075, 1, 0.09]}
-          />
-          <mesh
-            ref={(el) => void (leftWings.current[i] = el)}
-            geometry={FLY_WING_GEO}
-            material={BFLY_WING_MATS[i % BFLY_WING_MATS.length]}
-            position={[-0.005, 0.004, 0]}
-            scale={[-0.075, 1, 0.09]}
-          />
-        </group>
-      ))}
+      {/* butterflies: a rounded capsule body, a head with two angled antennae, and a pair of
+          real wing-shaped (not rectangular), patterned wings per side */}
+      {Array.from({ length: BFLY_COUNT }, (_, i) => {
+        const wingMat = wingMats.length > 0 ? wingMats[i % wingMats.length] : undefined;
+        return (
+          <group key={i} ref={(el) => void (bflies.current[i] = el)}>
+            <mesh geometry={BFLY_BODY_GEO} material={BFLY_BODY_MAT} />
+            <mesh geometry={BFLY_HEAD_GEO} material={BFLY_BODY_MAT} position={[0, 0.001, 0.013]} />
+            <mesh
+              geometry={BFLY_ANTENNA_GEO}
+              material={BFLY_ANTENNA_MAT}
+              position={[0.003, 0.009, 0.017]}
+              rotation={[1.3, 0, -0.35]}
+            />
+            <mesh
+              geometry={BFLY_ANTENNA_GEO}
+              material={BFLY_ANTENNA_MAT}
+              position={[-0.003, 0.009, 0.017]}
+              rotation={[1.3, 0, 0.35]}
+            />
+            {wingMat && (
+              <>
+                <mesh
+                  ref={(el) => void (rightWings.current[i] = el)}
+                  geometry={BFLY_WING_GEO}
+                  material={wingMat}
+                  position={[0.003, 0.002, 0]}
+                  scale={[0.13, 1, 0.15]}
+                />
+                <mesh
+                  ref={(el) => void (leftWings.current[i] = el)}
+                  geometry={BFLY_WING_GEO}
+                  material={wingMat}
+                  position={[-0.003, 0.002, 0]}
+                  scale={[-0.13, 1, 0.15]}
+                />
+              </>
+            )}
+          </group>
+        );
+      })}
 
       {/* twinkling sparkles */}
       {Array.from({ length: SPARK_COUNT }, (_, i) => (
@@ -893,28 +1039,32 @@ function TreeBlessing({ seed }: { seed: number }) {
         </sprite>
       ))}
 
-      {/* a small bird perched on the canopy, pecking now and then */}
-      <group position={[-0.15, 1.27, -0.08]} rotation={[0, 0.9, 0]}>
-        <mesh geometry={BLOOM_GEO} scale={[0.045, 0.04, 0.07]}>
-          <meshStandardMaterial color="#4a86c5" roughness={0.6} />
-        </mesh>
-        <mesh geometry={BLOOM_GEO} position={[0, -0.005, 0.045]} scale={[0.03, 0.028, 0.045]}>
-          <meshStandardMaterial color="#f4e9d8" roughness={0.6} />
-        </mesh>
-        <mesh position={[0, 0.005, -0.08]} rotation={[0.3, 0, 0]} scale={[0.03, 0.006, 0.07]}>
-          <boxGeometry args={[1, 1, 1]} />
-          <meshStandardMaterial color="#2f5f96" roughness={0.7} />
-        </mesh>
-        <group ref={birdHead} position={[0, 0.03, 0.055]}>
-          <mesh geometry={BLOOM_GEO} position={[0, 0.02, 0.01]} scale={0.03}>
+      {/* a small bird perched on the canopy, pecking now and then — reserved for a fully
+          golden day (all 5 prayers on_time_jamaah), so there's still something exclusive left
+          to reach for beyond the scaled-in butterflies/petals/sparkles above */}
+      {perfect && (
+        <group position={[-0.15, 1.27, -0.08]} rotation={[0, 0.9, 0]}>
+          <mesh geometry={BLOOM_GEO} scale={[0.045, 0.04, 0.07]}>
             <meshStandardMaterial color="#4a86c5" roughness={0.6} />
           </mesh>
-          <mesh position={[0, 0.018, 0.045]} rotation={[Math.PI / 2, 0, 0]}>
-            <coneGeometry args={[0.009, 0.03, 5]} />
-            <meshStandardMaterial color="#f59e0b" roughness={0.6} />
+          <mesh geometry={BLOOM_GEO} position={[0, -0.005, 0.045]} scale={[0.03, 0.028, 0.045]}>
+            <meshStandardMaterial color="#f4e9d8" roughness={0.6} />
           </mesh>
+          <mesh position={[0, 0.005, -0.08]} rotation={[0.3, 0, 0]} scale={[0.03, 0.006, 0.07]}>
+            <boxGeometry args={[1, 1, 1]} />
+            <meshStandardMaterial color="#2f5f96" roughness={0.7} />
+          </mesh>
+          <group ref={birdHead} position={[0, 0.03, 0.055]}>
+            <mesh geometry={BLOOM_GEO} position={[0, 0.02, 0.01]} scale={0.03}>
+              <meshStandardMaterial color="#4a86c5" roughness={0.6} />
+            </mesh>
+            <mesh position={[0, 0.018, 0.045]} rotation={[Math.PI / 2, 0, 0]}>
+              <coneGeometry args={[0.009, 0.03, 5]} />
+              <meshStandardMaterial color="#f59e0b" roughness={0.6} />
+            </mesh>
+          </group>
         </group>
-      </group>
+      )}
     </group>
   );
 }
@@ -932,18 +1082,22 @@ export function FloweringStage({
   bonus = false,
   tier = "none",
   condition = "healthy",
+  goldenFraction = 0,
   seed = 0,
 }: {
   bonus?: boolean;
   tier?: GardenTier;
   condition?: GardenCondition;
+  goldenFraction?: number;
   seed?: number;
 }) {
   const scale = TIER_SCALE[tier];
   const ringColor = TIER_RING_COLOR[tier];
-  const p = CONDITION_PALETTE[condition];
+  const p = blendGolden(condition, goldenFraction);
   const bloomCount = CONDITION_BLOOM_COUNT[condition];
-  const perfect = condition === "golden";
+  // Any on_time_jamaah prayer today (not just a perfect 5/5) earns a scaled-down blessing —
+  // butterflies/glow/sparkles all grow with goldenFraction instead of being all-or-nothing.
+  const blessFraction = Math.max(0, Math.min(1, goldenFraction));
   const sway = useRef<Group>(null);
 
   // slow, calm wind sway (much gentler than the flame flicker)
@@ -1033,7 +1187,7 @@ export function FloweringStage({
         )}
       </group>
 
-      {perfect && <TreeBlessing seed={seed} />}
+      {blessFraction > 0 && <TreeBlessing seed={seed} fraction={blessFraction} />}
     </group>
   );
 }
@@ -1045,35 +1199,46 @@ const MOSS_SPOTS: [number, number, number, number][] = [
   [-0.06, 0.14, 0.086, 0.02],
 ];
 
-/** A stone marker for a day with at least one (but not all 5) prayer actively marked missed. */
-export function Tombstone() {
+/**
+ * A stone marker for a day with at least one (but not all 5) prayer actively marked missed.
+ * `severity` (1-4, the count of missed prayers that day) scales how bad it looks: a single missed
+ * prayer is a small, lightly weathered marker, while 4 missed prayers is a larger, darker stone
+ * with more moss, more cracks, and a broken rock beside it — so the visual cost climbs with how
+ * much was actually missed instead of jumping straight to the worst look at just 1/5.
+ */
+export function Tombstone({ severity = 1 }: { severity?: number }) {
+  const s = Math.max(1, Math.min(4, severity));
+  const t = (s - 1) / 3; // 0 at severity 1, 1 at severity 4
+  const scale = 1.6 + t * 0.8;
+  const darken = 1 - t * 0.22;
+
   return (
-    <group scale={2.4} rotation={[0, 0, -0.035]}>
+    <group scale={scale} rotation={[0, 0, -0.035]}>
       {/* dirt mound base */}
       <mesh position={[0, -0.005, 0]} scale={[1, 0.5, 1]}>
         <sphereGeometry args={[0.16, 10, 6]} />
-        <meshStandardMaterial color="#5a4630" roughness={1} />
+        <meshStandardMaterial color={shade("#5a4630", darken)} roughness={1} />
       </mesh>
       <mesh position={[0, 0.02, 0]}>
         <boxGeometry args={[0.24, 0.04, 0.16]} />
-        <meshStandardMaterial color="#7a7a72" roughness={0.95} />
+        <meshStandardMaterial color={shade("#7a7a72", darken)} roughness={0.95} />
       </mesh>
 
       {/* main slab */}
       <mesh position={[0, 0.195, 0]}>
         <boxGeometry args={[0.2, 0.31, 0.12]} />
-        <meshStandardMaterial color="#9a9a90" roughness={0.9} />
+        <meshStandardMaterial color={shade("#9a9a90", darken)} roughness={0.9} />
       </mesh>
       {/* slightly wider, flat cap stone */}
       <mesh position={[0, 0.361, 0]}>
         <boxGeometry args={[0.22, 0.03, 0.14]} />
-        <meshStandardMaterial color="#8c8c82" roughness={0.9} />
+        <meshStandardMaterial color={shade("#8c8c82", darken)} roughness={0.9} />
       </mesh>
 
       {/* recessed engraved panel */}
       <mesh position={[0, 0.2, 0.061]}>
         <boxGeometry args={[0.1, 0.1, 0.004]} />
-        <meshStandardMaterial color="#6f6f66" roughness={1} />
+        <meshStandardMaterial color={shade("#6f6f66", darken)} roughness={1} />
       </mesh>
       {/* carved cross mark inside the panel */}
       <mesh position={[0, 0.22, 0.064]}>
@@ -1085,27 +1250,35 @@ export function Tombstone() {
         <meshStandardMaterial color="#54544c" roughness={1} />
       </mesh>
 
-      {/* weathering crack */}
+      {/* weathering crack(s) — a second crack only once at least half the day's prayers were missed */}
       <mesh position={[0.05, 0.29, 0.062]} rotation={[0, 0, 0.5]}>
         <boxGeometry args={[0.008, 0.12, 0.006]} />
         <meshStandardMaterial color="#54544c" roughness={1} />
       </mesh>
+      {s >= 3 && (
+        <mesh position={[-0.04, 0.21, 0.062]} rotation={[0, 0, -0.4]}>
+          <boxGeometry args={[0.007, 0.09, 0.006]} />
+          <meshStandardMaterial color="#54544c" roughness={1} />
+        </mesh>
+      )}
 
-      {/* moss patches */}
-      {MOSS_SPOTS.map(([x, y, , s], i) => (
+      {/* moss patches: more of them the more prayers were missed, reading as more neglected */}
+      {MOSS_SPOTS.slice(0, s).map(([x, y, , spotSize], i) => (
         <mesh key={i} position={[x, y, 0.06]} scale={[1, 1, 0.3]}>
-          <sphereGeometry args={[s, 6, 6]} />
+          <sphereGeometry args={[spotSize, 6, 6]} />
           <meshStandardMaterial color="#6f8a4a" roughness={1} />
         </mesh>
       ))}
 
-      {/* smaller broken rock beside the main stone */}
-      <group position={[0.16, 0, 0.08]} rotation={[0.1, 0.6, 0.2]} scale={0.55}>
-        <mesh position={[0, 0.04, 0]}>
-          <dodecahedronGeometry args={[0.07, 0]} />
-          <meshStandardMaterial color="#8c8c80" roughness={0.95} />
-        </mesh>
-      </group>
+      {/* smaller broken rock beside the main stone, only once at least 3/5 prayers were missed */}
+      {s >= 3 && (
+        <group position={[0.16, 0, 0.08]} rotation={[0.1, 0.6, 0.2]} scale={0.55}>
+          <mesh position={[0, 0.04, 0]}>
+            <dodecahedronGeometry args={[0.07, 0]} />
+            <meshStandardMaterial color={shade("#8c8c80", darken)} roughness={0.95} />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }
@@ -1140,19 +1313,26 @@ function flyPosition(t: number, i: number, seed: number, out: Vector3) {
   return out;
 }
 
-/** A swarm of houseflies buzzing around a tombstoned plot. One useFrame for the whole swarm. */
-export function Flies({ seed }: { seed: number }) {
+/**
+ * A swarm of houseflies buzzing around a tombstoned plot. One useFrame for the whole swarm.
+ * `severity` (1-4, the day's missed-prayer count) scales the swarm size: a single missed prayer
+ * draws just a few flies, four missed prayers draws the full swarm.
+ */
+export function Flies({ seed, severity = 1 }: { seed: number; severity?: number }) {
   const root = useRef<Group>(null);
   const flies = useRef<(Group | null)[]>([]);
   const leftWings = useRef<(Mesh | null)[]>([]);
   const rightWings = useRef<(Mesh | null)[]>([]);
+  const severityCap = Math.max(1, Math.min(4, severity)) / 4;
 
   useFrame(({ clock, camera }) => {
     const time = clock.getElapsedTime();
-    let limit = FLY_COUNT;
+    let limit = Math.max(2, Math.round(FLY_COUNT * severityCap));
     if (root.current) {
       root.current.getWorldPosition(flyA);
-      if (camera.position.distanceTo(flyA) > FLY_FAR_DISTANCE) limit = FAR_FLY_COUNT;
+      if (camera.position.distanceTo(flyA) > FLY_FAR_DISTANCE) {
+        limit = Math.max(1, Math.round(FAR_FLY_COUNT * severityCap));
+      }
     }
     for (let i = 0; i < FLY_COUNT; i++) {
       const fly = flies.current[i];
@@ -1403,20 +1583,26 @@ export function StageLayer({ cells, cols, rows }: { cells: GardenCell[]; cols: n
   return (
     <>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="seed">
-        {(c) => <SeedStage condition={c.condition} />}
+        {(c) => <SeedStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="sprout">
-        {(c) => <SproutStage condition={c.condition} />}
+        {(c) => <SproutStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="sapling">
-        {(c) => <SaplingStage condition={c.condition} />}
+        {(c) => <SaplingStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="tree">
-        {(c) => <TreeStage condition={c.condition} />}
+        {(c) => <TreeStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="flowering">
         {(c) => (
-          <FloweringStage bonus={c.bonus} tier={c.tier} condition={c.condition} seed={c.col * 131 + c.row * 977} />
+          <FloweringStage
+            bonus={c.bonus}
+            tier={c.tier}
+            condition={c.condition}
+            goldenFraction={c.goldenFraction}
+            seed={c.col * 131 + c.row * 977}
+          />
         )}
       </StageGroup>
 
@@ -1425,8 +1611,8 @@ export function StageLayer({ cells, cols, rows }: { cells: GardenCell[]; cols: n
         const seed = c.col * 131 + c.row * 977;
         return (
           <group key={`t${i}`} position={[x, 0.045, z]}>
-            <Tombstone />
-            <Flies seed={seed} />
+            <Tombstone severity={c.missedCount} />
+            <Flies seed={seed} severity={c.missedCount} />
           </group>
         );
       })}

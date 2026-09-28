@@ -103,6 +103,29 @@ export function computePrayerTimes(prefs: LocationPrefs, instant: Date): PrayerT
   };
 }
 
+/**
+ * When a prayer's window closes: fajr ends at sunrise (not dhuhr), each of dhuhr/asr/maghrib ends
+ * when the next prayer begins, and isha's window runs until the following day's fajr.
+ */
+export function prayerWindowEnd(
+  prayer: Prayer,
+  todayTimes: PrayerTimesMap,
+  tomorrowTimes: PrayerTimesMap
+): Date {
+  switch (prayer) {
+    case "fajr":
+      return todayTimes.sunrise;
+    case "dhuhr":
+      return todayTimes.asr;
+    case "asr":
+      return todayTimes.maghrib;
+    case "maghrib":
+      return todayTimes.isha;
+    case "isha":
+      return tomorrowTimes.fajr;
+  }
+}
+
 export type NextPrayerInfo = {
   prayer: Prayer;
   at: Date;

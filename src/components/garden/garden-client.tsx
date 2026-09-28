@@ -41,6 +41,8 @@ type Cell = {
   plotState: PlotState;
   bonus: boolean;
   tier: GardenTier;
+  goldenFraction: number;
+  missedCount: number;
 };
 type DayDetail = {
   pct: number;

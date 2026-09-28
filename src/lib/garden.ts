@@ -32,6 +32,23 @@ export function gardenQuality(day: DayLogMap): number {
   return Math.round(total / logged.length);
 }
 
+/**
+ * Fraction (0-1) of the day's 5 prayers that were on_time_jamaah specifically — the ceiling status.
+ * Unlike `gardenQuality`, this counts against all 5 slots (not just logged ones), so a single
+ * on_time_jamaah prayer early in the day already reads as 1/5 toward golden, rather than needing
+ * every prayer performed so far to be on_time_jamaah. Used to blend the tree's canopy toward gold
+ * and scale in butterflies/glow proportionally, instead of gold being all-or-nothing.
+ */
+export function gardenGoldenFraction(day: DayLogMap): number {
+  const count = PRAYER_ORDER.filter((p) => day[p] === "on_time_jamaah").length;
+  return count / PRAYER_ORDER.length;
+}
+
+/** How many of the day's 5 prayers are actively marked missed — drives tombstone severity. */
+export function gardenMissedCount(day: DayLogMap): number {
+  return PRAYER_ORDER.filter((p) => day[p] === "missed").length;
+}
+
 export type GardenCondition = "golden" | "thriving" | "healthy" | "stressed" | "wilting";
 
 /**
@@ -111,7 +128,7 @@ export const CONDITION_PALETTE: Record<
 export type PlotState = "empty" | "growing" | "tombstoned" | "burning";
 
 export function gardenPlotState(day: DayLogMap): PlotState {
-  const missedCount = PRAYER_ORDER.filter((p) => day[p] === "missed").length;
+  const missedCount = gardenMissedCount(day);
   if (missedCount >= 5) return "burning";
   if (missedCount >= 1) return "tombstoned";
   const performedCount = PRAYER_ORDER.filter((p) => isPerformed(day[p] ?? "not_yet")).length;

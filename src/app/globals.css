@@ -48,21 +48,206 @@ body {
   }
 }
 
+/*
+ * Soft, blurred light motes drifting up like dust suspended in a beam of light through a window,
+ * with a gentle side-to-side sway (not a straight line) so the motion reads as weightless rather
+ * than mechanical. Very slow and low-opacity: background ambience, not a focal point.
+ */
+@keyframes pray-mote-drift {
+  0% {
+    transform: translate(0, 0) scale(var(--particle-scale, 1));
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--mote-opacity, 0.5);
+  }
+  30% {
+    transform: translate(calc(var(--particle-drift, 0px) * 0.4), -140px) scale(var(--particle-scale, 1));
+  }
+  60% {
+    transform: translate(calc(var(--particle-drift, 0px) * -0.5), -280px) scale(var(--particle-scale, 1));
+  }
+  90% {
+    opacity: var(--mote-opacity, 0.5);
+  }
+  100% {
+    transform: translate(var(--particle-drift, 0px), -460px) scale(var(--particle-scale, 1));
+    opacity: 0;
+  }
+}
+
+/*
+ * Small, detailed sparkles (rendered as lucide icons, not plain dots) that rise with a slow tumble
+ * and a soft twinkle, like light catching floating specks. These sit in front of the motes and are
+ * the "defined particle" layer, sharp where the motes are soft.
+ */
+@keyframes pray-spark-rise {
+  0% {
+    transform: translate(0, 0) rotate(0deg) scale(0.4);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--spark-opacity, 0.9);
+    transform: translate(calc(var(--particle-drift, 0px) * 0.3), -90px) rotate(30deg)
+      scale(var(--particle-scale, 1));
+  }
+  55% {
+    transform: translate(calc(var(--particle-drift, 0px) * 0.7), -260px) rotate(160deg)
+      scale(var(--particle-scale, 1));
+  }
+  100% {
+    transform: translate(var(--particle-drift, 0px), -440px) rotate(300deg) scale(var(--particle-scale, 1));
+    opacity: 0;
+  }
+}
+
+@keyframes pray-spark-twinkle {
+  0%,
+  100% {
+    filter: brightness(0.75);
+  }
+  50% {
+    filter: brightness(1.4);
+  }
+}
+
+/* A slow-rotating soft conic glow, like light rays turning gently behind the moment. */
+@keyframes pray-rays-turn {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * A slow, breathing dissolve rather than a snap-in/slide: the text emerges softly out of a blur
+ * as if settling into focus during a moment of stillness, holds, then releases the same way it
+ * arrived. Meant to feel unhurried, like a breath in and a breath out, not a UI transition.
+ */
 @keyframes pray-message-fade {
   0% {
     opacity: 0;
-    transform: translateY(8px);
+    letter-spacing: 0.04em;
+    filter: blur(10px);
+    transform: scale(0.94) translateY(10px);
   }
-  12% {
+  22% {
     opacity: 1;
-    transform: translateY(0);
+    letter-spacing: 0;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
   }
-  88% {
+  78% {
     opacity: 1;
-    transform: translateY(0);
+    letter-spacing: 0;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
   }
   100% {
     opacity: 0;
-    transform: translateY(-8px);
+    letter-spacing: 0.03em;
+    filter: blur(8px);
+    transform: scale(1.03) translateY(-8px);
+  }
+}
+
+/* A slow, gentle halo pulse behind the message, timed like a calm breath. */
+@keyframes pray-glow-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+
+/*
+ * A celebratory burst for the "benefit received" moment: particles launch outward and upward from
+ * their origin, tumbling and shrinking as they fade, like light scattering from an accepted deed.
+ */
+@keyframes benefit-particle-burst {
+  0% {
+    transform: translate(0, 0) scale(0) rotate(0deg);
+    opacity: 0;
+  }
+  8% {
+    opacity: 1;
+    transform: translate(calc(var(--burst-x, 0px) * 0.15), calc(var(--burst-y, 0px) * 0.15))
+      scale(var(--burst-scale, 1)) rotate(0deg);
+  }
+  100% {
+    transform: translate(var(--burst-x, 0px), var(--burst-y, 0px)) scale(var(--burst-scale, 1))
+      rotate(var(--burst-spin, 180deg));
+    opacity: 0;
+  }
+}
+
+/* A soft radiant glow that blooms once behind the benefit icon when the modal opens. */
+@keyframes benefit-glow-bloom {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  35% {
+    opacity: 0.85;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+}
+
+/* A gentle twinkle so star-shaped particles catch the eye without looking mechanical. */
+@keyframes benefit-sparkle-twinkle {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/*
+ * A slow, continuous halo: sits behind a dialog to signal weight/grandeur without demanding
+ * attention the way a one-shot burst does. Orbits the whole ring of particles around the center.
+ */
+@keyframes virtue-aura-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Each aura particle also drifts slightly in and out along its own radius, so the halo breathes. */
+@keyframes virtue-aura-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* An expanding ripple ring, like a blessing radiating outward from its source, fading as it grows. */
+@keyframes virtue-aura-ripple {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
   }
 }
