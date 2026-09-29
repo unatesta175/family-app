@@ -9,6 +9,7 @@ import type { DayLogMap } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
 import { PrayerVirtueDialog } from "@/components/prayer-virtue-dialog";
 import { PrayerBenefitDialog } from "@/components/prayer-benefit-dialog";
+import { PrayNowOverlay } from "@/components/pray-now-overlay";
 import { benefitForStatus, type PrayerBenefit } from "@/lib/prayer-benefits";
 
 type EditStatus = Exclude<Status, "not_yet"> | null;
@@ -54,6 +55,7 @@ export function EditDayDrawer({
   // triggered here per-row (not for the bulk "set all" pills, which would fire it 5x at once).
   const [virtuePrayer, setVirtuePrayer] = useState<Prayer | null>(null);
   const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
+  const [prayNowOpen, setPrayNowOpen] = useState(false);
   const [benefit, setBenefit] = useState<PrayerBenefit | null>(null);
 
   const allSame = PRAYER_ORDER.every((p) => statuses[p] === statuses[PRAYER_ORDER[0]])
@@ -78,8 +80,13 @@ export function EditDayDrawer({
     setVirtuePrayer(null);
   }
 
-  function showBenefit() {
+  function startPrayNow() {
     setVirtuePrayer(null);
+    setPrayNowOpen(true);
+  }
+
+  function finishPrayNow() {
+    setPrayNowOpen(false);
     const b = pendingStatus ? benefitForStatus(pendingStatus) : null;
     if (b) setBenefit(b);
   }
@@ -202,8 +209,10 @@ export function EditDayDrawer({
       </div>
 
       {virtuePrayer && (
-        <PrayerVirtueDialog prayer={virtuePrayer} onPrayNow={showBenefit} onClose={closeVirtue} />
+        <PrayerVirtueDialog prayer={virtuePrayer} onPrayNow={startPrayNow} onClose={closeVirtue} />
       )}
+
+      {prayNowOpen && <PrayNowOverlay onDone={finishPrayNow} />}
 
       {benefit && pendingStatus && (
         <PrayerBenefitDialog benefit={benefit} status={pendingStatus} onClose={() => setBenefit(null)} />
