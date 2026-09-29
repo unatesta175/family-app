@@ -66,7 +66,14 @@ export function PrayNowOverlay({ onDone }: { onDone: () => void }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-emerald-950 via-emerald-900 to-neutral-950">
+    <div
+      className="fixed inset-0 z-[60] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-emerald-950 via-emerald-900 to-neutral-950"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* Stops clicks (like the Done button below) from bubbling up to an ancestor modal's own
+          backdrop onClick — harmless when there is no such ancestor, but without it, opening
+          this overlay from inside another modal (e.g. the edit-day drawer) let a "Done" click
+          also close that ancestor modal, unmounting this overlay's onDone side effects with it. */}
       {/* Slow-turning soft light rays behind everything, like dawn light through a window. */}
       <div
         className="pointer-events-none absolute left-1/2 top-1/2 h-[140vmax] w-[140vmax] -translate-x-1/2 -translate-y-1/2 opacity-[0.07]"
