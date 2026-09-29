@@ -11,6 +11,7 @@ import {
   Vector3,
   type Group,
   type Mesh,
+  type MeshBasicMaterial,
   type MeshPhysicalMaterial,
   type PointLight,
   type Sprite as SpriteType,
@@ -91,6 +92,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
   const rimLightRef = useRef<PointLight>(null);
   const groupRef = useRef<Group>(null);
   const glassRef = useRef<Mesh>(null);
+  const orbRef = useRef<Mesh>(null);
   const sparkRefs = useRef<(SpriteType | null)[]>([]);
   const tex = getSoftTexture();
 
@@ -140,10 +142,19 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
       rimLightRef.current.intensity = glowPower * 0.4;
       rimLightRef.current.color.copy(flameColor);
     }
-    // Soft additive glow, layered from a small hot core out to a faint halo — every layer kept
-    // narrower than the glass globe's own diameter (~1.0) so the light stays visually contained
-    // inside the glass instead of blooming out past its silhouette and reading as a glow behind
-    // the lantern rather than one coming from inside it.
+    // The actual light source: a small solid glowing sphere sitting dead-center in the glass.
+    // Sprites are camera-facing billboards with no real volume — as the lantern rotates they
+    // never look "inside" anything from every angle, which is why the glow read as floating
+    // rather than emanating from a real object. This orb is real 3D geometry that rotates with
+    // the lantern group, so from any angle it visibly sits in the middle of the glass, and the
+    // glow sprites layered around it (below) now exist only to soften its edge and bleed light
+    // through the glass walls, not to fake the source itself.
+    if (orbRef.current) {
+      const s = 0.14 + glowPower * 0.06;
+      orbRef.current.scale.setScalar(s);
+      const mat = orbRef.current.material as MeshBasicMaterial;
+      mat.color.copy(flameColor).lerp(BLAZE_COLOR, hasMissed ? 0.1 : blaze ? 0.7 : 0.35);
+    }
     if (coreGlowRef.current) {
       const s = 0.24 + glowPower * 0.14;
       coreGlowRef.current.scale.set(s, s, 1);
@@ -268,9 +279,18 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
         <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} flatShading />
       </mesh>
 
-      {/* flame: purely layered additive glow sprites (soft bloom "faked" without a full
-          postprocessing pipeline) — no solid mesh at all, so there's no hard silhouette to
-          read as a disconnected "coin" against the glow around it */}
+      {/* the light ball itself: real 3D geometry at the exact center of the glass, unlit (always
+          full brightness regardless of scene lighting) so it reads as the thing emitting light,
+          not a surface reflecting it — visible through the glass from every angle as the
+          lantern rotates */}
+      <mesh ref={orbRef} position={[0, -0.15, 0]}>
+        <sphereGeometry args={[1, 24, 24]} />
+        <meshBasicMaterial toneMapped={false} />
+      </mesh>
+
+      {/* soft additive sprites: feather the orb's edge and bleed its light through the glass
+          walls in every direction — no longer faking the source itself (the orb above does
+          that), just diffusing it */}
       {tex && (
         <>
           <sprite ref={haloRef} position={[0, -0.1, 0]}>
@@ -287,7 +307,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
           </sprite>
         </>
       )}
-      <pointLight ref={lightRef} position={[0, -0.1, 0]} distance={4.5} decay={2} />
+      <pointLight ref={lightRef} position={[0, -0.15, 0]} distance={4.5} decay={2} />
       <pointLight ref={rimLightRef} position={[0, 0.6, 0.3]} distance={3} decay={2} />
 
       {tex &&
