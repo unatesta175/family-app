@@ -1,136 +1,89 @@
-# Istiqamahly — Multi-Module Expansion Plan
+﻿# Family App
 
-This app started as a prayer tracker (Salah logging, streaks, the 3D garden, the daily lantern).
-This document plans four new modules on top of that foundation:
+A family prayer tracker that turns each day's five prayers into a living 3D garden. Grow a tree by praying on time, watch it wilt when prayers slip, and race your own streaks.
 
-1. **Family Financial Tracking** — income/expense logging, budgets, shared family visibility.
-2. **Habit Tracking** — build habits (Study, Gym) and break habits (stop gaming, stop TV, stop
-   doomscrolling, stop YouTube/TikTok, stop shopping, stop travelling).
-3. **Sunnah Practices** — sunnah prayers, fasting (Mon/Thu, White Days, etc.), Qur'an recitation,
-   zikr counts.
-4. **Akhlaq Tracker** — character/conduct tracking (e.g. *baik hati*, *rendah diri*, *berhenti
-   mencarut*, *jaga mulut dan badan daripada melakukan perkara sia-sia*).
+## Core Features
 
-Each module gets its **own visual identity** (not a reskin of the prayer tracker's green theme),
-its own data model, and — per the user's request — is reachable from a place other than the
-existing bottom nav, which is already full.
+* **Prayer logging**: mark each of the five daily prayers (Fajr, Dhuhr, Asr, Maghrib, Isha) with a granular status such as on time plus jamaah, on time, jamaah, late, qada, missed, or excused (Hayd).
+* **3D garden**: every day is a plot in an interactive Three.js garden. Plots grow from seed to sprout to sapling to tree to full bloom as prayers are completed, and their color and condition (golden, thriving, healthy, stressed, wilting) reflect how they were prayed, not just whether they were. A day with any actively missed prayer turns into a tombstone, and an all missed day burns.
+* **Streaks and tiers**: current and best streaks are tracked automatically, with bronze, silver, and gold flourishes on the garden the longer a perfect streak runs.
+* **Stats**: weekly, monthly, lifetime, and custom range breakdowns with charts and a calendar heatmap, plus focus area insights on which prayer needs the most attention.
+* **Challenges**: start a "no missed prayers" or "all on time" challenge for a set number of days and track progress live.
+* **Qada ledger**: missed prayers are tracked so they can be logged as made up later.
+* **Multiple profiles**: each family member gets their own profile, color theme, and history, and can switch between them from the app.
+* **History and bulk editing**: review, edit, or bulk log past days, with CSV export of your full prayer history.
+* **PWA support**: installable on a phone's home screen with an offline capable service worker.
 
----
+## Tech Stack, Frameworks, Tools, and Libraries
 
-## 1. How users get to these modules (navigation)
+* [Next.js](https://nextjs.org) using the App Router, as the core framework
+* [React 19](https://react.dev) for the UI layer
+* [TypeScript](https://www.typescriptlang.org) for type safety across the app
+* [Tailwind CSS v4](https://tailwindcss.com) for styling
+* [Three.js](https://threejs.org) for 3D rendering of the garden
+* `@react-three/fiber` and `@react-three/drei` as React bindings and helpers for Three.js
+* [Recharts](https://recharts.org) for stats charts
+* [Drizzle ORM](https://orm.drizzle.team) as the database toolkit and query builder
+* [libSQL](https://turso.tech/libsql), a SQLite compatible database, for persistence
+* `drizzle-kit` for schema migrations
+* [Zod](https://zod.dev) for schema validation
+* [Lucide](https://lucide.dev) for icons
+* [ESLint](https://eslint.org) for linting
 
-The current bottom nav (`src/components/bottom-nav.tsx`) already has 5 items — Home, Stats,
-Garden, History, Settings. Mobile bottom navs stop being usable past ~5 items (cramped tap
-targets, unclear icons), so the other 4 modules **should not** be jammed in as more bottom-nav
-icons.
+## Getting Started
 
-**Recommended pattern: a "Modules" hub screen**, reached via a new 6th bottom-nav
-entry (icon: `LayoutGrid` from lucide-react) or a top-right icon on the Home page — a hub is the
-better spot since it needs to scale past 4 modules eventually without a nav redesign every time.
+Install dependencies and start the dev server:
 
-- `/modules` — a grid of cards, one per module, each styled with a small preview of that module's
-  own theme (so the hub itself hints at the visual identity you're about to enter): a green/gold
-  prayer tile (existing app, effectively "Home"), a blue/teal finance tile, an orange/red habit
-  tile, an emerald/purple sunnah tile, a warm neutral akhlaq tile.
-- Tapping a card navigates into that module's own route subtree (`/finance`, `/habits`, `/sunnah`,
-  `/akhlaq`), which gets its **own nested layout** (own bottom nav or tab bar, own color tokens,
-  own typography feel) — Next.js App Router supports this natively via a `layout.tsx` per route
-  segment, so switching modules can genuinely feel like switching apps, with a small persistent
-  "back to hub" affordance (a corner icon) rather than trying to unify 5 different navigation bars
-  into one.
-- Home (`/`) stays the prayer tracker's front door, exactly as it is today — it's the
-  highest-frequency daily action (5x/day) and shouldn't be buried a tap deeper. The hub is for
-  the lower-frequency modules.
-
-This mirrors how apps like Notion, or bank apps with multiple "spaces," handle multiple distinct
-sub-products under one account: a switcher/hub screen, not one mega-nav-bar.
-
----
-
-## 2. Per-module visual identity
-
-Each module's nested layout sets its own CSS custom properties / Tailwind theme tokens (the app
-already has a `globals.css` with custom keyframes per feature — same pattern, scoped per module)
-so components within that route subtree pull from a different palette without touching the
-prayer tracker's existing green/gold theme.
-
-| Module | Suggested theme | Why |
-|---|---|---|
-| Prayer (existing) | Emerald green + gold accents, garden/nature motifs | Already built, don't touch |
-| Financial | Deep blue/teal, clean SaaS-dashboard feel, charts-forward | Money apps read as trustworthy in cool tones; this module leans on `recharts` (already a dependency) more than any other |
-| Habit Tracking | Warm orange/red for "break" habits, cool blue/teal for "build" habits — two-toned within one module | The build-vs-break distinction is the whole point of the module; color should carry that meaning at a glance |
-| Sunnah Practices | Soft emerald/purple, calligraphic/spiritual feel, closest cousin to the prayer tracker's tone | Conceptually adjacent to prayer — should feel like a sibling, not a stranger, but still visually distinct enough to signal "different tracker" |
-| Akhlaq Tracker | Warm neutral/sand tones, minimal, journal-like | Character reflection is introspective, not gamified — resist the urge to add streaks/fire emoji here; a quieter, more reflective UI fits the content |
-
----
-
-## 3. Data model direction
-
-All four modules should reuse the **existing household/profile scoping** already built for
-prayer data (`profiles`, `users`, `households` in `src/lib/db/schema.ts`) — every new table gets
-a `profileId` foreign key, exactly like `prayer_logs`. This is what makes family visibility work
-for free: the same `assertOwnProfile` / `getProfilesInHousehold` patterns already used for prayer
-data apply unchanged to money, habits, sunnah, and akhlaq data.
-
-Sketch (final field lists TBD per module during implementation):
-
-```
--- Financial
-households already model "family"; add:
-accounts        (id, profileId, name, kind: cash|bank|ewallet, balance)
-transactions    (id, profileId, accountId, amount, direction: in|out, category, note, date)
-budgets         (id, profileId, category, monthlyLimit)
-
--- Habit Tracking
-habits          (id, profileId, name, kind: build|break, cadence, createdAt)
-habit_logs      (id, habitId, date, done: boolean, note)
-
--- Sunnah Practices
-sunnah_logs     (id, profileId, date, type: sunnah_prayer|fasting|quran|zikr, detail, count)
-
--- Akhlaq Tracker
-akhlaq_traits   (id, profileId, label, isPositive: boolean)   -- e.g. "baik hati" vs "berhenti mencarut"
-akhlaq_logs     (id, traitId, date, reflection: text)
+```bash
+npm install
+npm run dev
 ```
 
-Each module's repo functions live in their own file (`src/lib/db/repo-finance.ts`, etc.) rather
-than growing the existing `repo.ts` into an unmanageable single file — `repo.ts` is already large
-from the prayer/auth/household work.
+Then open [http://localhost:3000](http://localhost:3000) in your browser.
 
----
+### Database Setup
 
-## 4. Recommended execution order
+This project uses Drizzle ORM against a libSQL (SQLite) database. Configure your connection in `drizzle.config.ts`, then push the schema with:
 
-Building all four at once is how this kind of expansion stalls. Suggested sequence:
+```bash
+npx drizzle-kit push
+```
 
-1. **Build the `/modules` hub first**, even before any module has real content — it can launch
-   with the Prayer tile live and the other three as "Coming soon" cards. This validates the
-   navigation pattern early and gives you a real place to land each module as it's finished,
-   instead of designing nav and module #1 simultaneously.
-2. **Pick one module to fully build end-to-end before starting the next.** Recommend **Habit
-   Tracking** first — it's the most self-contained (no money-handling correctness bar to clear
-   like Financial, no fiqh nuance to get right like Sunnah/Akhlaq), and it validates the
-   "module gets its own theme + own layout" pattern cheaply.
-3. **Financial second** — highest complexity (correctness matters more with money, even
-   fake/tracked money) and benefits from the routing/theming pattern already being proven out.
-4. **Sunnah and Akhlaq** — content-heavy, less structurally novel once the pattern exists; these
-   can likely share more plumbing with each other (both are "log a reflection/practice against a
-   list of types") than with Financial or Habits.
+## Project Structure
 
-Within each module, ship a thin vertical slice first (one table, one log action, one list view)
-before adding streaks/stats/charts for that module — the prayer tracker's own history (streaks →
-garden → lantern → stats pages) is itself an example of a module that grew in layers over time;
-repeat that pattern deliberately instead of trying to launch each module fully-featured.
+```
+src/
+  app/
+    (app)/              authenticated app routes: home, garden, history, stats, settings, challenges
+    api/                 API routes such as data export
+    login/               login flow
+  components/
+    garden/              garden page client component
+    garden 3d/            Three.js scene, plant stages, and grid rendering
+    ...                   prayer cards, drawers, stats charts, nav, and more
+  lib/
+    db/                  Drizzle schema and repository functions
+    garden.ts            garden stage, condition, and tier logic
+    prayers.ts           prayer metadata and status rules
+    streaks.ts           streak and completion calculations
+    stats.ts             stats aggregation
+    challenge progress.ts  challenge evaluation
+    auth.ts, session.ts    auth and session handling
+  middleware.ts          route protection
+```
 
----
+## How the Garden Works
 
-## 5. Open questions worth deciding before writing code
+Each day's garden stage is driven by how many of the five prayers were performed. Any status other than missed or empty counts, including qada and excused:
 
-- Should Financial support multiple accounts/currencies, or start single-account/single-currency?
-- For Habit Tracking, do "break" habits log a *miss* (like prayer's `missed` status) or a
-  *success* (marking "didn't game today")? These read very differently in a streak UI.
-- Should Sunnah fasting integrate with the existing Hijri calendar utilities (`src/lib/hijri.ts`)
-  for White Days / Mon-Thu suggestions, or stay manual-entry only for v1?
-- Should Akhlaq entries be private-by-default even within a household (character reflection is
-  more personal than prayer completion), overriding the household-visibility default the other
-  modules inherit?
+1. One of five prayers done grows a seed.
+2. Two of five prayers done grows a sprout.
+3. Three of five prayers done grows a sapling.
+4. Four of five prayers done grows a tree.
+5. Five of five prayers done grows a full bloom.
+
+A day's condition, shown as golden, thriving, healthy, stressed, or wilting, is a separate quality score based on how each prayer was performed. Praying on time and in jamaah scores highest, while qada scores lowest. Any actively missed prayer overrides growth entirely: one missed prayer turns the plot into a tombstone, and five missed prayers burns it.
+
+## License
+
+Private project, not licensed for redistribution.
