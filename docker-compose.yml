@@ -8,6 +8,8 @@ services:
       - "3000:3000"
     environment:
       DATABASE_URL: file:/app/data/familyapp.db
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - familyapp_data:/app/data
 
