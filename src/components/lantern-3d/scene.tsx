@@ -140,30 +140,30 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
       rimLightRef.current.intensity = glowPower * 0.4;
       rimLightRef.current.color.copy(flameColor);
     }
-    // Soft additive glow, layered from a small warm core out to a wide faint halo, each layer
-    // sized to overlap the next so the falloff reads as one continuous glow rather than
-    // concentric rings or a stark bright disc — the core stays warm-tinted (not white) except
-    // at a true golden-blaze day, so it doesn't look like a disconnected white coin.
+    // Soft additive glow, layered from a small hot core out to a faint halo — every layer kept
+    // narrower than the glass globe's own diameter (~1.0) so the light stays visually contained
+    // inside the glass instead of blooming out past its silhouette and reading as a glow behind
+    // the lantern rather than one coming from inside it.
     if (coreGlowRef.current) {
-      const s = 0.34 + glowPower * 0.16;
+      const s = 0.24 + glowPower * 0.14;
       coreGlowRef.current.scale.set(s, s, 1);
       const mat = coreGlowRef.current.material as SpriteMaterial;
       mat.color.copy(flameColor).lerp(BLAZE_COLOR, hasMissed ? 0 : blaze ? 0.6 : 0.2);
-      mat.opacity = Math.min(0.9, 0.28 + glowPower * 0.18);
+      mat.opacity = Math.min(1, 0.4 + glowPower * 0.22);
     }
     if (midGlowRef.current) {
-      const s = 0.7 + glowPower * 0.4;
+      const s = 0.42 + glowPower * 0.24;
       midGlowRef.current.scale.set(s, s, 1);
       const mat = midGlowRef.current.material as SpriteMaterial;
       mat.color.copy(flameColor);
-      mat.opacity = Math.min(0.75, 0.16 + glowPower * 0.18);
+      mat.opacity = Math.min(0.8, 0.2 + glowPower * 0.2);
     }
     if (haloRef.current) {
-      const s = 1.3 + glowPower * 0.8;
+      const s = 0.6 + glowPower * 0.32;
       haloRef.current.scale.set(s, s, 1);
       const mat = haloRef.current.material as SpriteMaterial;
       mat.color.copy(flameColor);
-      mat.opacity = Math.min(0.45, 0.05 + glowPower * 0.09);
+      mat.opacity = Math.min(0.4, 0.06 + glowPower * 0.08);
     }
     if (shaftRef.current) {
       const h = 1.1 + glowPower * 0.55;
