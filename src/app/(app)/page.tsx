@@ -24,6 +24,7 @@ import { DailyOverviewButton } from "@/components/daily-overview-button";
 import { QuoteCard } from "@/components/quote-card";
 import { LiveClock } from "@/components/live-clock";
 import { QUOTES } from "@/lib/quotes";
+import { StatusLegendTip } from "@/components/status-legend-tip";
 import { Flame, Trophy } from "lucide-react";
 import type { Status } from "@/lib/db/schema";
 
@@ -180,6 +181,8 @@ export default async function HomePage() {
           </p>
         </div>
       )}
+
+      <StatusLegendTip />
 
       <div className="flex flex-col gap-2.5">
         {PRAYER_ORDER.map((prayer) => (
