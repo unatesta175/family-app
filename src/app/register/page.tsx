@@ -1,9 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { RegisterForm } from "./register-form";
+import { getSession } from "@/lib/auth";
 
-export default function RegisterPage() {
+export default async function RegisterPage() {
+  const session = await getSession();
+  if (session) redirect("/");
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-50 px-6 py-12">
       <Link

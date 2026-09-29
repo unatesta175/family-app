@@ -1,10 +1,18 @@
 import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { LoginForm } from "./login-form";
+import { getSession } from "@/lib/auth";
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Real, DB-backed check — unlike the `session` cookie's mere presence (which middleware used
+  // to trust for this same redirect), this can't loop on a stale cookie that no longer points
+  // at a live session row.
+  const session = await getSession();
+  if (session) redirect("/");
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-50 px-6 py-12">
       <Link

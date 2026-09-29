@@ -29,11 +29,12 @@ export function middleware(req: NextRequest) {
     }
   }
 
-  if (authed && PUBLIC_PATHS.has(pathname)) {
-    const url = req.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
-  }
+  // Redirecting an authed visitor away from /login etc is handled by the pages themselves
+  // (via requireAuth's real, DB-backed session check), not here — this cookie check only
+  // confirms a `session` cookie is *present*, not that it still points at a live session row.
+  // Trusting presence alone here created an infinite redirect loop for anyone holding a stale
+  // cookie: middleware bounces /login -> / on presence, the page's real check bounces / ->
+  // /login on invalidity, forever.
 
   return NextResponse.next();
 }

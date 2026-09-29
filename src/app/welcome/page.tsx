@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import { getSession } from "@/lib/auth";
 import {
   Moon,
   Flame,
@@ -103,7 +105,10 @@ const STEPS = [
   },
 ];
 
-export default function WelcomePage() {
+export default async function WelcomePage() {
+  const session = await getSession();
+  if (session) redirect("/");
+
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-neutral-50 text-neutral-900">
       {/* ---------- Nav ---------- */}
