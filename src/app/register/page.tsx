@@ -1,4 +1,4 @@
-import { Moon } from "lucide-react";
+import Image from "next/image";
 import { RegisterForm } from "./register-form";
 
 export default function RegisterPage() {
@@ -25,8 +25,8 @@ export default function RegisterPage() {
 
       <div className="relative w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-700 text-white shadow-sm shadow-emerald-900/10">
-            <Moon className="h-5 w-5" strokeWidth={2.2} />
+          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl shadow-sm shadow-emerald-900/10">
+            <Image src="/icons/icon-192.png" alt="" width={44} height={44} className="h-full w-full object-cover" />
           </div>
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-neutral-900">Create your account</h1>

@@ -110,8 +110,8 @@ export default function WelcomePage() {
       <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-neutral-50/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white">
-              <Moon className="h-4 w-4" strokeWidth={2.4} />
+            <div className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg">
+              <Image src="/icons/icon-192.png" alt="" width={32} height={32} className="h-full w-full object-cover" />
             </div>
             <span className="text-[15px] font-extrabold tracking-tight">Istiqamahly</span>
           </div>

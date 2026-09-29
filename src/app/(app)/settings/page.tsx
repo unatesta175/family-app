@@ -36,7 +36,7 @@ export default async function SettingsPage() {
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="mb-1 text-sm font-semibold text-neutral-900">About</p>
         <p className="text-xs text-neutral-400">
-          Salah Tracker &mdash; local-first prayer tracker for the family. Hijri dates are
+          Istiqamahly &mdash; local-first prayer tracker for the family. Hijri dates are
           calculated offline and may differ by a day from local moon-sighting announcements.
         </p>
       </div>
