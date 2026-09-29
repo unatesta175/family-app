@@ -5,6 +5,7 @@ import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { registerAction } from "./actions";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { GoogleSignInButton } from "@/components/google-signin-button";
 
 export function RegisterForm() {
   const [state, formAction, isPending] = useActionState(registerAction, null);
@@ -12,7 +13,16 @@ export function RegisterForm() {
   const [mode, setMode] = useState<"create" | "join">("create");
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
+      <GoogleSignInButton />
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-neutral-200" />
+        <span className="text-xs font-medium text-neutral-400">or</span>
+        <div className="h-px flex-1 bg-neutral-200" />
+      </div>
+
+      <form action={formAction} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
         <label htmlFor="displayName" className="text-sm font-medium leading-none text-neutral-800">
           Your name
@@ -141,6 +151,7 @@ export function RegisterForm() {
           Sign in
         </a>
       </p>
-    </form>
+      </form>
+    </div>
   );
 }

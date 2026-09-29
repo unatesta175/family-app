@@ -12,7 +12,10 @@ import {
   getProfileByUserId,
   getSessionByToken,
   getUser,
+  getUserByEmail,
+  getUserByGoogleId,
   getUserByUsername,
+  linkGoogleAccount,
 } from "@/lib/db/repo";
 
 const SESSION_COOKIE = "session";
@@ -100,6 +103,56 @@ export async function register(params: {
     username,
     passwordHash,
     displayName,
+  });
+  await startSession(user.id);
+  return { ok: true };
+}
+
+/**
+ * Signs in an existing Google-linked account, auto-links Google to an existing username/password
+ * account that shares the verified email, or — for a first-time signer — creates a brand new
+ * household for them (same as choosing "create a new family" during normal registration). They
+ * can join an existing family afterward via invite code from Settings, same as any account.
+ */
+export async function loginOrRegisterWithGoogle(profile: {
+  googleId: string;
+  email: string;
+  name: string;
+}): Promise<AuthResult> {
+  const byGoogle = await getUserByGoogleId(profile.googleId);
+  if (byGoogle) {
+    await startSession(byGoogle.id);
+    return { ok: true };
+  }
+
+  const byEmail = profile.email ? await getUserByEmail(profile.email) : null;
+  if (byEmail) {
+    if (!byEmail.googleId) await linkGoogleAccount(byEmail.id, profile.googleId);
+    await startSession(byEmail.id);
+    return { ok: true };
+  }
+
+  const displayName = profile.name.trim() || "New member";
+  const baseUsername =
+    normalizeUsername(profile.email.split("@")[0] || displayName).replace(/[^a-z0-9_]/g, "") || "member";
+  let username = baseUsername;
+  let suffix = 0;
+  while (await getUserByUsername(username)) {
+    suffix += 1;
+    username = `${baseUsername}${suffix}`;
+  }
+
+  // Google-only accounts never use this hash to log in (there's no password form for them) —
+  // it only exists to satisfy the column's NOT NULL constraint.
+  const passwordHash = await bcrypt.hash(randomBytes(32).toString("hex"), 10);
+  const { user } = await createHouseholdWithOwner({
+    householdName: `${displayName}'s Family`,
+    inviteCode: generateInviteCode(),
+    username,
+    passwordHash,
+    displayName,
+    googleId: profile.googleId,
+    email: profile.email || undefined,
   });
   await startSession(user.id);
   return { ok: true };

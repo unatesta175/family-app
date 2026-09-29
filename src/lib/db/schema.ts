@@ -57,12 +57,21 @@ export const users = sqliteTable(
       .notNull()
       .references(() => households.id, { onDelete: "cascade" }),
     username: text("username").notNull(),
+    // Always set, even for Google-only accounts (an unusable random hash in that case) — keeps
+    // this column NOT NULL so no risky "make it nullable" table rebuild is ever needed on the
+    // production sqlite file.
     passwordHash: text("password_hash").notNull(),
+    googleId: text("google_id"),
+    email: text("email"),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(current_timestamp)`),
   },
-  (table) => [uniqueIndex("users_username_unique").on(table.username)]
+  (table) => [
+    uniqueIndex("users_username_unique").on(table.username),
+    uniqueIndex("users_google_id_unique").on(table.googleId),
+    uniqueIndex("users_email_unique").on(table.email),
+  ]
 );
 
 export const sessions = sqliteTable("sessions", {

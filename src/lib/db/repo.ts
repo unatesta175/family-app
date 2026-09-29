@@ -53,6 +53,20 @@ export async function getUser(userId: number) {
   return u ?? null;
 }
 
+export async function getUserByGoogleId(googleId: string) {
+  const [u] = await db.select().from(users).where(eq(users.googleId, googleId));
+  return u ?? null;
+}
+
+export async function getUserByEmail(email: string) {
+  const [u] = await db.select().from(users).where(eq(users.email, email));
+  return u ?? null;
+}
+
+export async function linkGoogleAccount(userId: number, googleId: string) {
+  await db.update(users).set({ googleId }).where(eq(users.id, userId));
+}
+
 /** Creates a new household, then the user account and matching profile inside it, in one transaction. */
 export async function createHouseholdWithOwner(params: {
   householdName: string;
@@ -60,6 +74,8 @@ export async function createHouseholdWithOwner(params: {
   username: string;
   passwordHash: string;
   displayName: string;
+  googleId?: string;
+  email?: string;
 }) {
   return db.transaction(async (tx) => {
     const [household] = await tx
@@ -69,7 +85,13 @@ export async function createHouseholdWithOwner(params: {
 
     const [user] = await tx
       .insert(users)
-      .values({ householdId: household.id, username: params.username, passwordHash: params.passwordHash })
+      .values({
+        householdId: household.id,
+        username: params.username,
+        passwordHash: params.passwordHash,
+        googleId: params.googleId,
+        email: params.email,
+      })
       .returning();
 
     const theme = PROFILE_THEMES[household.id % PROFILE_THEMES.length];

@@ -18,6 +18,8 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
     column: "madhab",
     ddl: "ALTER TABLE profiles ADD COLUMN madhab TEXT NOT NULL DEFAULT 'shafi'",
   },
+  { table: "users", column: "google_id", ddl: "ALTER TABLE users ADD COLUMN google_id TEXT" },
+  { table: "users", column: "email", ddl: "ALTER TABLE users ADD COLUMN email TEXT" },
 ];
 
 /**
@@ -46,6 +48,8 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       household_id INTEGER NOT NULL REFERENCES households(id) ON DELETE CASCADE,
       username TEXT NOT NULL,
       password_hash TEXT NOT NULL,
+      google_id TEXT,
+      email TEXT,
       created_at TEXT NOT NULL DEFAULT (current_timestamp)
     )`,
   },
@@ -92,6 +96,9 @@ export async function runStartupMigrations() {
     // Multiple households will have people sharing a display name — drop the old global
     // uniqueness constraint on profiles.name. Index-only change; no rows are touched.
     await client.execute(`DROP INDEX IF EXISTS profiles_name_unique`);
+
+    await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique ON users (google_id)`);
+    await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)`);
   } finally {
     client.close();
   }

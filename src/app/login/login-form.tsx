@@ -1,17 +1,46 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginAction } from "./actions";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
+import { GoogleSignInButton } from "@/components/google-signin-button";
+
+const GOOGLE_ERROR_MESSAGES: Record<string, string> = {
+  google_not_configured: "Google sign-in isn't set up yet.",
+  google_state_mismatch: "That sign-in attempt expired. Please try again.",
+  google_token_exchange_failed: "Couldn't confirm your Google sign-in. Please try again.",
+  google_profile_fetch_failed: "Couldn't read your Google profile. Please try again.",
+  google_email_unverified: "Your Google email isn't verified — please verify it and try again.",
+};
 
 export function LoginForm() {
   const [state, formAction, isPending] = useActionState(loginAction, null);
   const [showPassword, setShowPassword] = useState(false);
+  const searchParams = useSearchParams();
+  const oauthError = searchParams.get("error");
+  const oauthErrorMessage = oauthError ? GOOGLE_ERROR_MESSAGES[oauthError] ?? oauthError : null;
 
   return (
-    <form action={formAction} className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
+      {oauthErrorMessage && (
+        <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-700">
+          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          <span>{oauthErrorMessage}</span>
+        </div>
+      )}
+
+      <GoogleSignInButton />
+
+      <div className="flex items-center gap-3">
+        <div className="h-px flex-1 bg-neutral-200" />
+        <span className="text-xs font-medium text-neutral-400">or</span>
+        <div className="h-px flex-1 bg-neutral-200" />
+      </div>
+
+      <form action={formAction} className="flex flex-col gap-5">
       <div className="flex flex-col gap-1.5">
         <label
           htmlFor="username"
@@ -83,6 +112,7 @@ export function LoginForm() {
           Join or start a family
         </a>
       </p>
-    </form>
+      </form>
+    </div>
   );
 }
