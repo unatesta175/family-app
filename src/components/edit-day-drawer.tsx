@@ -7,6 +7,9 @@ import { PRAYER_ORDER, PRAYER_META, STATUS_ORDER, STATUS_ICON, STATUS_META } fro
 import type { Prayer, Status } from "@/lib/db/schema";
 import type { DayLogMap } from "@/lib/streaks";
 import { cn } from "@/lib/utils";
+import { PrayerVirtueDialog } from "@/components/prayer-virtue-dialog";
+import { PrayerBenefitDialog } from "@/components/prayer-benefit-dialog";
+import { benefitForStatus, type PrayerBenefit } from "@/lib/prayer-benefits";
 
 type EditStatus = Exclude<Status, "not_yet"> | null;
 
@@ -47,6 +50,12 @@ export function EditDayDrawer({
   const [isPending, startTransition] = useTransition();
   const options = haydEnabled ? ([...STATUS_ORDER, "excused"] as const) : STATUS_ORDER;
 
+  // Same virtue -> benefit celebration shown on the main prayer page when logging a prayer,
+  // triggered here per-row (not for the bulk "set all" pills, which would fire it 5x at once).
+  const [virtuePrayer, setVirtuePrayer] = useState<Prayer | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<Status | null>(null);
+  const [benefit, setBenefit] = useState<PrayerBenefit | null>(null);
+
   const allSame = PRAYER_ORDER.every((p) => statuses[p] === statuses[PRAYER_ORDER[0]])
     ? statuses[PRAYER_ORDER[0]]
     : null;
@@ -61,6 +70,18 @@ export function EditDayDrawer({
 
   function setRow(prayer: Prayer, value: Exclude<EditStatus, null>) {
     setStatuses((prev) => ({ ...prev, [prayer]: value }));
+    setVirtuePrayer(prayer);
+    setPendingStatus(value);
+  }
+
+  function closeVirtue() {
+    setVirtuePrayer(null);
+  }
+
+  function showBenefit() {
+    setVirtuePrayer(null);
+    const b = pendingStatus ? benefitForStatus(pendingStatus) : null;
+    if (b) setBenefit(b);
   }
 
   function clearAll() {
@@ -179,6 +200,14 @@ export function EditDayDrawer({
           {isPending ? "Saving..." : "Done"}
         </button>
       </div>
+
+      {virtuePrayer && (
+        <PrayerVirtueDialog prayer={virtuePrayer} onPrayNow={showBenefit} onClose={closeVirtue} />
+      )}
+
+      {benefit && pendingStatus && (
+        <PrayerBenefitDialog benefit={benefit} status={pendingStatus} onClose={() => setBenefit(null)} />
+      )}
     </div>
   );
 }
