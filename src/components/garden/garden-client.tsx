@@ -13,11 +13,15 @@ import {
   Play,
   Pause,
   Moon,
+  Sprout,
+  Leaf,
+  AlertTriangle,
+  Crown,
 } from "lucide-react";
 import { Garden3D } from "@/components/garden-3d/loader";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { PRAYER_ORDER, PRAYER_META } from "@/lib/prayers";
+import { PRAYER_ORDER, PRAYER_META, STATUS_META } from "@/lib/prayers";
 import { formatHijri } from "@/lib/hijri";
 import { parseIso } from "@/lib/date";
 import {
@@ -80,6 +84,17 @@ const STATUS_DOT: Record<Status, string> = {
   missed: "bg-rose-500",
   not_yet: "bg-neutral-200",
   excused: "bg-pink-400",
+};
+
+const STATUS_TEXT: Record<Status, string> = {
+  on_time_jamaah: "text-emerald-700",
+  on_time: "text-emerald-600",
+  jamaah: "text-emerald-600",
+  late: "text-amber-600",
+  qada: "text-sky-600",
+  missed: "text-rose-600",
+  not_yet: "text-neutral-300",
+  excused: "text-pink-600",
 };
 
 export function GardenClient({
@@ -317,7 +332,7 @@ export function GardenClient({
                 <p className="text-[10px] text-neutral-400">completed</p>
               </div>
             </div>
-            <div className="flex items-center justify-between gap-1.5">
+            <div className="flex items-start justify-between gap-1">
               {PRAYER_ORDER.map((prayer) => {
                 const status = selectedDetail.prayers[prayer] ?? "not_yet";
                 const meta = PRAYER_META[prayer];
@@ -329,6 +344,9 @@ export function GardenClient({
                     </div>
                     <span className={cn("h-1.5 w-1.5 rounded-full", STATUS_DOT[status])} />
                     <span className="text-[9px] text-neutral-400">{meta.label.slice(0, 3)}</span>
+                    <span className={cn("text-center text-[8px] font-bold leading-tight", STATUS_TEXT[status])}>
+                      {STATUS_META[status].short}
+                    </span>
                   </div>
                 );
               })}
@@ -341,78 +359,158 @@ export function GardenClient({
         )}
       </div>
 
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <p className="mb-3 text-xs font-semibold text-neutral-900">How growth works</p>
-        <div className="flex flex-col gap-2">
-          {(Object.keys(GARDEN_STAGE_META) as GardenStage[]).map((stage) => {
-            const meta = GARDEN_STAGE_META[stage];
-            return (
-              <div key={stage} className="flex items-center gap-2.5">
-                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", meta.swatch)} />
-                <span className="text-[11px] font-medium text-neutral-600">{meta.label}</span>
-                <span className="ml-auto text-[10px] text-neutral-400">{meta.range}</span>
-              </div>
-            );
-          })}
+      <GardenGuide />
+    </div>
+  );
+}
+
+type GuideTab = "growth" | "condition" | "streaks";
+
+const GUIDE_TABS: { id: GuideTab; label: string }[] = [
+  { id: "growth", label: "Growth" },
+  { id: "condition", label: "Condition" },
+  { id: "streaks", label: "Streaks" },
+];
+
+const GROWTH_ROWS = Object.keys(GARDEN_STAGE_META) as GardenStage[];
+const CONDITION_ROWS: GardenCondition[] = ["golden", "thriving", "healthy", "stressed", "wilting"];
+const STREAK_ROWS: GardenTier[] = ["bronze", "silver", "gold"];
+const TIER_SWATCH: Record<GardenTier, string> = {
+  none: "bg-neutral-300",
+  bronze: "bg-[#cd7f32]",
+  silver: "bg-[#c0c0c0]",
+  gold: "bg-[#ffd23f]",
+};
+
+/** A single legend row: a colored icon chip, a label, and a right-aligned value/hint. */
+function GuideRow({
+  swatch,
+  icon: Icon,
+  label,
+  value,
+}: {
+  swatch: string;
+  icon: typeof Sprout;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 py-1.5">
+      <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full", swatch)}>
+        <Icon className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+      </div>
+      <span className="text-[12px] font-semibold text-neutral-700">{label}</span>
+      <span className="ml-auto text-right text-[10px] leading-tight text-neutral-400">{value}</span>
+    </div>
+  );
+}
+
+/**
+ * A single unified, tabbed reference card for how the garden works — replaces four separately
+ * stacked legend cards with one compact card plus a standalone "best score" tip, so the golden
+ * path (the whole point of the mechanic) is the first thing read, not buried in row four of four.
+ */
+function GardenGuide() {
+  const [tab, setTab] = useState<GuideTab>("growth");
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-start gap-3 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 p-4 text-white shadow-sm shadow-amber-900/10">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
+          <Crown className="h-4.5 w-4.5" strokeWidth={2.2} />
+        </div>
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wide text-white/90">For the best score</p>
+          <p className="mt-0.5 text-[12px] leading-relaxed text-white/90">
+            Pray every prayer on time and in jamaah, don&apos;t let a single one go marked missed,
+            and keep the streak running &mdash; that&apos;s a golden tree, every day.
+          </p>
         </div>
       </div>
 
       <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold text-neutral-900">Tree condition</p>
-        <p className="mb-3 text-[10px] text-neutral-400">
-          Once a day has no missed prayers, size shows how many were done and condition shows how
-          well &mdash; on time and in jamaah grows the healthiest tree, late/qada trees look duller.
-        </p>
-        <div className="flex flex-col gap-2">
-          {(["golden", "thriving", "healthy", "stressed", "wilting"] as GardenCondition[]).map((condition) => {
-            const meta = GARDEN_CONDITION_META[condition];
-            return (
-              <div key={condition} className="flex items-center gap-2.5">
-                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", meta.swatch)} />
-                <span className="text-[11px] font-medium text-neutral-600">{meta.label}</span>
-                <span className="ml-auto text-[10px] text-neutral-400">{meta.hint}</span>
-              </div>
-            );
-          })}
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-semibold text-neutral-900">Garden guide</p>
         </div>
-      </div>
 
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <p className="text-xs font-semibold text-neutral-900">Missed prayers</p>
-        <p className="mb-3 text-[10px] text-neutral-400">
-          A missed prayer overrides the tree entirely &mdash; it isn&apos;t just a duller version of
-          growth.
-        </p>
-        <div className="flex flex-col gap-2">
-          {(["tombstoned", "burning"] as Exclude<PlotState, "growing" | "empty">[]).map((state) => {
-            const meta = PLOT_STATE_META[state];
-            return (
-              <div key={state} className="flex items-center gap-2.5">
-                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", meta.swatch)} />
-                <span className="text-[11px] font-medium text-neutral-600">{meta.label}</span>
-                <span className="ml-auto text-[10px] text-neutral-400">{meta.hint}</span>
-              </div>
-            );
-          })}
+        <div className="mt-3 grid grid-cols-3 gap-1 rounded-md bg-neutral-100 p-1">
+          {GUIDE_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setTab(t.id)}
+              className={cn(
+                "rounded-[6px] px-2 py-1.5 text-[11px] font-semibold transition-colors",
+                tab === t.id ? "bg-white text-neutral-900 shadow-sm" : "text-neutral-500 hover:text-neutral-700"
+              )}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
-      </div>
 
-      <div className="rounded-2xl bg-white p-4 shadow-sm">
-        <p className="mb-3 text-xs font-semibold text-neutral-900">Streaks make it bigger</p>
-        <div className="flex flex-col gap-2">
-          {(["bronze", "silver", "gold"] as GardenTier[]).map((tier) => {
-            const meta = GARDEN_TIER_META[tier];
-            const dot =
-              tier === "bronze" ? "bg-[#cd7f32]" : tier === "silver" ? "bg-[#c0c0c0]" : "bg-[#ffd23f]";
-            return (
-              <div key={tier} className="flex items-center gap-2.5">
-                <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", dot)} />
-                <span className="text-[11px] font-medium text-neutral-600">{meta.label}</span>
-                <span className="ml-auto text-[10px] text-neutral-400">{meta.hint}</span>
-              </div>
-            );
-          })}
-        </div>
+        {tab === "growth" && (
+          <div className="mt-3">
+            <p className="mb-1 text-[10px] text-neutral-400">
+              Size grows with how many of the day&apos;s 5 prayers were performed.
+            </p>
+            <div className="flex flex-col divide-y divide-neutral-50">
+              {GROWTH_ROWS.map((stage) => {
+                const meta = GARDEN_STAGE_META[stage];
+                return (
+                  <GuideRow
+                    key={stage}
+                    swatch={meta.swatch}
+                    icon={stage === "empty" ? Leaf : Sprout}
+                    label={meta.label}
+                    value={meta.range}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {tab === "condition" && (
+          <div className="mt-3">
+            <p className="mb-1 text-[10px] text-neutral-400">
+              Once a day has no missed prayers, condition shows how well it was prayed &mdash; on
+              time and in jamaah grows the healthiest tree.
+            </p>
+            <div className="flex flex-col divide-y divide-neutral-50">
+              {CONDITION_ROWS.map((condition) => {
+                const meta = GARDEN_CONDITION_META[condition];
+                return (
+                  <GuideRow key={condition} swatch={meta.swatch} icon={Leaf} label={meta.label} value={meta.hint} />
+                );
+              })}
+            </div>
+
+            <div className="mt-3 flex items-start gap-2.5 rounded-xl bg-rose-50 p-3">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" strokeWidth={2.2} />
+              <p className="text-[11px] leading-relaxed text-rose-700">
+                A single prayer marked missed overrides the tree entirely &mdash; it isn&apos;t a
+                duller version of growth, the plot turns to bare, cracked ground instead.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {tab === "streaks" && (
+          <div className="mt-3">
+            <p className="mb-1 text-[10px] text-neutral-400">
+              A perfect 5/5 day gets a bigger flourish the longer the streak leading into it.
+            </p>
+            <div className="flex flex-col divide-y divide-neutral-50">
+              {STREAK_ROWS.map((tier) => {
+                const meta = GARDEN_TIER_META[tier];
+                return (
+                  <GuideRow key={tier} swatch={TIER_SWATCH[tier]} icon={Trophy} label={meta.label} value={meta.hint} />
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
