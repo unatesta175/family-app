@@ -5,8 +5,8 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import {
   AdditiveBlending,
   CanvasTexture,
-  CatmullRomCurve3,
   Color,
+  LineCurve3,
   Vector2,
   Vector3,
   type Group,
@@ -68,9 +68,9 @@ const FACETS = 8; // low-poly: octagonal, not round
 const GLASS_BOTTOM_Y = -0.84;
 const GLASS_TOP_Y = 0.5;
 const SHOULDER_Y = 0.55;
-const HANDLE_MOUNT_Y = 0.58;
-const HANDLE_MOUNT_X = 0.34;
-const HANDLE_PEAK_Y = 1.28;
+const HANDLE_MOUNT_Y = 0.72;
+const HANDLE_MOUNT_X = 0.3;
+const HANDLE_PEAK_Y = 1.7;
 
 /** Revolve profile for the faceted glass globe: (radius, y) pairs from bottom to top. */
 const GLASS_PROFILE: [number, number][] = [
@@ -95,15 +95,14 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
   const tex = getSoftTexture();
 
   const glassPoints = useMemo(() => GLASS_PROFILE.map(([r, y]) => new Vector2(r, y)), []);
-  const handleCurve = useMemo(
-    () =>
-      new CatmullRomCurve3([
-        new Vector3(-HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0),
-        new Vector3(-HANDLE_MOUNT_X * 0.85, HANDLE_PEAK_Y * 0.78, 0),
-        new Vector3(0, HANDLE_PEAK_Y, 0),
-        new Vector3(HANDLE_MOUNT_X * 0.85, HANDLE_PEAK_Y * 0.78, 0),
-        new Vector3(HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0),
-      ]),
+  // Two straight struts meeting at a peak — a pointed triangular arch (like real bent lantern
+  // wire) instead of a smooth rounded loop, which read as too small/soft against the reference.
+  const handleLeft = useMemo(
+    () => new LineCurve3(new Vector3(-HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0), new Vector3(0, HANDLE_PEAK_Y, 0)),
+    []
+  );
+  const handleRight = useMemo(
+    () => new LineCurve3(new Vector3(0, HANDLE_PEAK_Y, 0), new Vector3(HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0)),
     []
   );
 
@@ -202,23 +201,25 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 
   return (
     <group ref={groupRef}>
-      {/* flared foot, tapering from a wide base up to the waist */}
-      <mesh position={[0, -1.15, 0]} castShadow>
-        <cylinderGeometry args={[0.24, 0.46, 0.36, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.55} metalness={0.4} />
+      {/* flared foot: proportionally large, like the reference's wide triangular base */}
+      <mesh position={[0, -1.22, 0]} castShadow>
+        <cylinderGeometry args={[0.14, 0.5, 0.52, FACETS]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.55} metalness={0.4} flatShading />
       </mesh>
 
       {/* waist ring, with the wick-adjuster knob sticking out to one side */}
       <mesh position={[0, -0.9, 0]}>
         <cylinderGeometry args={[0.3, 0.34, 0.12, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} flatShading />
       </mesh>
       <mesh position={[0.37, -0.9, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.05, 0.05, 0.12, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.55} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.55} flatShading />
       </mesh>
 
-      {/* the faceted glass globe (low-poly octagonal barrel), lit warm from within by the flame */}
+      {/* the faceted glass globe (low-poly octagonal barrel), lit warm from within by the flame.
+          flatShading keeps each of the 8 facets a visible flat pane instead of smoothing them
+          into a round highlight, which is what actually reads as "low poly" at a glance. */}
       <mesh ref={glassRef}>
         <latheGeometry args={[glassPoints, FACETS]} />
         <meshPhysicalMaterial
@@ -230,31 +231,41 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
           emissive="#f5a623"
           emissiveIntensity={0.2}
           side={2}
+          flatShading
         />
       </mesh>
 
       {/* shoulder collar, neck, and flared chimney cap */}
       <mesh position={[0, SHOULDER_Y, 0]}>
         <cylinderGeometry args={[0.28, 0.32, 0.1, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} flatShading />
       </mesh>
       <mesh position={[0, SHOULDER_Y + 0.13, 0]}>
         <cylinderGeometry args={[0.14, 0.16, 0.16, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.45} metalness={0.55} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.45} metalness={0.55} flatShading />
       </mesh>
       <mesh position={[0, SHOULDER_Y + 0.31, 0]} castShadow>
         <cylinderGeometry args={[0.08, 0.26, 0.16, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} flatShading />
       </mesh>
       <mesh position={[0, SHOULDER_Y + 0.45, 0]}>
         <cylinderGeometry args={[0.05, 0.06, 0.1, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} flatShading />
       </mesh>
 
-      {/* bent-wire carry handle arcing up from the shoulder to a peak above the chimney */}
+      {/* bent-wire carry handle: two straight struts meeting at a tall peak well above the cap,
+          a pointed triangular arch like real bent lantern wire */}
       <mesh>
-        <tubeGeometry args={[handleCurve, 24, 0.022, 6, false]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} />
+        <tubeGeometry args={[handleLeft, 8, 0.024, 6, false]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} flatShading />
+      </mesh>
+      <mesh>
+        <tubeGeometry args={[handleRight, 8, 0.024, 6, false]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} flatShading />
+      </mesh>
+      <mesh position={[0, HANDLE_PEAK_Y, 0]}>
+        <sphereGeometry args={[0.026, 8, 8]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} flatShading />
       </mesh>
 
       {/* flame: purely layered additive glow sprites (soft bloom "faked" without a full
@@ -288,7 +299,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 
       {/* soft contact glow pooling under the base, like real light hitting a surface */}
       {tex && (
-        <sprite ref={groundGlowRef} position={[0, -1.42, 0.05]}>
+        <sprite ref={groundGlowRef} position={[0, -1.56, 0.05]}>
           <spriteMaterial map={tex} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} />
         </sprite>
       )}
@@ -299,7 +310,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 export function LanternScene(props: LanternSceneProps) {
   return (
     <div className="h-56 w-full overflow-hidden rounded-3xl bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-800">
-      <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.3, 4.4], fov: 38 }}>
+      <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.35, 5.2], fov: 38 }}>
         <ambientLight intensity={0.16} />
         {/* faint cool rim so the frame reads with some shape even when the flame is nearly out */}
         <directionalLight position={[-2, 2, 3]} intensity={0.18} color="#8fa8c9" />
