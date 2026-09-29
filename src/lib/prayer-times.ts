@@ -27,12 +27,10 @@ export const CALC_METHOD_META: Record<CalcMethod, { label: string; region: strin
 };
 
 /**
- * Method recommended when the profile hasn't chosen one explicitly.
- * Moonsighting Committee Worldwide is adhan.js's own recommended default: it
- * uses a seasonally-adjusted twilight model that tracks real sky observation
- * data more closely than the older fixed-angle methods.
+ * Method recommended when the profile hasn't chosen one explicitly — Majlis Ugama Islam
+ * Singapura, matching this family's region (Singapore/Malaysia/Indonesia).
  */
-export const RECOMMENDED_CALC_METHOD: CalcMethod = "MoonsightingCommittee";
+export const RECOMMENDED_CALC_METHOD: CalcMethod = "Singapore";
 
 export type LocationPrefs = {
   latitude: number | null;
