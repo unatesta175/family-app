@@ -8,7 +8,6 @@ import {
   Color,
   type Group,
   type Mesh,
-  type MeshBasicMaterial,
   type PointLight,
   type Sprite as SpriteType,
   type SpriteMaterial,
@@ -26,19 +25,26 @@ export type LanternSceneProps = {
 };
 
 let softTexCache: CanvasTexture | null = null;
+/**
+ * A soft radial falloff with a mid-stop (not just opaque-center-to-transparent-edge) so it reads
+ * as a smooth glow rather than a disc with a visible rim once additive-blended — a plain 2-stop
+ * gradient plateaus at full opacity across too much of the center and looks like a hard coin.
+ */
 function getSoftTexture(): CanvasTexture | undefined {
   if (softTexCache) return softTexCache;
   if (typeof document === "undefined") return undefined;
   const canvas = document.createElement("canvas");
-  canvas.width = 64;
-  canvas.height = 64;
+  canvas.width = 128;
+  canvas.height = 128;
   const ctx = canvas.getContext("2d");
   if (!ctx) return undefined;
-  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-  grad.addColorStop(0, "rgba(255,255,255,1)");
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, "rgba(255,255,255,0.95)");
+  grad.addColorStop(0.35, "rgba(255,255,255,0.55)");
+  grad.addColorStop(0.7, "rgba(255,255,255,0.14)");
   grad.addColorStop(1, "rgba(255,255,255,0)");
   ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 64, 64);
+  ctx.fillRect(0, 0, 128, 128);
   softTexCache = new CanvasTexture(canvas);
   return softTexCache;
 }
@@ -56,7 +62,6 @@ const POST_COUNT = 6;
 const POST_RADIUS = 0.62;
 
 function LanternRig({ quality, performedFraction, goldenFraction, missedCount }: LanternSceneProps) {
-  const emberRef = useRef<Mesh>(null);
   const haloRef = useRef<SpriteType>(null);
   const midGlowRef = useRef<SpriteType>(null);
   const coreGlowRef = useRef<SpriteType>(null);
@@ -104,34 +109,30 @@ function LanternRig({ quality, performedFraction, goldenFraction, missedCount }:
       rimLightRef.current.intensity = glowPower * 0.4;
       rimLightRef.current.color.copy(flameColor);
     }
-    if (emberRef.current) {
-      const s = 0.06 + q * 0.035 + (blaze ? 0.015 : 0);
-      emberRef.current.scale.setScalar(s * (0.94 + flicker * 0.08));
-      const mat = emberRef.current.material as MeshBasicMaterial;
-      mat.color.copy(BLAZE_COLOR).lerp(flameColor, hasMissed ? 1 : 0.25);
-    }
-    // Soft additive glow, layered from a tight bright core out to a wide faint halo — this is
-    // what actually reads as "glowing light" rather than a solid-colored polygon.
+    // Soft additive glow, layered from a small warm core out to a wide faint halo, each layer
+    // sized to overlap the next so the falloff reads as one continuous glow rather than
+    // concentric rings or a stark bright disc — the core stays warm-tinted (not white) except
+    // at a true golden-blaze day, so it doesn't look like a disconnected white coin.
     if (coreGlowRef.current) {
-      const s = 0.22 + glowPower * 0.1;
+      const s = 0.34 + glowPower * 0.16;
       coreGlowRef.current.scale.set(s, s, 1);
       const mat = coreGlowRef.current.material as SpriteMaterial;
-      mat.color.copy(BLAZE_COLOR).lerp(flameColor, hasMissed ? 0.7 : 0.15);
-      mat.opacity = Math.min(1, 0.35 + glowPower * 0.22);
+      mat.color.copy(flameColor).lerp(BLAZE_COLOR, hasMissed ? 0 : blaze ? 0.6 : 0.2);
+      mat.opacity = Math.min(0.9, 0.28 + glowPower * 0.18);
     }
     if (midGlowRef.current) {
-      const s = 0.55 + glowPower * 0.34;
+      const s = 0.7 + glowPower * 0.4;
       midGlowRef.current.scale.set(s, s, 1);
       const mat = midGlowRef.current.material as SpriteMaterial;
       mat.color.copy(flameColor);
-      mat.opacity = Math.min(0.85, 0.18 + glowPower * 0.2);
+      mat.opacity = Math.min(0.75, 0.16 + glowPower * 0.18);
     }
     if (haloRef.current) {
-      const s = 1.1 + glowPower * 0.7;
+      const s = 1.3 + glowPower * 0.8;
       haloRef.current.scale.set(s, s, 1);
       const mat = haloRef.current.material as SpriteMaterial;
       mat.color.copy(flameColor);
-      mat.opacity = Math.min(0.55, 0.06 + glowPower * 0.11);
+      mat.opacity = Math.min(0.45, 0.05 + glowPower * 0.09);
     }
     if (shaftRef.current) {
       const h = 1.1 + glowPower * 0.55;
@@ -190,26 +191,6 @@ function LanternRig({ quality, performedFraction, goldenFraction, missedCount }:
         );
       })}
 
-      {/* glass panels */}
-      {Array.from({ length: POST_COUNT }, (_, i) => {
-        const a = ((i + 0.5) / POST_COUNT) * Math.PI * 2;
-        return (
-          <mesh key={`glass${i}`} position={[Math.cos(a) * POST_RADIUS, 0, Math.sin(a) * POST_RADIUS]} rotation={[0, -a, 0]}>
-            <planeGeometry args={[0.62, 1.9]} />
-            <meshPhysicalMaterial
-              color="#fff8e1"
-              transparent
-              opacity={0.16}
-              roughness={0.08}
-              metalness={0}
-              clearcoat={1}
-              clearcoatRoughness={0.15}
-              side={2}
-            />
-          </mesh>
-        );
-      })}
-
       {/* top cap + ring */}
       <mesh position={[0, 1.05, 0]}>
         <coneGeometry args={[0.6, 0.4, 8]} />
@@ -233,12 +214,9 @@ function LanternRig({ quality, performedFraction, goldenFraction, missedCount }:
         />
       </mesh>
 
-      {/* flame: a tiny bright ember core plus layered additive glow sprites (soft bloom "faked"
-          without a full postprocessing pipeline) instead of a hard-edged solid mesh */}
-      <mesh ref={emberRef} position={[0, -0.15, 0]}>
-        <sphereGeometry args={[1, 16, 16]} />
-        <meshBasicMaterial color={flameColor} toneMapped={false} />
-      </mesh>
+      {/* flame: purely layered additive glow sprites (soft bloom "faked" without a full
+          postprocessing pipeline) — no solid mesh at all, so there's no hard silhouette to
+          read as a disconnected "coin" against the glow around it */}
       {tex && (
         <>
           <sprite ref={haloRef} position={[0, -0.1, 0]}>
