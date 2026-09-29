@@ -8,8 +8,10 @@ import {
   Color,
   type Group,
   type Mesh,
+  type MeshBasicMaterial,
   type PointLight,
   type Sprite as SpriteType,
+  type SpriteMaterial,
 } from "three";
 
 export type LanternSceneProps = {
@@ -54,7 +56,12 @@ const POST_COUNT = 6;
 const POST_RADIUS = 0.62;
 
 function LanternRig({ quality, performedFraction, goldenFraction, missedCount }: LanternSceneProps) {
-  const flameRef = useRef<Mesh>(null);
+  const emberRef = useRef<Mesh>(null);
+  const haloRef = useRef<SpriteType>(null);
+  const midGlowRef = useRef<SpriteType>(null);
+  const coreGlowRef = useRef<SpriteType>(null);
+  const shaftRef = useRef<SpriteType>(null);
+  const groundGlowRef = useRef<SpriteType>(null);
   const lightRef = useRef<PointLight>(null);
   const rimLightRef = useRef<PointLight>(null);
   const fillRef = useRef<Mesh>(null);
@@ -85,21 +92,60 @@ function LanternRig({ quality, performedFraction, goldenFraction, missedCount }:
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
-    const flicker = 0.88 + Math.sin(t * 9) * 0.06 + Math.sin(t * 3.3) * 0.06;
+    // Two overlapping frequencies read as organic flicker rather than a metronomic pulse.
+    const flicker = 0.86 + Math.sin(t * 9.5) * 0.07 + Math.sin(t * 3.1 + 1.7) * 0.07;
+    const glowPower = targetIntensity * flicker;
 
     if (lightRef.current) {
-      lightRef.current.intensity = targetIntensity * flicker;
+      lightRef.current.intensity = glowPower;
       lightRef.current.color.copy(flameColor);
     }
     if (rimLightRef.current) {
-      rimLightRef.current.intensity = targetIntensity * 0.4 * flicker;
+      rimLightRef.current.intensity = glowPower * 0.4;
       rimLightRef.current.color.copy(flameColor);
     }
-    if (flameRef.current) {
-      const s = 0.34 + q * 0.22 * flicker + (blaze ? 0.08 : 0);
-      flameRef.current.scale.setScalar(s);
-      const mat = flameRef.current.material as import("three").MeshBasicMaterial;
+    if (emberRef.current) {
+      const s = 0.06 + q * 0.035 + (blaze ? 0.015 : 0);
+      emberRef.current.scale.setScalar(s * (0.94 + flicker * 0.08));
+      const mat = emberRef.current.material as MeshBasicMaterial;
+      mat.color.copy(BLAZE_COLOR).lerp(flameColor, hasMissed ? 1 : 0.25);
+    }
+    // Soft additive glow, layered from a tight bright core out to a wide faint halo — this is
+    // what actually reads as "glowing light" rather than a solid-colored polygon.
+    if (coreGlowRef.current) {
+      const s = 0.22 + glowPower * 0.1;
+      coreGlowRef.current.scale.set(s, s, 1);
+      const mat = coreGlowRef.current.material as SpriteMaterial;
+      mat.color.copy(BLAZE_COLOR).lerp(flameColor, hasMissed ? 0.7 : 0.15);
+      mat.opacity = Math.min(1, 0.35 + glowPower * 0.22);
+    }
+    if (midGlowRef.current) {
+      const s = 0.55 + glowPower * 0.34;
+      midGlowRef.current.scale.set(s, s, 1);
+      const mat = midGlowRef.current.material as SpriteMaterial;
       mat.color.copy(flameColor);
+      mat.opacity = Math.min(0.85, 0.18 + glowPower * 0.2);
+    }
+    if (haloRef.current) {
+      const s = 1.1 + glowPower * 0.7;
+      haloRef.current.scale.set(s, s, 1);
+      const mat = haloRef.current.material as SpriteMaterial;
+      mat.color.copy(flameColor);
+      mat.opacity = Math.min(0.55, 0.06 + glowPower * 0.11);
+    }
+    if (shaftRef.current) {
+      const h = 1.1 + glowPower * 0.55;
+      shaftRef.current.scale.set(0.16, h, 1);
+      const mat = shaftRef.current.material as SpriteMaterial;
+      mat.color.copy(flameColor);
+      mat.opacity = hasMissed ? 0 : Math.min(0.3, glowPower * 0.075);
+    }
+    if (groundGlowRef.current) {
+      const s = 0.9 + glowPower * 0.4;
+      groundGlowRef.current.scale.set(s * 1.4, s * 0.5, 1);
+      const mat = groundGlowRef.current.material as SpriteMaterial;
+      mat.color.copy(flameColor);
+      mat.opacity = Math.min(0.4, 0.04 + glowPower * 0.07);
     }
     if (fillRef.current) {
       const h = Math.max(0.02, performedFraction);
@@ -153,9 +199,11 @@ function LanternRig({ quality, performedFraction, goldenFraction, missedCount }:
             <meshPhysicalMaterial
               color="#fff8e1"
               transparent
-              opacity={0.1}
-              roughness={0.1}
+              opacity={0.16}
+              roughness={0.08}
               metalness={0}
+              clearcoat={1}
+              clearcoatRoughness={0.15}
               side={2}
             />
           </mesh>
@@ -185,11 +233,28 @@ function LanternRig({ quality, performedFraction, goldenFraction, missedCount }:
         />
       </mesh>
 
-      {/* flame */}
-      <mesh ref={flameRef} position={[0, -0.15, 0]}>
-        <icosahedronGeometry args={[1, 1]} />
-        <meshBasicMaterial color={flameColor} />
+      {/* flame: a tiny bright ember core plus layered additive glow sprites (soft bloom "faked"
+          without a full postprocessing pipeline) instead of a hard-edged solid mesh */}
+      <mesh ref={emberRef} position={[0, -0.15, 0]}>
+        <sphereGeometry args={[1, 16, 16]} />
+        <meshBasicMaterial color={flameColor} toneMapped={false} />
       </mesh>
+      {tex && (
+        <>
+          <sprite ref={haloRef} position={[0, -0.1, 0]}>
+            <spriteMaterial map={tex} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} />
+          </sprite>
+          <sprite ref={midGlowRef} position={[0, -0.12, 0]}>
+            <spriteMaterial map={tex} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} />
+          </sprite>
+          <sprite ref={coreGlowRef} position={[0, -0.15, 0]}>
+            <spriteMaterial map={tex} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} />
+          </sprite>
+          <sprite ref={shaftRef} position={[0, 0.45, 0]}>
+            <spriteMaterial map={tex} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} />
+          </sprite>
+        </>
+      )}
       <pointLight ref={lightRef} position={[0, -0.1, 0]} distance={4.5} decay={2} />
       <pointLight ref={rimLightRef} position={[0, 0.6, 0.3]} distance={3} decay={2} />
 
@@ -199,6 +264,13 @@ function LanternRig({ quality, performedFraction, goldenFraction, missedCount }:
             <spriteMaterial map={tex} color={BLAZE_COLOR} blending={AdditiveBlending} transparent depthWrite={false} />
           </sprite>
         ))}
+
+      {/* soft contact glow pooling under the base, like real light hitting a surface */}
+      {tex && (
+        <sprite ref={groundGlowRef} position={[0, -1.28, 0.05]}>
+          <spriteMaterial map={tex} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} />
+        </sprite>
+      )}
     </group>
   );
 }
@@ -207,7 +279,9 @@ export function LanternScene(props: LanternSceneProps) {
   return (
     <div className="h-56 w-full overflow-hidden rounded-3xl bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-800">
       <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.4, 4.2], fov: 38 }}>
-        <ambientLight intensity={0.12} />
+        <ambientLight intensity={0.16} />
+        {/* faint cool rim so the frame reads with some shape even when the flame is nearly out */}
+        <directionalLight position={[-2, 2, 3]} intensity={0.18} color="#8fa8c9" />
         <LanternRig {...props} />
       </Canvas>
     </div>
