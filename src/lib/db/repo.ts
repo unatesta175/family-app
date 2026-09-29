@@ -1,32 +1,126 @@
 import "server-only";
 import { and, eq, isNull, gte, lte, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { profiles, prayerLogs, qadaLedger, tags, prayerLogTags, challenges } from "@/lib/db/schema";
+import {
+  profiles,
+  prayerLogs,
+  qadaLedger,
+  tags,
+  prayerLogTags,
+  challenges,
+  households,
+  users,
+  sessions,
+} from "@/lib/db/schema";
 import type { Prayer, Status, ChallengeType, CalcMethod, Madhab } from "@/lib/db/schema";
 import { PRAYER_ORDER } from "@/lib/prayers";
 import type { DayLogMap } from "@/lib/streaks";
 
-export async function ensureSeedProfiles() {
-  const existing = await db.select().from(profiles);
-  if (existing.length > 0) return existing;
-
-  await db
-    .insert(profiles)
-    .values([
-      { name: "Ilyas", colorTheme: "green" },
-      { name: "Anis", colorTheme: "rose" },
-    ])
-    .onConflictDoNothing();
-
-  return db.select().from(profiles);
-}
-
-export async function getProfiles() {
-  return db.select().from(profiles);
-}
+const PROFILE_THEMES = ["green", "rose", "sky", "amber"] as const;
 
 export async function getProfile(profileId: number) {
   const [p] = await db.select().from(profiles).where(eq(profiles.id, profileId));
+  return p ?? null;
+}
+
+/** All profiles belonging to users in the given household — what a household-mate is allowed to see. */
+export async function getProfilesInHousehold(householdId: number) {
+  const rows = await db
+    .select({ profile: profiles })
+    .from(profiles)
+    .innerJoin(users, eq(profiles.userId, users.id))
+    .where(eq(users.householdId, householdId));
+  return rows.map((r) => r.profile);
+}
+
+export async function getHouseholdByInviteCode(inviteCode: string) {
+  const [h] = await db.select().from(households).where(eq(households.inviteCode, inviteCode));
+  return h ?? null;
+}
+
+export async function getHousehold(householdId: number) {
+  const [h] = await db.select().from(households).where(eq(households.id, householdId));
+  return h ?? null;
+}
+
+export async function getUserByUsername(username: string) {
+  const [u] = await db.select().from(users).where(eq(users.username, username));
+  return u ?? null;
+}
+
+export async function getUser(userId: number) {
+  const [u] = await db.select().from(users).where(eq(users.id, userId));
+  return u ?? null;
+}
+
+/** Creates a new household, then the user account and matching profile inside it, in one transaction. */
+export async function createHouseholdWithOwner(params: {
+  householdName: string;
+  inviteCode: string;
+  username: string;
+  passwordHash: string;
+  displayName: string;
+}) {
+  return db.transaction(async (tx) => {
+    const [household] = await tx
+      .insert(households)
+      .values({ name: params.householdName, inviteCode: params.inviteCode })
+      .returning();
+
+    const [user] = await tx
+      .insert(users)
+      .values({ householdId: household.id, username: params.username, passwordHash: params.passwordHash })
+      .returning();
+
+    const theme = PROFILE_THEMES[household.id % PROFILE_THEMES.length];
+    const [profile] = await tx
+      .insert(profiles)
+      .values({ userId: user.id, name: params.displayName, colorTheme: theme })
+      .returning();
+
+    return { household, user, profile };
+  });
+}
+
+/** Creates a user account + matching profile inside an existing household (joining via invite code). */
+export async function createUserInHousehold(params: {
+  householdId: number;
+  username: string;
+  passwordHash: string;
+  displayName: string;
+}) {
+  return db.transaction(async (tx) => {
+    const [user] = await tx
+      .insert(users)
+      .values({ householdId: params.householdId, username: params.username, passwordHash: params.passwordHash })
+      .returning();
+
+    const siblingCount = (await tx.select().from(profiles).where(eq(profiles.userId, user.id))).length;
+    const theme = PROFILE_THEMES[(params.householdId + siblingCount + 1) % PROFILE_THEMES.length];
+    const [profile] = await tx
+      .insert(profiles)
+      .values({ userId: user.id, name: params.displayName, colorTheme: theme })
+      .returning();
+
+    return { user, profile };
+  });
+}
+
+export async function createSession(userId: number, token: string, expiresAt: string) {
+  await db.insert(sessions).values({ id: token, userId, expiresAt });
+}
+
+export async function getSessionByToken(token: string) {
+  const [s] = await db.select().from(sessions).where(eq(sessions.id, token));
+  return s ?? null;
+}
+
+export async function deleteSession(token: string) {
+  await db.delete(sessions).where(eq(sessions.id, token));
+}
+
+export async function getProfileByUserId(userId: number) {
+  const [p] = await db.select().from(profiles).where(eq(profiles.userId, userId));
   return p ?? null;
 }
 

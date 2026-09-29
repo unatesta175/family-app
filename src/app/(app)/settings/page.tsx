@@ -1,11 +1,13 @@
-import { getProfile } from "@/lib/db/repo";
-import { getOwnProfileId } from "@/lib/auth";
+import { getProfile, getHousehold } from "@/lib/db/repo";
+import { getOwnProfileId, requireAuth } from "@/lib/auth";
 import { ProfileSettingsForm } from "@/components/profile-settings-form";
 import { LocationSettingsForm } from "@/components/location-settings-form";
 import { ExportDataButton } from "@/components/export-data-button";
+import { InviteCodeCard } from "@/components/invite-code-card";
 
 export default async function SettingsPage() {
-  const ownProfileId = await getOwnProfileId();
+  const session = await requireAuth();
+  const [ownProfileId, household] = await Promise.all([getOwnProfileId(), getHousehold(session.householdId)]);
   const ownProfile = ownProfileId !== null ? await getProfile(ownProfileId) : null;
 
   return (
@@ -20,6 +22,8 @@ export default async function SettingsPage() {
       )}
 
       {ownProfile && <LocationSettingsForm profile={ownProfile} />}
+
+      {household && <InviteCodeCard inviteCode={household.inviteCode} householdName={household.name} />}
 
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="mb-1 text-sm font-semibold text-neutral-900">Data</p>

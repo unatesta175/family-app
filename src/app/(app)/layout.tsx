@@ -3,12 +3,12 @@ import { ProfileSwitcher } from "@/components/profile-switcher";
 import { LogoutButton } from "@/components/logout-button";
 import { getActiveProfileId } from "@/lib/session";
 import { requireAuth, getOwnProfileId } from "@/lib/auth";
-import { getProfiles } from "@/lib/db/repo";
+import { getProfilesInHousehold } from "@/lib/db/repo";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  await requireAuth();
+  const session = await requireAuth();
   const [profiles, activeProfileId, ownProfileId] = await Promise.all([
-    getProfiles(),
+    getProfilesInHousehold(session.householdId),
     getActiveProfileId(),
     getOwnProfileId(),
   ]);

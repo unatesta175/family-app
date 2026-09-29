@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { AlertCircle, Eye, EyeOff, Loader2 } from "lucide-react";
 import { loginAction } from "./actions";
 import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 
 export function LoginForm() {
   const [state, formAction, isPending] = useActionState(loginAction, null);
@@ -18,15 +19,14 @@ export function LoginForm() {
         >
           Username
         </label>
-        <input
+        <Input
           id="username"
           name="username"
           type="text"
-          placeholder="ilyas or anis"
+          placeholder="Enter your username"
           autoComplete="username"
           autoFocus
           required
-          className="flex h-10 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-2 text-sm text-neutral-900 shadow-sm outline-none ring-offset-white transition-colors placeholder:text-neutral-400 focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/30 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 
@@ -37,13 +37,13 @@ export function LoginForm() {
           </label>
         </div>
         <div className="relative">
-          <input
+          <Input
             id="password"
             name="password"
             type={showPassword ? "text" : "password"}
             autoComplete="current-password"
             required
-            className="flex h-10 w-full rounded-md border border-neutral-200 bg-transparent px-3 py-2 pr-10 text-sm text-neutral-900 shadow-sm outline-none ring-offset-white transition-colors placeholder:text-neutral-400 focus-visible:border-emerald-600 focus-visible:ring-2 focus-visible:ring-emerald-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+            className="pr-10"
           />
           <button
             type="button"
@@ -76,6 +76,13 @@ export function LoginForm() {
         {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
         {isPending ? "Signing in…" : "Sign in"}
       </button>
+
+      <p className="text-center text-sm text-neutral-500">
+        New here?{" "}
+        <a href="/register" className="font-semibold text-emerald-700 hover:text-emerald-800">
+          Join or start a family
+        </a>
+      </p>
     </form>
   );
 }

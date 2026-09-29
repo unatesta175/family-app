@@ -36,10 +36,51 @@ export const STATUSES = [
 ] as const;
 export type Status = (typeof STATUSES)[number];
 
+export const households = sqliteTable(
+  "households",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    name: text("name").notNull(),
+    inviteCode: text("invite_code").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("households_invite_code_unique").on(table.inviteCode)]
+);
+
+export const users = sqliteTable(
+  "users",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    householdId: integer("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    username: text("username").notNull(),
+    passwordHash: text("password_hash").notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("users_username_unique").on(table.username)]
+);
+
+export const sessions = sqliteTable("sessions", {
+  id: text("id").primaryKey(), // opaque random token — this is the session cookie's value
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: text("expires_at").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
 export const profiles = sqliteTable(
   "profiles",
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id").references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     colorTheme: text("color_theme").notNull().default("green"),
     age: integer("age"),
@@ -56,7 +97,7 @@ export const profiles = sqliteTable(
       .notNull()
       .default(sql`(current_timestamp)`),
   },
-  (table) => [uniqueIndex("profiles_name_unique").on(table.name)]
+  (table) => [uniqueIndex("profiles_user_id_unique").on(table.userId)]
 );
 
 export const prayerLogs = sqliteTable("prayer_logs", {

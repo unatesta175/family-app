@@ -30,6 +30,13 @@ RUN addgroup --system --gid 1001 nodejs \
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
+
+# next build's output tracing bundles bcryptjs straight into the server chunks (it's pure JS
+# with zero deps) rather than keeping it as a real node_modules package, so scripts/ — which
+# runs outside that bundle — needs it copied in explicitly or `import bcrypt from "bcryptjs"`
+# fails to resolve at runtime.
+COPY --from=deps --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
 
 RUN mkdir -p /app/data && chown nextjs:nodejs /app/data
 VOLUME ["/app/data"]

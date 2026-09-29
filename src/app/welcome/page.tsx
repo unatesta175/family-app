@@ -126,12 +126,20 @@ export default function WelcomePage() {
               </a>
             ))}
           </nav>
-          <Link
-            href="/login"
-            className="flex items-center gap-1 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
-          >
-            Sign in
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/register"
+              className="hidden items-center gap-1 rounded-full border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 transition-colors hover:border-neutral-400 sm:flex"
+            >
+              Create account
+            </Link>
+            <Link
+              href="/login"
+              className="flex items-center gap-1 rounded-full bg-neutral-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-neutral-800"
+            >
+              Sign in
+            </Link>
+          </div>
         </div>
       </header>
 
@@ -177,18 +185,18 @@ export default function WelcomePage() {
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link
-                href="/login"
+                href="/register"
                 className="flex items-center gap-1.5 rounded-full bg-emerald-700 px-5 py-3 text-sm font-bold text-white shadow-sm shadow-emerald-900/10 transition-colors hover:bg-emerald-800"
               >
-                Sign in to your family
+                Start or join a family
                 <ArrowRight className="h-4 w-4" strokeWidth={2.5} />
               </Link>
-              <a
-                href="#features"
+              <Link
+                href="/login"
                 className="flex items-center gap-1.5 rounded-full border border-neutral-300 bg-white px-5 py-3 text-sm font-bold text-neutral-700 transition-colors hover:border-neutral-400"
               >
-                See what&apos;s inside
-              </a>
+                Sign in
+              </Link>
             </div>
 
             <dl className="mt-12 grid max-w-md grid-cols-3 gap-4 border-t border-neutral-200 pt-6">

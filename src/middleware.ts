@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = new Set(["/login", "/welcome"]);
+const PUBLIC_PATHS = new Set(["/login", "/register", "/welcome"]);
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
-  const authed = Boolean(req.cookies.get("auth_user")?.value);
+  const authed = Boolean(req.cookies.get("session")?.value);
 
   if (!authed) {
     // Unauthenticated visitors hitting the root get the marketing page

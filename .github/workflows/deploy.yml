@@ -25,6 +25,22 @@ jobs:
             cd ${{ secrets.VPS_APP_DIR }}
             git fetch origin main
             git reset --hard origin/main
+
+            # Snapshot the live sqlite file inside the persistent volume before any schema
+            # change runs, in case anything needs to be rolled back by hand later. Safe to
+            # skip on a first-ever deploy where the container doesn't exist yet.
+            docker compose exec -T familyapp sh -c 'cp /app/data/familyapp.db "/app/data/familyapp.db.bak-$(date +%Y%m%d-%H%M%S)"' || true
+
             docker compose build
             docker compose up -d
+
+            # Give the container a moment to boot and run its startup self-heal migration
+            # (src/lib/db/migrate.ts) before touching the database further.
+            sleep 5
+
+            # One-off and idempotent: links the pre-existing ilyas/anis accounts to real user
+            # rows so they can still log in under the new auth system. No-ops on every deploy
+            # after the first, since it skips any username that already has a users row.
+            docker compose exec -T familyapp node scripts/migrate-legacy-accounts.mjs /app/data/familyapp.db
+
             docker image prune -f
