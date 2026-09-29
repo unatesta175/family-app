@@ -26,6 +26,11 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
+            # Written fresh on every deploy from GitHub secrets, never committed to the repo,
+            # so docker compose's automatic .env loading picks up Google OAuth credentials
+            # without them ever touching git history.
+            printf 'GOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\n' "${{ secrets.GOOGLE_CLIENT_ID }}" "${{ secrets.GOOGLE_CLIENT_SECRET }}" > .env
+
             # Snapshot the live sqlite file inside the persistent volume before any schema
             # change runs, in case anything needs to be rolled back by hand later. Safe to
             # skip on a first-ever deploy where the container doesn't exist yet.
