@@ -5,8 +5,13 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import {
   AdditiveBlending,
   CanvasTexture,
+  CatmullRomCurve3,
   Color,
+  Vector2,
+  Vector3,
   type Group,
+  type Mesh,
+  type MeshPhysicalMaterial,
   type PointLight,
   type Sprite as SpriteType,
   type SpriteMaterial,
@@ -54,23 +59,27 @@ const WARM_COLOR = new Color("#f5a623");
 const GOLD_COLOR = new Color("#ffd23f");
 const BLAZE_COLOR = new Color("#fff4c2");
 
-const FRAME_BRONZE = "#4a3a26";
-const FRAME_BRONZE_DARK = "#3a2d1c";
+const FRAME_BRONZE = "#3a2e24";
+const FRAME_BRONZE_DARK = "#241c15";
+const FACETS = 8; // low-poly: octagonal, not round
 
-const POST_COUNT = 6;
-const POST_RADIUS = 0.5;
-const POST_THICKNESS = 0.032;
+// Classic hurricane/camping-lantern silhouette (flared foot -> waist -> barrel glass -> shoulder
+// -> neck -> flared cap -> chimney, plus a bent-wire carry handle) instead of a hexagonal cage.
+const GLASS_BOTTOM_Y = -0.84;
+const GLASS_TOP_Y = 0.5;
+const SHOULDER_Y = 0.55;
+const HANDLE_MOUNT_Y = 0.58;
+const HANDLE_MOUNT_X = 0.34;
+const HANDLE_PEAK_Y = 1.28;
 
-// Shared Y-anchors so the posts terminate exactly at the base plate's top surface and the roof
-// collar's bottom surface, by construction, instead of relying on eyeballed numbers that left a
-// visible gap ("floating" posts) — and every plate/collar radius is sized bigger than
-// POST_RADIUS + POST_THICKNESS so the posts actually land on the surface, not past its rim.
-const BASE_PLATE_TOP_Y = -1.05;
-const BASE_PLATE_H = 0.16;
-const ROOF_COLLAR_BOTTOM_Y = 1.05;
-const ROOF_COLLAR_H = 0.1;
-const POST_HEIGHT = ROOF_COLLAR_BOTTOM_Y - BASE_PLATE_TOP_Y;
-const POST_CENTER_Y = (BASE_PLATE_TOP_Y + ROOF_COLLAR_BOTTOM_Y) / 2;
+/** Revolve profile for the faceted glass globe: (radius, y) pairs from bottom to top. */
+const GLASS_PROFILE: [number, number][] = [
+  [0.3, GLASS_BOTTOM_Y],
+  [0.5, -0.4],
+  [0.52, 0.0],
+  [0.42, 0.35],
+  [0.3, GLASS_TOP_Y],
+];
 
 function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps) {
   const haloRef = useRef<SpriteType>(null);
@@ -81,8 +90,22 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
   const lightRef = useRef<PointLight>(null);
   const rimLightRef = useRef<PointLight>(null);
   const groupRef = useRef<Group>(null);
+  const glassRef = useRef<Mesh>(null);
   const sparkRefs = useRef<(SpriteType | null)[]>([]);
   const tex = getSoftTexture();
+
+  const glassPoints = useMemo(() => GLASS_PROFILE.map(([r, y]) => new Vector2(r, y)), []);
+  const handleCurve = useMemo(
+    () =>
+      new CatmullRomCurve3([
+        new Vector3(-HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0),
+        new Vector3(-HANDLE_MOUNT_X * 0.85, HANDLE_PEAK_Y * 0.78, 0),
+        new Vector3(0, HANDLE_PEAK_Y, 0),
+        new Vector3(HANDLE_MOUNT_X * 0.85, HANDLE_PEAK_Y * 0.78, 0),
+        new Vector3(HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0),
+      ]),
+    []
+  );
 
   const hasMissed = missedCount > 0;
   const q = Math.max(0, Math.min(1, quality / 100));
@@ -157,6 +180,11 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
       mat.color.copy(flameColor);
       mat.opacity = Math.min(0.4, 0.04 + glowPower * 0.07);
     }
+    if (glassRef.current) {
+      const mat = glassRef.current.material as MeshPhysicalMaterial;
+      mat.emissive.copy(flameColor);
+      mat.emissiveIntensity = Math.min(1.2, 0.15 + glowPower * 0.22);
+    }
     if (groupRef.current) {
       groupRef.current.rotation.y = t * 0.15;
     }
@@ -174,80 +202,59 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 
   return (
     <group ref={groupRef}>
-      {/* foot: a wider dark ring the base plate sits on, like real lantern feet */}
-      <mesh position={[0, BASE_PLATE_TOP_Y - BASE_PLATE_H - 0.09, 0]} castShadow>
-        <cylinderGeometry args={[0.44, 0.56, 0.18, 8]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.65} metalness={0.35} />
+      {/* flared foot, tapering from a wide base up to the waist */}
+      <mesh position={[0, -1.15, 0]} castShadow>
+        <cylinderGeometry args={[0.24, 0.46, 0.36, FACETS]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.55} metalness={0.4} />
       </mesh>
 
-      {/* base plate: posts sit directly on its top face (radius > POST_RADIUS so they land on
-          the surface, not past its rim) */}
-      <mesh position={[0, BASE_PLATE_TOP_Y - BASE_PLATE_H / 2, 0]}>
-        <cylinderGeometry args={[POST_RADIUS + 0.14, POST_RADIUS + 0.06, BASE_PLATE_H, 8]} />
+      {/* waist ring, with the wick-adjuster knob sticking out to one side */}
+      <mesh position={[0, -0.9, 0]}>
+        <cylinderGeometry args={[0.3, 0.34, 0.12, FACETS]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} />
       </mesh>
+      <mesh position={[0.37, -0.9, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.12, FACETS]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.55} />
+      </mesh>
 
-      {/* corner posts: span exactly base-plate-top to roof-collar-bottom, no gap either end */}
-      {Array.from({ length: POST_COUNT }, (_, i) => {
-        const a = (i / POST_COUNT) * Math.PI * 2;
-        return (
-          <mesh key={i} position={[Math.cos(a) * POST_RADIUS, POST_CENTER_Y, Math.sin(a) * POST_RADIUS]} castShadow>
-            <cylinderGeometry args={[POST_THICKNESS, POST_THICKNESS, POST_HEIGHT, 8]} />
-            <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} />
-          </mesh>
-        );
-      })}
+      {/* the faceted glass globe (low-poly octagonal barrel), lit warm from within by the flame */}
+      <mesh ref={glassRef}>
+        <latheGeometry args={[glassPoints, FACETS]} />
+        <meshPhysicalMaterial
+          color="#fdf6e3"
+          transparent
+          opacity={0.4}
+          roughness={0.12}
+          metalness={0}
+          emissive="#f5a623"
+          emissiveIntensity={0.2}
+          side={2}
+        />
+      </mesh>
 
-      {/* mid-rail ties the six posts together partway up, like a real lantern cage — also reads
-          as structural support rather than six independent floating rods */}
-      <mesh position={[0, POST_CENTER_Y, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[POST_RADIUS, 0.018, 8, POST_COUNT * 4]} />
+      {/* shoulder collar, neck, and flared chimney cap */}
+      <mesh position={[0, SHOULDER_Y, 0]}>
+        <cylinderGeometry args={[0.28, 0.32, 0.1, FACETS]} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} />
+      </mesh>
+      <mesh position={[0, SHOULDER_Y + 0.13, 0]}>
+        <cylinderGeometry args={[0.14, 0.16, 0.16, FACETS]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.45} metalness={0.55} />
       </mesh>
-
-      {/* small corner brackets where each post meets the base plate and roof collar */}
-      {Array.from({ length: POST_COUNT }, (_, i) => {
-        const a = (i / POST_COUNT) * Math.PI * 2;
-        const x = Math.cos(a) * POST_RADIUS;
-        const z = Math.sin(a) * POST_RADIUS;
-        return (
-          <group key={`bracket${i}`}>
-            <mesh position={[x, BASE_PLATE_TOP_Y + 0.03, z]}>
-              <cylinderGeometry args={[POST_THICKNESS * 1.8, POST_THICKNESS * 1.8, 0.06, 8]} />
-              <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.6} />
-            </mesh>
-            <mesh position={[x, ROOF_COLLAR_BOTTOM_Y - 0.03, z]}>
-              <cylinderGeometry args={[POST_THICKNESS * 1.8, POST_THICKNESS * 1.8, 0.06, 8]} />
-              <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.6} />
-            </mesh>
-          </group>
-        );
-      })}
-
-      {/* roof collar: posts plug directly into its underside */}
-      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H / 2, 0]}>
-        <cylinderGeometry args={[POST_RADIUS + 0.06, POST_RADIUS + 0.1, ROOF_COLLAR_H, 8]} />
+      <mesh position={[0, SHOULDER_Y + 0.31, 0]} castShadow>
+        <cylinderGeometry args={[0.08, 0.26, 0.16, FACETS]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} />
       </mesh>
-
-      {/* roof cone sits flush on the collar, with a wider brim for a real lantern-hat silhouette */}
-      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.22, 0]} castShadow>
-        <coneGeometry args={[POST_RADIUS + 0.24, 0.44, 8]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} />
-      </mesh>
-
-      {/* finial: a small ball on a short neck, then the hanging ring */}
-      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.46, 0]}>
-        <cylinderGeometry args={[0.025, 0.035, 0.08, 8]} />
+      <mesh position={[0, SHOULDER_Y + 0.45, 0]}>
+        <cylinderGeometry args={[0.05, 0.06, 0.1, FACETS]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} />
       </mesh>
-      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.53, 0]}>
-        <sphereGeometry args={[0.05, 12, 12]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.35} metalness={0.65} />
-      </mesh>
-      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.63, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.09, 0.02, 8, 16]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} />
+
+      {/* bent-wire carry handle arcing up from the shoulder to a peak above the chimney */}
+      <mesh>
+        <tubeGeometry args={[handleCurve, 24, 0.022, 6, false]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} />
       </mesh>
 
       {/* flame: purely layered additive glow sprites (soft bloom "faked" without a full
@@ -292,7 +299,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 export function LanternScene(props: LanternSceneProps) {
   return (
     <div className="h-56 w-full overflow-hidden rounded-3xl bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-800">
-      <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.5, 5.2], fov: 38 }}>
+      <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.3, 4.4], fov: 38 }}>
         <ambientLight intensity={0.16} />
         {/* faint cool rim so the frame reads with some shape even when the flame is nearly out */}
         <directionalLight position={[-2, 2, 3]} intensity={0.18} color="#8fa8c9" />
