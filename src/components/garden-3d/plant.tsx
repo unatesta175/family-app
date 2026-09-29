@@ -887,6 +887,11 @@ function TreeBlessing({ seed, fraction }: { seed: number; fraction: number }) {
   // Every blessed tree is a golden-condition tree now, so the flourish is always the shiny gold set.
   const petalMat = PETAL_MAT_GOLD;
   const petalTotal = PETAL_COUNT + 2;
+  // Non-linear glow curve: 1/5 on_time_jamaah reads as a faint, just-noticeable glow, 3/5 is
+  // clearly brighter, and only a perfect 5/5 day reaches the full current glow (fraction 1 →
+  // brightness 1). A plain linear ramp made 1/5 look almost as lit as 3/5; this sqrt-style curve
+  // front-loads the dimness so the steps from 1→3→5 read as distinct escalations.
+  const brightness = Math.pow(Math.max(0, Math.min(1, fraction)), 0.65);
 
   useFrame(({ clock, camera }) => {
     const time = clock.getElapsedTime();
@@ -899,8 +904,8 @@ function TreeBlessing({ seed, fraction }: { seed: number; fraction: number }) {
     const gl = glow.current;
     if (gl) {
       const f = 0.85 + 0.15 * Math.sin(time * 1.2 + seed);
-      gl.scale.setScalar(2.3 * f);
-      gl.material.opacity = 0.34 * f * (0.4 + 0.6 * fraction);
+      gl.scale.setScalar((1.4 + 0.9 * brightness) * f);
+      gl.material.opacity = 0.34 * f * (0.22 + 0.78 * brightness);
     }
 
     const petalLimit = Math.max(2, Math.round((far ? FAR_PETAL_COUNT : petalTotal) * fraction));
@@ -966,7 +971,13 @@ function TreeBlessing({ seed, fraction }: { seed: number; fraction: number }) {
       <sprite ref={glow} position={[0, 0.95, 0]}>
         <spriteMaterial map={tex} color="#ffd23f" blending={AdditiveBlending} transparent depthWrite={false} />
       </sprite>
-      <pointLight position={[0, 1.05, 0]} color="#ffcc4d" intensity={25} distance={3} decay={2} />
+      <pointLight
+        position={[0, 1.05, 0]}
+        color="#ffcc4d"
+        intensity={8 + 17 * brightness}
+        distance={3}
+        decay={2}
+      />
 
       {/* little flowers around the base — more of them the closer to a fully golden day */}
       {GROUND_FLOWERS.slice(0, Math.max(1, Math.round(GROUND_FLOWERS.length * fraction))).map(([x, y, z], i) => (
