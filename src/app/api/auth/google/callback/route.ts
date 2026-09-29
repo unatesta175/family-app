@@ -2,6 +2,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { loginOrRegisterWithGoogle } from "@/lib/auth";
+import { getAppUrl } from "@/lib/app-url";
 
 const STATE_COOKIE = "google_oauth_state";
 
@@ -13,10 +14,11 @@ type GoogleUserInfo = {
 };
 
 export async function GET(req: NextRequest) {
+  const appUrl = getAppUrl(req);
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL("/login?error=google_not_configured", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=google_not_configured", appUrl));
   }
 
   const code = req.nextUrl.searchParams.get("code");
@@ -24,10 +26,10 @@ export async function GET(req: NextRequest) {
   const expectedState = req.cookies.get(STATE_COOKIE)?.value;
 
   if (!code || !state || !expectedState || state !== expectedState) {
-    return NextResponse.redirect(new URL("/login?error=google_state_mismatch", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=google_state_mismatch", appUrl));
   }
 
-  const redirectUri = new URL("/api/auth/google/callback", req.nextUrl.origin).toString();
+  const redirectUri = new URL("/api/auth/google/callback", appUrl).toString();
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -42,24 +44,24 @@ export async function GET(req: NextRequest) {
   });
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL("/login?error=google_token_exchange_failed", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=google_token_exchange_failed", appUrl));
   }
 
   const tokenJson = (await tokenRes.json()) as { access_token?: string };
   if (!tokenJson.access_token) {
-    return NextResponse.redirect(new URL("/login?error=google_token_exchange_failed", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=google_token_exchange_failed", appUrl));
   }
 
   const userInfoRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
     headers: { Authorization: `Bearer ${tokenJson.access_token}` },
   });
   if (!userInfoRes.ok) {
-    return NextResponse.redirect(new URL("/login?error=google_profile_fetch_failed", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=google_profile_fetch_failed", appUrl));
   }
 
   const profile = (await userInfoRes.json()) as GoogleUserInfo;
   if (!profile.email || !profile.email_verified) {
-    return NextResponse.redirect(new URL("/login?error=google_email_unverified", req.nextUrl.origin));
+    return NextResponse.redirect(new URL("/login?error=google_email_unverified", appUrl));
   }
 
   const result = await loginOrRegisterWithGoogle({
@@ -69,7 +71,7 @@ export async function GET(req: NextRequest) {
   });
 
   const res = NextResponse.redirect(
-    new URL(result.ok ? "/" : `/login?error=${encodeURIComponent(result.error)}`, req.nextUrl.origin)
+    new URL(result.ok ? "/" : `/login?error=${encodeURIComponent(result.error)}`, appUrl)
   );
   res.cookies.delete(STATE_COOKIE);
   return res;

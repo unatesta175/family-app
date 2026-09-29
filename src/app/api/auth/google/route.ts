@@ -2,6 +2,7 @@ import "server-only";
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { getAppUrl } from "@/lib/app-url";
 
 const STATE_COOKIE = "google_oauth_state";
 
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
   }
 
   const state = randomBytes(24).toString("hex");
-  const redirectUri = new URL("/api/auth/google/callback", req.nextUrl.origin).toString();
+  const redirectUri = new URL("/api/auth/google/callback", getAppUrl(req)).toString();
 
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authUrl.searchParams.set("client_id", clientId);
