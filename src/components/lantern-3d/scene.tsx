@@ -6,13 +6,9 @@ import {
   AdditiveBlending,
   CanvasTexture,
   Color,
-  LineCurve3,
-  Vector2,
-  Vector3,
   type Group,
   type Mesh,
   type MeshBasicMaterial,
-  type MeshPhysicalMaterial,
   type PointLight,
   type Sprite as SpriteType,
   type SpriteMaterial,
@@ -60,27 +56,23 @@ const WARM_COLOR = new Color("#f5a623");
 const GOLD_COLOR = new Color("#ffd23f");
 const BLAZE_COLOR = new Color("#fff4c2");
 
-const FRAME_BRONZE = "#3a2e24";
-const FRAME_BRONZE_DARK = "#241c15";
-const FACETS = 8; // low-poly: octagonal, not round
+const FRAME_BRONZE = "#4a3a26";
+const FRAME_BRONZE_DARK = "#3a2d1c";
 
-// Classic hurricane/camping-lantern silhouette (flared foot -> waist -> barrel glass -> shoulder
-// -> neck -> flared cap -> chimney, plus a bent-wire carry handle) instead of a hexagonal cage.
-const GLASS_BOTTOM_Y = -0.84;
-const GLASS_TOP_Y = 0.5;
-const SHOULDER_Y = 0.55;
-const HANDLE_MOUNT_Y = 0.72;
-const HANDLE_MOUNT_X = 0.3;
-const HANDLE_PEAK_Y = 1.7;
+const POST_COUNT = 6;
+const POST_RADIUS = 0.5;
+const POST_THICKNESS = 0.032;
 
-/** Revolve profile for the faceted glass globe: (radius, y) pairs from bottom to top. */
-const GLASS_PROFILE: [number, number][] = [
-  [0.3, GLASS_BOTTOM_Y],
-  [0.5, -0.4],
-  [0.52, 0.0],
-  [0.42, 0.35],
-  [0.3, GLASS_TOP_Y],
-];
+// Shared Y-anchors so the posts terminate exactly at the base plate's top surface and the roof
+// collar's bottom surface, by construction, instead of relying on eyeballed numbers that left a
+// visible gap ("floating" posts) — and every plate/collar radius is sized bigger than
+// POST_RADIUS + POST_THICKNESS so the posts actually land on the surface, not past its rim.
+const BASE_PLATE_TOP_Y = -1.05;
+const BASE_PLATE_H = 0.16;
+const ROOF_COLLAR_BOTTOM_Y = 1.05;
+const ROOF_COLLAR_H = 0.1;
+const POST_HEIGHT = ROOF_COLLAR_BOTTOM_Y - BASE_PLATE_TOP_Y;
+const POST_CENTER_Y = (BASE_PLATE_TOP_Y + ROOF_COLLAR_BOTTOM_Y) / 2;
 
 function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps) {
   const haloRef = useRef<SpriteType>(null);
@@ -91,22 +83,9 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
   const lightRef = useRef<PointLight>(null);
   const rimLightRef = useRef<PointLight>(null);
   const groupRef = useRef<Group>(null);
-  const glassRef = useRef<Mesh>(null);
   const orbRef = useRef<Mesh>(null);
   const sparkRefs = useRef<(SpriteType | null)[]>([]);
   const tex = getSoftTexture();
-
-  const glassPoints = useMemo(() => GLASS_PROFILE.map(([r, y]) => new Vector2(r, y)), []);
-  // Two straight struts meeting at a peak — a pointed triangular arch (like real bent lantern
-  // wire) instead of a smooth rounded loop, which read as too small/soft against the reference.
-  const handleLeft = useMemo(
-    () => new LineCurve3(new Vector3(-HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0), new Vector3(0, HANDLE_PEAK_Y, 0)),
-    []
-  );
-  const handleRight = useMemo(
-    () => new LineCurve3(new Vector3(0, HANDLE_PEAK_Y, 0), new Vector3(HANDLE_MOUNT_X, HANDLE_MOUNT_Y, 0)),
-    []
-  );
 
   const hasMissed = missedCount > 0;
   const q = Math.max(0, Math.min(1, quality / 100));
@@ -142,19 +121,22 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
       rimLightRef.current.intensity = glowPower * 0.4;
       rimLightRef.current.color.copy(flameColor);
     }
-    // The actual light source: a small solid glowing sphere sitting dead-center in the glass.
+    // The actual light source: a small solid glowing sphere sitting dead-center in the cage.
     // Sprites are camera-facing billboards with no real volume — as the lantern rotates they
     // never look "inside" anything from every angle, which is why the glow read as floating
     // rather than emanating from a real object. This orb is real 3D geometry that rotates with
-    // the lantern group, so from any angle it visibly sits in the middle of the glass, and the
-    // glow sprites layered around it (below) now exist only to soften its edge and bleed light
-    // through the glass walls, not to fake the source itself.
+    // the lantern group, so from any angle it visibly sits in the middle, and the glow sprites
+    // layered around it (below) now exist only to soften its edge and bleed light outward, not
+    // to fake the source itself.
     if (orbRef.current) {
       const s = 0.14 + glowPower * 0.06;
       orbRef.current.scale.setScalar(s);
       const mat = orbRef.current.material as MeshBasicMaterial;
       mat.color.copy(flameColor).lerp(BLAZE_COLOR, hasMissed ? 0.1 : blaze ? 0.7 : 0.35);
     }
+    // Soft additive glow, layered from a small hot core out to a faint halo — every layer kept
+    // narrower than the cage's own diameter (~1.0) so the light stays visually contained inside
+    // it instead of blooming out past its silhouette.
     if (coreGlowRef.current) {
       const s = 0.24 + glowPower * 0.14;
       coreGlowRef.current.scale.set(s, s, 1);
@@ -190,11 +172,6 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
       mat.color.copy(flameColor);
       mat.opacity = Math.min(0.4, 0.04 + glowPower * 0.07);
     }
-    if (glassRef.current) {
-      const mat = glassRef.current.material as MeshPhysicalMaterial;
-      mat.emissive.copy(flameColor);
-      mat.emissiveIntensity = Math.min(1.2, 0.15 + glowPower * 0.22);
-    }
     if (groupRef.current) {
       groupRef.current.rotation.y = t * 0.15;
     }
@@ -212,85 +189,92 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 
   return (
     <group ref={groupRef}>
-      {/* flared foot: proportionally large, like the reference's wide triangular base */}
-      <mesh position={[0, -1.22, 0]} castShadow>
-        <cylinderGeometry args={[0.14, 0.5, 0.52, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.55} metalness={0.4} flatShading />
+      {/* foot: a wider dark ring the base plate sits on, like real lantern feet */}
+      <mesh position={[0, BASE_PLATE_TOP_Y - BASE_PLATE_H - 0.09, 0]} castShadow>
+        <cylinderGeometry args={[0.44, 0.56, 0.18, 8]} />
+        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.65} metalness={0.35} flatShading />
       </mesh>
 
-      {/* waist ring, with the wick-adjuster knob sticking out to one side */}
-      <mesh position={[0, -0.9, 0]}>
-        <cylinderGeometry args={[0.3, 0.34, 0.12, FACETS]} />
+      {/* base plate: posts sit directly on its top face (radius > POST_RADIUS so they land on
+          the surface, not past its rim) */}
+      <mesh position={[0, BASE_PLATE_TOP_Y - BASE_PLATE_H / 2, 0]}>
+        <cylinderGeometry args={[POST_RADIUS + 0.14, POST_RADIUS + 0.06, BASE_PLATE_H, 8]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} flatShading />
       </mesh>
-      <mesh position={[0.37, -0.9, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.05, 0.05, 0.12, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.55} flatShading />
-      </mesh>
 
-      {/* the faceted glass globe (low-poly octagonal barrel), lit warm from within by the flame.
-          flatShading keeps each of the 8 facets a visible flat pane instead of smoothing them
-          into a round highlight, which is what actually reads as "low poly" at a glance. */}
-      <mesh ref={glassRef}>
-        <latheGeometry args={[glassPoints, FACETS]} />
-        <meshPhysicalMaterial
-          color="#fdf6e3"
-          transparent
-          opacity={0.4}
-          roughness={0.12}
-          metalness={0}
-          emissive="#f5a623"
-          emissiveIntensity={0.2}
-          side={2}
-          flatShading
-        />
-      </mesh>
+      {/* corner posts: span exactly base-plate-top to roof-collar-bottom, no gap either end */}
+      {Array.from({ length: POST_COUNT }, (_, i) => {
+        const a = (i / POST_COUNT) * Math.PI * 2;
+        return (
+          <mesh key={i} position={[Math.cos(a) * POST_RADIUS, POST_CENTER_Y, Math.sin(a) * POST_RADIUS]} castShadow>
+            <cylinderGeometry args={[POST_THICKNESS, POST_THICKNESS, POST_HEIGHT, 8]} />
+            <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} flatShading />
+          </mesh>
+        );
+      })}
 
-      {/* shoulder collar, neck, and flared chimney cap */}
-      <mesh position={[0, SHOULDER_Y, 0]}>
-        <cylinderGeometry args={[0.28, 0.32, 0.1, FACETS]} />
-        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} flatShading />
-      </mesh>
-      <mesh position={[0, SHOULDER_Y + 0.13, 0]}>
-        <cylinderGeometry args={[0.14, 0.16, 0.16, FACETS]} />
+      {/* mid-rail ties the six posts together partway up, like a real lantern cage — also reads
+          as structural support rather than six independent floating rods */}
+      <mesh position={[0, POST_CENTER_Y, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[POST_RADIUS, 0.018, 8, POST_COUNT * 4]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.45} metalness={0.55} flatShading />
       </mesh>
-      <mesh position={[0, SHOULDER_Y + 0.31, 0]} castShadow>
-        <cylinderGeometry args={[0.08, 0.26, 0.16, FACETS]} />
+
+      {/* small corner brackets where each post meets the base plate and roof collar */}
+      {Array.from({ length: POST_COUNT }, (_, i) => {
+        const a = (i / POST_COUNT) * Math.PI * 2;
+        const x = Math.cos(a) * POST_RADIUS;
+        const z = Math.sin(a) * POST_RADIUS;
+        return (
+          <group key={`bracket${i}`}>
+            <mesh position={[x, BASE_PLATE_TOP_Y + 0.03, z]}>
+              <cylinderGeometry args={[POST_THICKNESS * 1.8, POST_THICKNESS * 1.8, 0.06, 8]} />
+              <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.6} flatShading />
+            </mesh>
+            <mesh position={[x, ROOF_COLLAR_BOTTOM_Y - 0.03, z]}>
+              <cylinderGeometry args={[POST_THICKNESS * 1.8, POST_THICKNESS * 1.8, 0.06, 8]} />
+              <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.6} flatShading />
+            </mesh>
+          </group>
+        );
+      })}
+
+      {/* roof collar: posts plug directly into its underside */}
+      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H / 2, 0]}>
+        <cylinderGeometry args={[POST_RADIUS + 0.06, POST_RADIUS + 0.1, ROOF_COLLAR_H, 8]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} flatShading />
       </mesh>
-      <mesh position={[0, SHOULDER_Y + 0.45, 0]}>
-        <cylinderGeometry args={[0.05, 0.06, 0.1, FACETS]} />
+
+      {/* roof cone sits flush on the collar, with a wider brim for a real lantern-hat silhouette */}
+      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.22, 0]} castShadow>
+        <coneGeometry args={[POST_RADIUS + 0.24, 0.44, 8]} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.5} metalness={0.5} flatShading />
+      </mesh>
+
+      {/* finial: a small ball on a short neck, then the hanging ring */}
+      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.46, 0]}>
+        <cylinderGeometry args={[0.025, 0.035, 0.08, 8]} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} flatShading />
+      </mesh>
+      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.53, 0]}>
+        <sphereGeometry args={[0.05, 12, 12]} />
+        <meshStandardMaterial color={FRAME_BRONZE} roughness={0.35} metalness={0.65} flatShading />
+      </mesh>
+      <mesh position={[0, ROOF_COLLAR_BOTTOM_Y + ROOF_COLLAR_H + 0.63, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.09, 0.02, 8, 16]} />
         <meshStandardMaterial color={FRAME_BRONZE} roughness={0.4} metalness={0.6} flatShading />
       </mesh>
 
-      {/* bent-wire carry handle: two straight struts meeting at a tall peak well above the cap,
-          a pointed triangular arch like real bent lantern wire */}
-      <mesh>
-        <tubeGeometry args={[handleLeft, 8, 0.024, 6, false]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} flatShading />
-      </mesh>
-      <mesh>
-        <tubeGeometry args={[handleRight, 8, 0.024, 6, false]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} flatShading />
-      </mesh>
-      <mesh position={[0, HANDLE_PEAK_Y, 0]}>
-        <sphereGeometry args={[0.026, 8, 8]} />
-        <meshStandardMaterial color={FRAME_BRONZE_DARK} roughness={0.4} metalness={0.65} flatShading />
-      </mesh>
-
-      {/* the light ball itself: real 3D geometry at the exact center of the glass, unlit (always
+      {/* the light ball itself: real 3D geometry at the exact center of the cage, unlit (always
           full brightness regardless of scene lighting) so it reads as the thing emitting light,
-          not a surface reflecting it — visible through the glass from every angle as the
-          lantern rotates */}
+          not a surface reflecting it — visible from every angle as the lantern rotates */}
       <mesh ref={orbRef} position={[0, -0.15, 0]}>
         <sphereGeometry args={[1, 24, 24]} />
         <meshBasicMaterial toneMapped={false} />
       </mesh>
 
-      {/* soft additive sprites: feather the orb's edge and bleed its light through the glass
-          walls in every direction — no longer faking the source itself (the orb above does
-          that), just diffusing it */}
+      {/* soft additive sprites: feather the orb's edge and bleed its light outward in every
+          direction — no longer faking the source itself (the orb above does that) */}
       {tex && (
         <>
           <sprite ref={haloRef} position={[0, -0.1, 0]}>
@@ -319,7 +303,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 
       {/* soft contact glow pooling under the base, like real light hitting a surface */}
       {tex && (
-        <sprite ref={groundGlowRef} position={[0, -1.56, 0.05]}>
+        <sprite ref={groundGlowRef} position={[0, -1.42, 0.05]}>
           <spriteMaterial map={tex} blending={AdditiveBlending} transparent depthWrite={false} toneMapped={false} />
         </sprite>
       )}
@@ -330,7 +314,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 export function LanternScene(props: LanternSceneProps) {
   return (
     <div className="h-56 w-full overflow-hidden rounded-3xl bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-800">
-      <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.35, 5.2], fov: 38 }}>
+      <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.5, 5.2], fov: 38 }}>
         <ambientLight intensity={0.16} />
         {/* faint cool rim so the frame reads with some shape even when the flame is nearly out */}
         <directionalLight position={[-2, 2, 3]} intensity={0.18} color="#8fa8c9" />
