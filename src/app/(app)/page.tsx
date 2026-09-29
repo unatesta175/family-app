@@ -12,7 +12,8 @@ import {
 } from "@/lib/db/repo";
 import { todayIso, addDays } from "@/lib/date";
 import { formatHijri } from "@/lib/hijri";
-import { PRAYER_ORDER } from "@/lib/prayers";
+import { PRAYER_ORDER, isPerformed } from "@/lib/prayers";
+import { gardenQuality, gardenGoldenFraction, gardenMissedCount } from "@/lib/garden";
 import { currentStreak, dayCompletionPct } from "@/lib/streaks";
 import { evaluateChallenge } from "@/lib/challenge-progress";
 import { computePrayerTimes, nextPrayer, formatPrayerTime, prayerWindowEnd } from "@/lib/prayer-times";
@@ -25,6 +26,7 @@ import { QuoteCard } from "@/components/quote-card";
 import { LiveClock } from "@/components/live-clock";
 import { QUOTES } from "@/lib/quotes";
 import { StatusLegendTip } from "@/components/status-legend-tip";
+import { LanternCard } from "@/components/lantern-3d/lantern-card";
 import { Flame, Trophy } from "lucide-react";
 import type { Status } from "@/lib/db/schema";
 
@@ -106,6 +108,12 @@ export default async function HomePage() {
   const lateCount = statuses.filter((s) => LATE_STATUSES.includes(s)).length;
   const missedCount = statuses.filter((s) => s === "missed").length;
 
+  const lanternQuality = gardenQuality(dayLog);
+  const lanternGoldenFraction = gardenGoldenFraction(dayLog);
+  const lanternMissedCount = gardenMissedCount(dayLog);
+  const performedFraction =
+    PRAYER_ORDER.filter((p) => isPerformed(dayLog[p] ?? "not_yet")).length / PRAYER_ORDER.length;
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex items-start justify-between">
@@ -165,6 +173,13 @@ export default async function HomePage() {
           <span className="text-sm font-bold text-orange-600">{streak}</span>
         </div>
       </div>
+
+      <LanternCard
+        quality={lanternQuality}
+        performedFraction={performedFraction}
+        goldenFraction={lanternGoldenFraction}
+        missedCount={lanternMissedCount}
+      />
 
       {qadaOwed > 0 && (
         <div className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-800">
