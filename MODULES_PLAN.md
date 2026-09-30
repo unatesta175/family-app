@@ -15,7 +15,7 @@ Each module gets its **own visual identity** (not a reskin of the prayer tracker
 its own data model, and — per the user's request — is reachable from a place other than the
 existing bottom nav, which is already full.
 
-This is a planning document only — nothing here has been implemented yet.
+This is a planning document. **Habit Tracking is now implemented** — see `HABITS_MODULE.md`. The other modules are still planned only.
 
 ---
 

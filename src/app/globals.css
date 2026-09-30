@@ -251,3 +251,95 @@ body {
     opacity: 0;
   }
 }
+
+/*
+ * Habit tracker module theme. A deliberately different identity from the prayer tracker's
+ * emerald/gold: cool indigo brand on a soft slate canvas, SaaS-dashboard surfaces, and warm
+ * orange reserved for "break" habits. Everything under `.habits-theme` reads these tokens, so the
+ * prayer module's palette is untouched.
+ */
+.habits-theme {
+  --h-bg: #f5f6fb;
+  --h-surface: #ffffff;
+  --h-surface-2: #f0f1f9;
+  --h-border: #e4e6f2;
+  --h-fg: #14172b;
+  --h-muted: #666c8c;
+  --h-brand: #5b5bf0;
+  --h-brand-fg: #ffffff;
+  --h-brand-soft: #ececff;
+  --h-break: #f97316;
+  --h-break-soft: #fff1e6;
+  --h-good: #10b981;
+  --h-bad: #f43f5e;
+  --h-shadow: 0 1px 2px rgb(20 23 43 / 0.04), 0 4px 16px rgb(20 23 43 / 0.05);
+}
+
+.dark .habits-theme {
+  --h-bg: #0c0e1b;
+  --h-surface: #151931;
+  --h-surface-2: #1c2140;
+  --h-border: #272d52;
+  --h-fg: #eceffd;
+  --h-muted: #9aa1c9;
+  --h-brand: #7c7cff;
+  --h-brand-fg: #0c0e1b;
+  --h-brand-soft: #23264f;
+  --h-break: #fb923c;
+  --h-break-soft: #3a2517;
+  --h-shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px rgb(0 0 0 / 0.25);
+}
+
+@theme inline {
+  --color-h-bg: var(--h-bg);
+  --color-h-surface: var(--h-surface);
+  --color-h-surface2: var(--h-surface-2);
+  --color-h-border: var(--h-border);
+  --color-h-fg: var(--h-fg);
+  --color-h-muted: var(--h-muted);
+  --color-h-brand: var(--h-brand);
+  --color-h-brand-fg: var(--h-brand-fg);
+  --color-h-brand-soft: var(--h-brand-soft);
+  --color-h-break: var(--h-break);
+  --color-h-break-soft: var(--h-break-soft);
+  --color-h-good: var(--h-good);
+  --color-h-bad: var(--h-bad);
+}
+
+.habits-theme .h-card {
+  background: var(--h-surface);
+  border: 1px solid var(--h-border);
+  border-radius: 1rem;
+  box-shadow: var(--h-shadow);
+}
+
+@keyframes habit-pop {
+  0% {
+    transform: scale(0.85);
+  }
+  55% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.habit-pop {
+  animation: habit-pop 0.28s ease-out;
+}
+
+@keyframes habit-sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.habit-sheet-in {
+  animation: habit-sheet-in 0.22s ease-out;
+}

@@ -66,6 +66,105 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       created_at TEXT NOT NULL DEFAULT (current_timestamp)
     )`,
   },
+  // --- Habit tracker module -------------------------------------------------------------
+  {
+    table: "app_meta",
+    ddl: `CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    )`,
+  },
+  {
+    table: "habit_categories",
+    ddl: `CREATE TABLE IF NOT EXISTS habit_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT 'indigo',
+      icon TEXT NOT NULL DEFAULT 'layers',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "habit_categories_idx",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS habit_categories_profile_name_unique ON habit_categories (profile_id, name)`,
+  },
+  {
+    table: "habits",
+    ddl: `CREATE TABLE IF NOT EXISTS habits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      category_id INTEGER REFERENCES habit_categories(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      description TEXT,
+      kind TEXT NOT NULL DEFAULT 'build',
+      icon TEXT NOT NULL DEFAULT 'target',
+      color TEXT NOT NULL DEFAULT 'indigo',
+      schedule TEXT NOT NULL DEFAULT 'daily',
+      weekdays TEXT NOT NULL DEFAULT '0,1,2,3,4,5,6',
+      weekly_target INTEGER NOT NULL DEFAULT 3,
+      daily_target INTEGER NOT NULL DEFAULT 1,
+      unit TEXT,
+      start_date TEXT NOT NULL,
+      archived_at TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "habits_profile_idx",
+    ddl: `CREATE INDEX IF NOT EXISTS habits_profile_idx ON habits (profile_id)`,
+  },
+  {
+    table: "habit_logs",
+    ddl: `CREATE TABLE IF NOT EXISTS habit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'done',
+      value INTEGER NOT NULL DEFAULT 1,
+      note TEXT,
+      logged_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "habit_logs_idx",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS habit_logs_habit_date_unique ON habit_logs (habit_id, date)`,
+  },
+  {
+    table: "habit_tasks",
+    ddl: `CREATE TABLE IF NOT EXISTS habit_tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      category_id INTEGER REFERENCES habit_categories(id) ON DELETE SET NULL,
+      title TEXT NOT NULL,
+      notes TEXT,
+      priority TEXT NOT NULL DEFAULT 'medium',
+      recurrence TEXT NOT NULL DEFAULT 'none',
+      weekdays TEXT NOT NULL DEFAULT '',
+      due_date TEXT,
+      completed_at TEXT,
+      archived_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "habit_tasks_profile_idx",
+    ddl: `CREATE INDEX IF NOT EXISTS habit_tasks_profile_idx ON habit_tasks (profile_id)`,
+  },
+  {
+    table: "habit_task_completions",
+    ddl: `CREATE TABLE IF NOT EXISTS habit_task_completions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL REFERENCES habit_tasks(id) ON DELETE CASCADE,
+      date TEXT NOT NULL
+    )`,
+  },
+  {
+    table: "habit_task_completions_idx",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS habit_task_completions_unique ON habit_task_completions (task_id, date)`,
+  },
 ];
 
 /** Runs once at server startup (see src/instrumentation.ts) to self-heal schema drift. */
@@ -101,5 +200,14 @@ export async function runStartupMigrations() {
     await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)`);
   } finally {
     client.close();
+  }
+
+  // Runs after the raw client above is closed: uses the shared drizzle client so the seed goes
+  // through the exact same code path as the in-app "starter habits" button.
+  try {
+    const { seedStarterHabitsOnce } = await import("@/lib/db/repo-habits");
+    await seedStarterHabitsOnce();
+  } catch (err) {
+    console.error("[migrate] starter habit seeding failed", err);
   }
 }

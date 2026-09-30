@@ -181,3 +181,117 @@ export const qadaLedger = sqliteTable("qada_ledger", {
   clearedAt: text("cleared_at"),
   clearedByLogId: integer("cleared_by_log_id"),
 });
+
+// ---------------------------------------------------------------------------------------------
+// Habit tracker module. Same household/profile scoping as prayer data: every row hangs off a
+// profileId (directly, or through its habit/task), so family visibility works unchanged.
+// ---------------------------------------------------------------------------------------------
+
+export const HABIT_KINDS = ["build", "break"] as const;
+export type HabitKind = (typeof HABIT_KINDS)[number];
+
+/** daily = every day, weekdays = chosen days of the week, weekly_count = N times any day of the week. */
+export const HABIT_SCHEDULES = ["daily", "weekdays", "weekly_count"] as const;
+export type HabitSchedule = (typeof HABIT_SCHEDULES)[number];
+
+/** done = did it / stayed clean, slipped = broke a break-habit, skipped = deliberate rest day. */
+export const HABIT_LOG_STATUSES = ["done", "slipped", "skipped"] as const;
+export type HabitLogStatus = (typeof HABIT_LOG_STATUSES)[number];
+
+export const TASK_RECURRENCES = ["none", "daily", "weekly", "monthly"] as const;
+export type TaskRecurrence = (typeof TASK_RECURRENCES)[number];
+
+export const TASK_PRIORITIES = ["low", "medium", "high"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+export const habitCategories = sqliteTable(
+  "habit_categories",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").notNull().default("indigo"),
+    icon: text("icon").notNull().default("layers"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("habit_categories_profile_name_unique").on(table.profileId, table.name)]
+);
+
+export const habits = sqliteTable("habits", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").references(() => habitCategories.id, { onDelete: "set null" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  kind: text("kind", { enum: HABIT_KINDS }).notNull().default("build"),
+  icon: text("icon").notNull().default("target"),
+  color: text("color").notNull().default("indigo"),
+  schedule: text("schedule", { enum: HABIT_SCHEDULES }).notNull().default("daily"),
+  weekdays: text("weekdays").notNull().default("0,1,2,3,4,5,6"), // 0 = Sunday, for schedule=weekdays
+  weeklyTarget: integer("weekly_target").notNull().default(3), // for schedule=weekly_count
+  dailyTarget: integer("daily_target").notNull().default(1), // >1 makes it a counter (e.g. 8 glasses)
+  unit: text("unit"),
+  startDate: text("start_date").notNull(),
+  archivedAt: text("archived_at"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const habitLogs = sqliteTable(
+  "habit_logs",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    habitId: integer("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // ISO yyyy-mm-dd
+    status: text("status", { enum: HABIT_LOG_STATUSES }).notNull().default("done"),
+    value: integer("value").notNull().default(1), // progress towards dailyTarget
+    note: text("note"),
+    loggedAt: text("logged_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("habit_logs_habit_date_unique").on(table.habitId, table.date)]
+);
+
+export const habitTasks = sqliteTable("habit_tasks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").references(() => habitCategories.id, { onDelete: "set null" }),
+  title: text("title").notNull(),
+  notes: text("notes"),
+  priority: text("priority", { enum: TASK_PRIORITIES }).notNull().default("medium"),
+  recurrence: text("recurrence", { enum: TASK_RECURRENCES }).notNull().default("none"),
+  weekdays: text("weekdays").notNull().default(""), // for recurrence=weekly
+  // Single task: the due date (null = whenever). Recurring task: the anchor/start date.
+  dueDate: text("due_date"),
+  completedAt: text("completed_at"), // single tasks only (yyyy-mm-dd of completion)
+  archivedAt: text("archived_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const habitTaskCompletions = sqliteTable(
+  "habit_task_completions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    taskId: integer("task_id")
+      .notNull()
+      .references(() => habitTasks.id, { onDelete: "cascade" }),
+    date: text("date").notNull(),
+  },
+  (table) => [uniqueIndex("habit_task_completions_unique").on(table.taskId, table.date)]
+);
