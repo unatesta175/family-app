@@ -1,30 +1,93 @@
-const CACHE_NAME = "salah-tracker-v1";
+const VERSION = "v2";
+const STATIC_CACHE = `istiqamahly-static-${VERSION}`;
+const PAGE_CACHE = `istiqamahly-pages-${VERSION}`;
+const KEEP = [STATIC_CACHE, PAGE_CACHE];
+
+// Small shell that must work offline: the fallback page and the app icons.
+const PRECACHE = [
+  "/offline.html",
+  "/icons/icon-192.png",
+  "/icons/habits-icon-192.png",
+  "/icons/habits-icon-512.png",
+];
 
 self.addEventListener("install", (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches
+      .open(STATIC_CACHE)
+      .then((cache) => cache.addAll(PRECACHE))
+      .catch(() => {})
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
-    )
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((key) => !KEEP.includes(key)).map((key) => caches.delete(key))))
+      .then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-// Network-first for navigations/API so data stays fresh; falls back to cache when offline.
+// The app asks us to forget cached pages on logout so the next person on a shared device
+// never sees a previous user's habits offline.
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "CLEAR_PAGES") {
+    event.waitUntil(caches.delete(PAGE_CACHE));
+  }
+});
+
+function isStaticAsset(url) {
+  return (
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icons/") ||
+    /\.(?:png|jpg|jpeg|svg|webp|ico|woff2?)$/.test(url.pathname)
+  );
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
 
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+  if (url.pathname.startsWith("/api/")) return; // never cache auth / export endpoints
+
+  // Hashed build assets and icons never change for a given URL: cache-first.
+  if (isStaticAsset(url)) {
+    event.respondWith(
+      caches.match(request).then(
+        (hit) =>
+          hit ||
+          fetch(request).then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(STATIC_CACHE).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+      )
+    );
+    return;
+  }
+
+  // Pages and data: network-first so everything stays fresh, cached copy when offline.
   event.respondWith(
     fetch(request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        if (response.ok && response.type === "basic") {
+          const copy = response.clone();
+          caches.open(PAGE_CACHE).then((cache) => cache.put(request, copy));
+        }
         return response;
       })
-      .catch(() => caches.match(request))
+      .catch(() =>
+        caches.match(request).then((hit) => {
+          if (hit) return hit;
+          if (request.mode === "navigate") return caches.match("/offline.html");
+          return Response.error();
+        })
+      )
   );
 });

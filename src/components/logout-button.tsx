@@ -11,7 +11,12 @@ export function LogoutButton() {
     <button
       type="button"
       disabled={isPending}
-      onClick={() => startTransition(() => logoutAction())}
+      onClick={() =>
+        startTransition(async () => {
+          navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_PAGES" });
+          await logoutAction();
+        })
+      }
       className="flex h-8 w-8 items-center justify-center rounded-full bg-white text-neutral-500 shadow-sm transition-colors hover:text-rose-600 disabled:opacity-60"
       aria-label="Log out"
       title="Log out"

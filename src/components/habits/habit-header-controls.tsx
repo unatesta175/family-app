@@ -69,7 +69,12 @@ export function HabitLogout() {
     <button
       type="button"
       disabled={pending}
-      onClick={() => startTransition(() => logoutAction())}
+      onClick={() =>
+        startTransition(async () => {
+          navigator.serviceWorker?.controller?.postMessage({ type: "CLEAR_PAGES" });
+          await logoutAction();
+        })
+      }
       aria-label="Log out"
       title="Log out"
       className="flex h-8 w-8 items-center justify-center rounded-full border border-h-border bg-h-surface text-h-muted shadow-sm transition-colors hover:text-h-bad disabled:opacity-60"

@@ -1,0 +1,24 @@
+{
+  "id": "/habits",
+  "name": "Istiqamahly Habits",
+  "short_name": "Habits",
+  "description": "Build good habits, break bad ones, and track tasks and streaks with your family.",
+  "start_url": "/habits",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6fb",
+  "theme_color": "#5b5bf0",
+  "categories": ["productivity", "lifestyle", "health"],
+  "icons": [
+    { "src": "/icons/habits-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/habits-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/habits-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Today", "short_name": "Today", "url": "/habits", "icons": [{ "src": "/icons/habits-icon-192.png", "sizes": "192x192" }] },
+    { "name": "Weekly view", "short_name": "Week", "url": "/habits/week", "icons": [{ "src": "/icons/habits-icon-192.png", "sizes": "192x192" }] },
+    { "name": "Tasks", "short_name": "Tasks", "url": "/habits/tasks", "icons": [{ "src": "/icons/habits-icon-192.png", "sizes": "192x192" }] },
+    { "name": "Statistics", "short_name": "Stats", "url": "/habits/stats", "icons": [{ "src": "/icons/habits-icon-192.png", "sizes": "192x192" }] }
+  ]
+}
