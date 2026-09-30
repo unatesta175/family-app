@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <div className="mx-auto min-h-screen max-w-2xl bg-neutral-50 px-6 py-16 text-neutral-800">
+    <div className="prayer-theme mx-auto min-h-screen max-w-2xl bg-neutral-50 px-6 py-16 text-neutral-800">
       <Link href="/welcome" className="text-sm font-semibold text-emerald-700 hover:text-emerald-800">
         ← Back to Istiqamahly
       </Link>

@@ -272,13 +272,13 @@ function LifetimeRing({ pct }: { pct: number }) {
   return (
     <div className="relative h-11 w-11 shrink-0">
       <svg width="44" height="44" viewBox="0 0 44 44" className="-rotate-90">
-        <circle cx="22" cy="22" r={r} fill="none" stroke="#eef2ee" strokeWidth="4" />
+        <circle cx="22" cy="22" r={r} fill="none" stroke="var(--chart-track)" strokeWidth="4" />
         <circle
           cx="22"
           cy="22"
           r={r}
           fill="none"
-          stroke="#0f7a4c"
+          stroke="var(--chart-brand)"
           strokeWidth="4"
           strokeLinecap="round"
           strokeDasharray={c}

@@ -110,7 +110,7 @@ export default async function WelcomePage() {
   if (session) redirect("/");
 
   return (
-    <div className="relative min-h-screen overflow-x-hidden bg-neutral-50 text-neutral-900">
+    <div className="prayer-theme relative min-h-screen overflow-x-hidden bg-neutral-50 text-neutral-900">
       {/* ---------- Nav ---------- */}
       <header className="sticky top-0 z-30 border-b border-neutral-200/70 bg-neutral-50/80 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">

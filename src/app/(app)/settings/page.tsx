@@ -3,6 +3,7 @@ import { getOwnProfileId, requireAuth } from "@/lib/auth";
 import { ProfileSettingsForm } from "@/components/profile-settings-form";
 import { LocationSettingsForm } from "@/components/location-settings-form";
 import { ExportDataButton } from "@/components/export-data-button";
+import { ThemeToggle } from "@/components/theme-toggle-loader";
 import { InviteCodeCard } from "@/components/invite-code-card";
 
 export default async function SettingsPage() {
@@ -24,6 +25,12 @@ export default async function SettingsPage() {
       {ownProfile && <LocationSettingsForm profile={ownProfile} />}
 
       {household && <InviteCodeCard inviteCode={household.inviteCode} householdName={household.name} />}
+
+      <div className="rounded-2xl bg-white p-4 shadow-sm">
+        <p className="mb-1 text-sm font-semibold text-neutral-900">Appearance</p>
+        <p className="mb-3 text-xs text-neutral-400">Choose a light or dark look. Applies to the whole app.</p>
+        <ThemeToggle />
+      </div>
 
       <div className="rounded-2xl bg-white p-4 shadow-sm">
         <p className="mb-1 text-sm font-semibold text-neutral-900">Data</p>

@@ -46,13 +46,13 @@ export function DailyOverviewButton({
             className="pointer-events-auto flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg ring-1 ring-black/5"
           >
             <svg width="64" height="64" viewBox="0 0 64 64" className="absolute -rotate-90">
-              <circle cx="32" cy="32" r={r} fill="none" stroke="#eef2ee" strokeWidth="6" />
+              <circle cx="32" cy="32" r={r} fill="none" stroke="var(--chart-track)" strokeWidth="6" />
               <circle
                 cx="32"
                 cy="32"
                 r={r}
                 fill="none"
-                stroke="#0f7a4c"
+                stroke="var(--chart-brand)"
                 strokeWidth="6"
                 strokeLinecap="round"
                 strokeDasharray={c}

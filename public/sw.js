@@ -38,7 +38,12 @@ self.addEventListener("message", (event) => {
   }
 });
 
+// On localhost (dev) build assets keep their URLs while their contents change, so cache-first would
+// serve stale CSS/JS. Only production, where filenames are content-hashed, uses the static cache.
+const IS_DEV = self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1";
+
 function isStaticAsset(url) {
+  if (IS_DEV) return false;
   return (
     url.pathname.startsWith("/_next/static/") ||
     url.pathname.startsWith("/icons/") ||

@@ -18,11 +18,11 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Phone bottom bar. On lg+ screens the same items render as a left sidebar instead. */
+/** Phone bottom bar. On md+ screens (768px and up, which covers laptops and desktop PWA windows) the same items render as a left sidebar instead. */
 export function HabitBottomNav() {
   const pathname = usePathname();
   return (
-    <nav className="sticky bottom-0 z-20 flex w-full items-stretch justify-between border-t border-h-border bg-h-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur lg:hidden">
+    <nav className="sticky bottom-0 z-20 flex w-full items-stretch justify-between border-t border-h-border bg-h-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
       {ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
@@ -53,7 +53,7 @@ export function HabitBottomNav() {
 export function HabitSidebar() {
   const pathname = usePathname();
   return (
-    <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-h-border px-3 py-6 lg:flex">
+    <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-h-border px-3 py-6 md:flex">
       <div className="mb-4 flex items-center gap-2 px-2">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-h-brand text-h-brand-fg">
           <ListChecks className="h-5 w-5" />

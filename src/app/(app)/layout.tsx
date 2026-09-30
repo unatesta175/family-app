@@ -2,6 +2,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { ProfileSwitcher } from "@/components/profile-switcher";
 import { LogoutButton } from "@/components/logout-button";
 import { ModuleSwitcher } from "@/components/module-switcher";
+import { ThemeToggleIcon } from "@/components/theme-toggle-icon";
 import { getActiveProfileId } from "@/lib/session";
 import { requireAuth, getOwnProfileId } from "@/lib/auth";
 import { getProfilesInHousehold } from "@/lib/db/repo";
@@ -16,12 +17,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const viewingPartner = ownProfileId !== null && activeProfileId !== ownProfileId;
 
   return (
-    <div className="mx-auto flex w-full max-w-md flex-1 flex-col bg-background">
+    <div className="prayer-theme mx-auto flex w-full max-w-md flex-1 flex-col bg-background">
       <header className="sticky top-0 z-10 flex flex-col gap-2 bg-background px-4 pt-4">
         <div className="flex items-center justify-between gap-2">
           <ModuleSwitcher current="prayer" tone="prayer" />
           <div className="flex items-center gap-2">
             <ProfileSwitcher profiles={profiles} activeProfileId={activeProfileId} />
+            <ThemeToggleIcon />
             <LogoutButton />
           </div>
         </div>

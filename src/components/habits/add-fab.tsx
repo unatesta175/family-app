@@ -29,7 +29,7 @@ export function AddFab({ categories }: { categories: CategoryOption[] }) {
 
   return (
     <>
-      <div ref={ref} className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-30 flex flex-col items-end gap-2 lg:bottom-8 lg:right-8">
+      <div ref={ref} className="fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-4 z-30 flex flex-col items-end gap-2 md:bottom-8 md:right-8">
         {menu && (
           <div className="habit-sheet-in flex flex-col gap-1.5 rounded-2xl border border-h-border bg-h-surface p-1.5 shadow-xl">
             <button

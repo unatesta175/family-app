@@ -83,7 +83,7 @@ export default async function HabitsStatsPage({
   const needsWork = [...ranked].reverse().filter((p) => (p.rate ?? 0) < 60).slice(0, 3);
 
   return (
-    <div className="flex flex-col gap-5 lg:mx-auto lg:max-w-3xl">
+    <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
       <div className="flex items-end justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{profile?.name}</p>
@@ -125,8 +125,8 @@ export default async function HabitsStatsPage({
           </section>
 
           {/* Headline numbers */}
-          <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-            <div className="h-card col-span-2 flex items-center gap-4 p-4 lg:col-span-1 lg:flex-col lg:items-start">
+          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+            <div className="h-card col-span-2 flex items-center gap-4 p-4 md:col-span-1 md:flex-col md:items-start">
               <Ring pct={overall ?? 0} size={72} stroke={8}>
                 <span className="text-base font-extrabold tabular-nums">{overall ?? 0}%</span>
               </Ring>

@@ -142,7 +142,7 @@ export function TodayBoard({
   return (
     <div className="flex flex-col gap-4">
       {!compact && (
-      <div className="scrollbar-hide -mx-4 flex gap-1.5 overflow-x-auto px-4 lg:mx-0 lg:px-0">
+      <div className="scrollbar-hide -mx-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0">
         {(
           [
             { key: "all", label: "All" },

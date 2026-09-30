@@ -15,7 +15,7 @@ export function ProgressRing({ pct, size = 56 }: { pct: number; size?: number })
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="#e5efe6"
+          stroke="var(--chart-track)"
           strokeWidth={stroke}
         />
         <circle
@@ -23,7 +23,7 @@ export function ProgressRing({ pct, size = 56 }: { pct: number; size?: number })
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="#0f7a4c"
+          stroke="var(--chart-brand)"
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}

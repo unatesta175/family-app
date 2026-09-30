@@ -103,13 +103,13 @@ export default async function HistoryPage({
       >
         {!isSelected && hasLog && (
           <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 -rotate-90">
-            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#eef2ee" strokeWidth="2.5" />
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--chart-track)" strokeWidth="2.5" />
             <circle
               cx={size / 2}
               cy={size / 2}
               r={r}
               fill="none"
-              stroke={pct >= 100 ? "#0f7a4c" : "#f5a623"}
+              stroke={pct >= 100 ? "var(--chart-brand)" : "#f5a623"}
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeDasharray={c}

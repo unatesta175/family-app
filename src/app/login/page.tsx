@@ -14,7 +14,7 @@ export default async function LoginPage() {
   if (session) redirect("/");
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-50 px-6 py-12">
+    <div className="prayer-theme relative flex min-h-screen items-center justify-center overflow-hidden bg-neutral-50 px-6 py-12">
       <Link
         href="/welcome"
         className="absolute left-4 top-4 z-10 flex items-center gap-1.5 rounded-full border border-neutral-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-600 shadow-sm transition-colors hover:border-neutral-300 hover:text-neutral-900"

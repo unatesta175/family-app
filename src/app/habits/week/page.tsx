@@ -69,7 +69,7 @@ export default async function HabitsWeekPage({
   const fmt = (iso: string) => parseIso(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return (
-    <div className="flex flex-col gap-5 lg:mx-auto lg:max-w-3xl">
+    <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{profile?.name}</p>
         <h1 className="text-2xl font-extrabold tracking-tight">Weekly view</h1>

@@ -286,13 +286,13 @@ function WeekRing({ pct, performed, totalSlots }: { pct: number; performed: numb
     <div className="flex flex-col items-center rounded-3xl bg-white py-2">
       <div className="relative h-48 w-48">
         <svg width="200" height="200" viewBox="0 0 200 200" className="-rotate-90">
-          <circle cx="100" cy="100" r={r} fill="none" stroke="#eef2ee" strokeWidth="10" />
+          <circle cx="100" cy="100" r={r} fill="none" stroke="var(--chart-track)" strokeWidth="10" />
           <circle
             cx="100"
             cy="100"
             r={r}
             fill="none"
-            stroke="#0f7a4c"
+            stroke="var(--chart-brand)"
             strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={c}

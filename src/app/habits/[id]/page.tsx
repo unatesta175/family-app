@@ -72,7 +72,7 @@ export default async function HabitDetailPage({
   const recentNotes = notes.filter((n) => n.note).slice(0, 5);
 
   return (
-    <div className="flex flex-col gap-5 lg:mx-auto lg:max-w-3xl">
+    <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
       <Link href="/habits/manage" className="flex w-fit items-center gap-1 text-xs font-bold text-h-muted hover:text-h-fg">
         <ArrowLeft className="h-3.5 w-3.5" />
         All habits
@@ -122,7 +122,7 @@ export default async function HabitDetailPage({
         />
       )}
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
         <Stat icon={Flame} tone="var(--h-break)" value={`${streak.current}${streak.unit === "week" ? "w" : "d"}`} label="Current streak" />
         <Stat icon={Trophy} tone="#f59e0b" value={`${streak.best}${streak.unit === "week" ? "w" : "d"}`} label="Best streak" />
         <Stat icon={Percent} tone={hex} value={rate30 === null ? "–" : `${rate30}%`} label="Last 30 days" sub={rateAll === null ? undefined : `${rateAll}% all time`} />

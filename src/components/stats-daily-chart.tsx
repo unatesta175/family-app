@@ -10,29 +10,29 @@ export function StatsDailyChart({ series, today }: { series: DailyPoint[]; today
       <div className="h-52 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={series} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
-            <CartesianGrid vertical={false} stroke="#eef2ee" />
+            <CartesianGrid vertical={false} stroke="var(--chart-track)" />
             <XAxis
               dataKey="label"
-              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              tick={{ fontSize: 10, fill: "var(--chart-tick)" }}
               axisLine={false}
               tickLine={false}
               interval="preserveStartEnd"
             />
             <YAxis
               domain={[0, 5]}
-              tick={{ fontSize: 10, fill: "#9ca3af" }}
+              tick={{ fontSize: 10, fill: "var(--chart-tick)" }}
               axisLine={false}
               tickLine={false}
               width={24}
               allowDecimals={false}
             />
             <Tooltip
-              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
+              contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--chart-tooltip-border)", background: "var(--chart-tooltip-bg)", color: "var(--p-fg, inherit)" }}
               formatter={(v) => [`${v} of 5`, "Prayed"]}
             />
             <Bar dataKey="count" radius={[4, 4, 4, 4]} maxBarSize={18}>
               {series.map((point) => (
-                <Cell key={point.date} fill={point.date === today ? "#0f7a4c" : "#d7e8dd"} />
+                <Cell key={point.date} fill={point.date === today ? "var(--chart-brand)" : "var(--chart-bar-soft)"} />
               ))}
             </Bar>
           </BarChart>

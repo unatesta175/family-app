@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { LogOut, Moon, Sun } from "lucide-react";
 import { switchActiveProfile } from "@/lib/actions";
 import { logoutAction } from "@/app/(app)/logout-action";
+import { useDarkMode } from "@/lib/use-dark-mode";
 import { cn } from "@/lib/utils";
 
 type Profile = { id: number; name: string };
@@ -40,21 +41,11 @@ export function HabitProfileSwitcher({
 }
 
 export function HabitThemeToggle() {
-  const [dark, setDark] = useState(
-    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark")
-  );
-  function toggle() {
-    const next = !dark;
-    setDark(next);
-    document.documentElement.classList.toggle("dark", next);
-    try {
-      localStorage.setItem("theme", next ? "dark" : "light");
-    } catch {}
-  }
+  const [dark, setDark] = useDarkMode();
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={() => setDark(!dark)}
       aria-label="Toggle dark mode"
       className="flex h-8 w-8 items-center justify-center rounded-full border border-h-border bg-h-surface text-h-muted shadow-sm transition-colors hover:text-h-fg"
     >
