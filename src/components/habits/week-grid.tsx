@@ -4,7 +4,8 @@ import { useOptimistic, useTransition } from "react";
 import Link from "next/link";
 import { Check, Minus, X } from "lucide-react";
 import { logHabitAction } from "@/lib/habit-actions";
-import { colorHex, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
+import { colorHex, formatNumber, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
+import type { HabitEvalType, PeriodUnit } from "@/lib/db/schema";
 import { habitIcon } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
 import { parseIso } from "@/lib/date";
@@ -16,26 +17,46 @@ export type WeekRow = {
   kind: "build" | "break";
   color: string;
   icon: string;
+  evalType: HabitEvalType;
   dailyTarget: number;
-  weeklyTarget: number;
-  schedule: "daily" | "weekdays" | "weekly_count";
+  checklistIds: string[];
+  /** "Some days per period" habit: the Wk column shows days done this period / needed. */
+  isPeriod: boolean;
+  periodUnit: PeriodUnit;
+  periodTarget: number;
+  periodDone: number;
   cells: WeekCell[];
 };
 
+/** What a one-tap "done" logs for this habit: the full goal. */
+function doneEntry(row: WeekRow): { value: number; checked?: string[] } {
+  if (row.evalType === "checklist") return { value: row.checklistIds.length, checked: row.checklistIds };
+  if (row.evalType === "yes_no") return { value: 1 };
+  return { value: row.dailyTarget > 0 ? row.dailyTarget : 1 };
+}
+
+function partialText(row: WeekRow, value: number): string {
+  if (row.evalType === "timer") return `${Math.max(1, Math.round(value / 60))}m`;
+  if (row.evalType === "checklist") return `${value}/${row.checklistIds.length}`;
+  return formatNumber(value);
+}
+
 type Change = { habitId: number; date: string; state: DayState; value: number };
 
-function nextForClick(row: WeekRow, cell: WeekCell): { status: "done" | "slipped" | "clear"; state: DayState; value: number } {
+type Next = { status: "done" | "slipped" | "clear"; state: DayState; value: number; checked?: string[] };
+
+function nextForClick(row: WeekRow, cell: WeekCell): Next {
   const complete = cell.state === "done";
   if (row.kind === "break") {
     // none -> clean -> slipped -> none
     if (cell.state === "done") return { status: "slipped", state: "slipped", value: 0 };
     if (cell.state === "slipped") return { status: "clear", state: "flex", value: 0 };
-    return { status: "done", state: "done", value: row.dailyTarget };
+    return { status: "done", state: "done", ...doneEntry(row) };
   }
   if (complete || cell.state === "slipped" || cell.state === "skipped" || cell.state === "partial") {
     return { status: "clear", state: "flex", value: 0 };
   }
-  return { status: "done", state: "done", value: row.dailyTarget };
+  return { status: "done", state: "done", ...doneEntry(row) };
 }
 
 export function WeekGrid({
@@ -63,11 +84,17 @@ export function WeekGrid({
     const next = nextForClick(row, cell);
     // "Cleared" lands back on the natural empty state for that day, matching the server.
     const clearedState: DayState =
-      row.schedule === "weekly_count" ? "flex" : cell.date === today ? "pending" : "missed";
+      row.isPeriod ? "flex" : cell.date === today ? "pending" : "missed";
     const state = next.status === "clear" ? clearedState : next.state;
     startTransition(async () => {
       applyChange({ habitId: row.id, date: cell.date, state, value: next.value });
-      await logHabitAction({ habitId: row.id, date: cell.date, status: next.status, value: next.value });
+      await logHabitAction({
+        habitId: row.id,
+        date: cell.date,
+        status: next.status,
+        value: next.value,
+        checked: next.checked,
+      });
     });
   }
 
@@ -123,10 +150,11 @@ export function WeekGrid({
               const hex = colorHex(row.color);
               const Icon = habitIcon(row.icon);
               const doneCount = row.cells.filter((c) => c.state === "done").length;
-              const dueCount =
-                row.schedule === "weekly_count"
-                  ? row.weeklyTarget
-                  : row.cells.filter((c) => c.state !== "off" && c.state !== "skipped").length;
+              const dueCount = row.isPeriod
+                ? row.periodTarget
+                : row.cells.filter((c) => c.state !== "off" && c.state !== "skipped" && c.state !== "flex").length;
+              const shownDone = row.isPeriod ? row.periodDone : doneCount;
+              const suffix = row.isPeriod && row.periodUnit !== "week" ? (row.periodUnit === "month" ? "/mo" : "/yr") : "";
               return (
                 <tr key={row.id} className="border-b border-h-border/60 last:border-b-0">
                   <td className="sticky left-0 z-10 bg-h-surface px-3 py-2">
@@ -160,10 +188,11 @@ export function WeekGrid({
                     <span
                       className={cn(
                         "text-xs font-extrabold tabular-nums",
-                        dueCount > 0 && doneCount >= dueCount ? "text-h-good" : "text-h-muted"
+                        dueCount > 0 && shownDone >= dueCount ? "text-h-good" : "text-h-muted"
                       )}
                     >
-                      {doneCount}/{dueCount}
+                      {shownDone}/{dueCount}
+                      {suffix && <span className="ml-0.5 text-[9px] font-bold opacity-70">{suffix}</span>}
                     </span>
                   </td>
                 </tr>
@@ -221,7 +250,7 @@ function CellButton({
       break;
     case "partial":
       style = { background: tint(hex, 0.25), color: hex };
-      content = `${cell.value}/${row.dailyTarget}`;
+      content = partialText(row, cell.value);
       break;
     case "slipped":
       style = { background: "var(--h-bad)", color: "#fff" };

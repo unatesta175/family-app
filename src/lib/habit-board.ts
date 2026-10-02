@@ -1,16 +1,24 @@
 import {
+  GOAL_PERIOD_LABEL,
+  carriedFromDate,
   computeStreak,
   dayState,
-  isDueOn,
+  formatAmount,
+  goalProgress,
+  isPeriodHabit,
+  parseChecklist,
+  parseGoals,
+  periodDoneCount,
+  priorityRank,
   recurrenceLabel,
   recurringTaskOccursOn,
   scheduleLabel,
-  weekDoneCount,
+  targetLabel,
   type DayState,
   type HabitLogMap,
 } from "@/lib/habits";
 import type { CategoryRow, HabitRow, TaskRow } from "@/lib/db/repo-habits";
-import type { HabitKind, HabitSchedule, TaskPriority } from "@/lib/db/schema";
+import type { HabitEvalType, HabitKind, HabitSchedule, PeriodUnit, TargetOp, TaskPriority } from "@/lib/db/schema";
 
 /** Serialisable rows the Today board renders. Built on the server, consumed by a client component. */
 export type BoardHabit = {
@@ -22,15 +30,36 @@ export type BoardHabit = {
   categoryName: string | null;
   schedule: HabitSchedule;
   scheduleLabel: string;
+  evalType: HabitEvalType;
+  targetOp: TargetOp;
+  /** Daily goal: amount (numeric), seconds (timer), item count (checklist). */
   dailyTarget: number;
   unit: string | null;
+  targetLabel: string | null;
+  /** Today's progress: amount, seconds, or number of ticked checklist items. */
   value: number;
   state: DayState;
   streak: number;
-  streakUnit: "day" | "week";
-  weekDone: number;
-  weeklyTarget: number;
-  weekMet: boolean;
+  streakUnit: "day" | "week" | "month" | "year";
+  periodUnit: PeriodUnit;
+  /** "Some days per period" habits: days done this period / needed. */
+  periodDone: number;
+  periodTarget: number;
+  periodMet: boolean;
+  checklist: { id: string; title: string; checked: boolean }[];
+  goals: BoardGoal[];
+  priority: number;
+  flexible: boolean;
+  /** A flexible habit that's still open from an earlier day: the day it was scheduled. */
+  carriedFrom: string | null;
+};
+
+export type BoardGoal = {
+  label: string; // "Weekly"
+  current: string; // "12 pages"
+  target: string; // "≥ 50 pages"
+  pct: number;
+  met: boolean;
 };
 
 export type BoardTask = {
@@ -58,11 +87,25 @@ export function buildBoardHabits(
   const out: BoardHabit[] = [];
 
   for (const h of habits) {
-    if (!isDueOn(h, date)) continue;
     const logs = logsByHabit[h.id] ?? {};
+    const state = dayState(h, logs, date, today);
+    if (state === "off") continue;
     const log = logs[date];
     const streak = computeStreak(h, logs, today);
-    const weekDone = h.schedule === "weekly_count" ? weekDoneCount(h, logs, date) : 0;
+    const periodDone = isPeriodHabit(h) ? periodDoneCount(h, logs, date) : 0;
+    const checklist = parseChecklist(h.checklist);
+    const checkedIds = new Set(log?.status === "done" ? (log.checked ?? []) : []);
+    const goals: BoardGoal[] = parseGoals(h.goals).map((g) => {
+      const { current, met } = goalProgress(h, logs, g, date);
+      const sym = g.op === "at_least" ? "≥" : g.op === "at_most" ? "≤" : "=";
+      return {
+        label: GOAL_PERIOD_LABEL[g.period],
+        current: formatAmount(h, current),
+        target: `${sym} ${formatAmount(h, g.value)}`,
+        pct: g.value > 0 ? Math.min(100, Math.round((current / g.value) * 100)) : 0,
+        met,
+      };
+    });
     out.push({
       id: h.id,
       name: h.name,
@@ -72,18 +115,28 @@ export function buildBoardHabits(
       categoryName: h.categoryId ? (catName.get(h.categoryId) ?? null) : null,
       schedule: h.schedule,
       scheduleLabel: scheduleLabel(h),
+      evalType: h.evalType,
+      targetOp: h.targetOp,
       dailyTarget: h.dailyTarget,
       unit: h.unit,
+      targetLabel: targetLabel(h),
       value: log?.status === "done" ? log.value : 0,
-      state: dayState(h, log, date, today),
+      state,
       streak: streak.current,
       streakUnit: streak.unit,
-      weekDone,
-      weeklyTarget: h.weeklyTarget,
-      weekMet: h.schedule === "weekly_count" && weekDone >= h.weeklyTarget,
+      periodUnit: h.periodUnit,
+      periodDone,
+      periodTarget: h.weeklyTarget,
+      periodMet: isPeriodHabit(h) && periodDone >= h.weeklyTarget,
+      checklist: checklist.map((i) => ({ id: i.id, title: i.title, checked: checkedIds.has(i.id) })),
+      goals,
+      priority: h.priority,
+      flexible: h.flexible,
+      carriedFrom: state === "pending" || state === "flex" ? carriedFromDate(h, date) : null,
     });
   }
-  return out;
+  // Highest priority first (1 is highest); habits without one keep their usual order after them.
+  return out.sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority));
 }
 
 export function buildBoardTasks(

@@ -5,7 +5,23 @@ import { requireAuth, getOwnProfileId } from "@/lib/auth";
 import { getProfile, getProfilesInHousehold } from "@/lib/db/repo";
 import { getAllLogsForHabit, getCategories, getHabit, getHabitNotesInRange } from "@/lib/db/repo-habits";
 import { addDays, addMonths, parseIso, todayIso } from "@/lib/date";
-import { colorHex, completionRate, computeStreak, dayState, scheduleLabel, tint, totalDone } from "@/lib/habits";
+import {
+  STREAK_UNIT_SHORT,
+  colorHex,
+  completionRate,
+  computeStreak,
+  dayState,
+  formatAmount,
+  goalProgress,
+  GOAL_PERIOD_LABEL,
+  parseChecklist,
+  parseGoals,
+  scheduleLabel,
+  targetLabel,
+  tint,
+  totalDone,
+} from "@/lib/habits";
+import { habitToFormValues } from "@/lib/habit-form-values";
 import { heatmapWeeks, weeklyBars } from "@/lib/habit-stats";
 import { HabitIcon } from "@/components/habits/habit-icon";
 import { HabitCalendar, type CalendarDay } from "@/components/habits/habit-calendar";
@@ -58,8 +74,9 @@ export default async function HabitDetailPage({
   for (let d = monthStart; d <= monthEnd; d = addDays(d, 1)) {
     days.push({
       date: d,
-      state: dayState(habit, logs[d], d, today),
+      state: dayState(habit, logs, d, today),
       value: logs[d]?.status === "done" ? logs[d].value : 0,
+      checked: logs[d]?.status === "done" ? (logs[d].checked ?? []) : [],
       note: noteByDate.get(d) ?? null,
     });
   }
@@ -70,6 +87,18 @@ export default async function HabitDetailPage({
   const nextHref = monthStart < currentMonth ? `/habits/${habit.id}?month=${addMonths(monthStart, 1).slice(0, 7)}` : null;
 
   const recentNotes = notes.filter((n) => n.note).slice(0, 5);
+
+  const goalRows = parseGoals(habit.goals).map((g) => {
+    const { current, met } = goalProgress(habit, logs, g, today);
+    const sym = g.op === "at_least" ? "≥" : g.op === "at_most" ? "≤" : "=";
+    return {
+      label: `${GOAL_PERIOD_LABEL[g.period]} goal`,
+      current: formatAmount(habit, current),
+      target: `${sym} ${formatAmount(habit, g.value)}`,
+      pct: g.value > 0 ? Math.min(100, Math.round((current / g.value) * 100)) : 0,
+      met,
+    };
+  });
 
   return (
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
@@ -92,7 +121,9 @@ export default async function HabitDetailPage({
               {habit.kind === "break" ? "Break habit" : "Build habit"}
             </span>
             <span>{scheduleLabel(habit)}</span>
+            {targetLabel(habit) && <span>{targetLabel(habit)} / day</span>}
             {category && <span>{category.name}</span>}
+            {habit.priority > 0 && <span className="font-bold">Priority {habit.priority}</span>}
             <span>{owner?.name}</span>
             {habit.archivedAt && <span className="font-bold text-h-bad">Archived</span>}
           </p>
@@ -104,37 +135,48 @@ export default async function HabitDetailPage({
         <HabitDetailActions
           archived={habit.archivedAt !== null}
           categories={categories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon }))}
-          habit={{
-            id: habit.id,
-            name: habit.name,
-            description: habit.description,
-            categoryId: habit.categoryId,
-            kind: habit.kind,
-            icon: habit.icon,
-            color: habit.color,
-            schedule: habit.schedule,
-            weekdays: habit.weekdays,
-            weeklyTarget: habit.weeklyTarget,
-            dailyTarget: habit.dailyTarget,
-            unit: habit.unit,
-            startDate: habit.startDate,
-          }}
+          habit={{ ...habitToFormValues(habit), id: habit.id }}
         />
       )}
 
       <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Stat icon={Flame} tone="var(--h-break)" value={`${streak.current}${streak.unit === "week" ? "w" : "d"}`} label="Current streak" />
-        <Stat icon={Trophy} tone="#f59e0b" value={`${streak.best}${streak.unit === "week" ? "w" : "d"}`} label="Best streak" />
+        <Stat icon={Flame} tone="var(--h-break)" value={`${streak.current}${STREAK_UNIT_SHORT[streak.unit]}`} label="Current streak" />
+        <Stat icon={Trophy} tone="#f59e0b" value={`${streak.best}${STREAK_UNIT_SHORT[streak.unit]}`} label="Best streak" />
         <Stat icon={Percent} tone={hex} value={rate30 === null ? "–" : `${rate30}%`} label="Last 30 days" sub={rateAll === null ? undefined : `${rateAll}% all time`} />
         <Stat icon={CheckCheck} tone="var(--h-good)" value={String(totalDone(habit, logs))} label="Total check-ins" />
       </div>
+
+      {goalRows.length > 0 && (
+        <section className="h-card flex flex-col gap-3 p-4">
+          <h3 className="text-sm font-extrabold">Goals</h3>
+          {goalRows.map((g) => (
+            <div key={g.label} className="flex flex-col gap-1.5">
+              <div className="flex items-baseline justify-between gap-2 text-xs">
+                <span className="font-bold">{g.label}</span>
+                <span className="font-semibold tabular-nums text-h-muted">
+                  {g.current} <span className="opacity-60">/ {g.target}</span>
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-h-surface2">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${g.pct}%`, background: g.met ? "var(--h-good)" : hex }}
+                />
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
 
       <HabitCalendar
         habitId={habit.id}
         kind={habit.kind}
         color={habit.color}
+        evalType={habit.evalType}
+        targetOp={habit.targetOp}
         dailyTarget={habit.dailyTarget}
         unit={habit.unit}
+        checklist={parseChecklist(habit.checklist)}
         monthLabel={monthLabel}
         prevHref={prevHref}
         nextHref={nextHref}

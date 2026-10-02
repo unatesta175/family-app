@@ -1,6 +1,7 @@
 import { loadHabitData } from "@/lib/habit-data";
 import { getHabits } from "@/lib/db/repo-habits";
-import { computeStreak, scheduleLabel } from "@/lib/habits";
+import { computeStreak, scheduleLabel, targetLabel } from "@/lib/habits";
+import { habitToFormValues } from "@/lib/habit-form-values";
 import { todayIso } from "@/lib/date";
 import { HabitManager, type ManageHabit } from "@/components/habits/habit-manager";
 
@@ -12,20 +13,10 @@ export default async function HabitsManagePage() {
   const habits: ManageHabit[] = all.map((h) => {
     const streak = computeStreak(h, logsByHabit[h.id] ?? {}, today);
     return {
+      ...habitToFormValues(h),
       id: h.id,
-      name: h.name,
-      description: h.description,
-      categoryId: h.categoryId,
-      kind: h.kind,
-      icon: h.icon,
-      color: h.color,
-      schedule: h.schedule,
-      weekdays: h.weekdays,
-      weeklyTarget: h.weeklyTarget,
-      dailyTarget: h.dailyTarget,
-      unit: h.unit,
-      startDate: h.startDate,
       scheduleLabel: scheduleLabel(h),
+      targetLabel: targetLabel(h),
       archived: h.archivedAt !== null,
       streak: streak.current,
       streakUnit: streak.unit,

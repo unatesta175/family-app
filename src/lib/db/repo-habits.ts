@@ -10,9 +10,12 @@ import {
   habitTaskCompletions,
 } from "@/lib/db/schema";
 import type {
+  HabitEvalType,
   HabitKind,
   HabitSchedule,
   HabitLogStatus,
+  PeriodUnit,
+  TargetOp,
   TaskPriority,
   TaskRecurrence,
 } from "@/lib/db/schema";
@@ -77,13 +80,30 @@ export type HabitInput = {
   dailyTarget: number;
   unit: string | null;
   startDate: string;
+  endDate?: string | null;
+  evalType?: HabitEvalType;
+  targetOp?: TargetOp;
+  flexible?: boolean;
+  repeatEvery?: number;
+  alternate?: boolean;
+  monthDays?: string;
+  yearDays?: string;
+  periodUnit?: PeriodUnit;
+  priority?: number;
+  checklist?: string; // JSON
+  goals?: string; // JSON
 };
 
 export async function getHabits(profileId: number, opts: { includeArchived?: boolean } = {}) {
   const where = opts.includeArchived
     ? eq(habits.profileId, profileId)
     : and(eq(habits.profileId, profileId), isNull(habits.archivedAt));
-  return db.select().from(habits).where(where).orderBy(asc(habits.sortOrder), asc(habits.id));
+  // Priority 1 is the highest; habits without one (0) come after, in their own order.
+  return db
+    .select()
+    .from(habits)
+    .where(where)
+    .orderBy(sql`CASE WHEN ${habits.priority} > 0 THEN ${habits.priority} ELSE 1000000 END`, asc(habits.sortOrder), asc(habits.id));
 }
 
 export async function getHabit(id: number) {
@@ -120,6 +140,19 @@ export async function deleteHabit(id: number) {
 
 // --- Habit logs ------------------------------------------------------------------------------
 
+function toLog(r: { status: HabitLogStatus; value: number; detail: string | null }) {
+  const log: { status: HabitLogStatus; value: number; checked?: string[] } = { status: r.status, value: r.value };
+  if (r.detail) {
+    try {
+      const v: unknown = JSON.parse(r.detail);
+      if (Array.isArray(v)) log.checked = v.filter((x): x is string => typeof x === "string");
+    } catch {
+      /* ignore malformed detail */
+    }
+  }
+  return log;
+}
+
 /** All logs for a profile's habits inside [from, to], grouped habitId -> date -> log. */
 export async function getHabitLogsInRange(
   profileId: number,
@@ -132,6 +165,7 @@ export async function getHabitLogsInRange(
       date: habitLogs.date,
       status: habitLogs.status,
       value: habitLogs.value,
+      detail: habitLogs.detail,
     })
     .from(habitLogs)
     .innerJoin(habits, eq(habitLogs.habitId, habits.id))
@@ -139,7 +173,7 @@ export async function getHabitLogsInRange(
 
   const out: Record<number, HabitLogMap> = {};
   for (const r of rows) {
-    (out[r.habitId] ??= {})[r.date] = { status: r.status, value: r.value };
+    (out[r.habitId] ??= {})[r.date] = toLog(r);
   }
   return out;
 }
@@ -148,7 +182,7 @@ export async function getHabitLogsInRange(
 export async function getAllLogsForHabit(habitId: number): Promise<HabitLogMap> {
   const rows = await db.select().from(habitLogs).where(eq(habitLogs.habitId, habitId));
   const out: HabitLogMap = {};
-  for (const r of rows) out[r.date] = { status: r.status, value: r.value };
+  for (const r of rows) out[r.date] = toLog(r);
   return out;
 }
 
@@ -165,16 +199,19 @@ export async function upsertHabitLog(
   date: string,
   status: HabitLogStatus,
   value: number,
-  note?: string | null
+  note?: string | null,
+  checked?: string[] | null
 ) {
+  const detail = checked ? JSON.stringify(checked) : null;
   await db
     .insert(habitLogs)
-    .values({ habitId, date, status, value, note: note ?? null })
+    .values({ habitId, date, status, value, detail, note: note ?? null })
     .onConflictDoUpdate({
       target: [habitLogs.habitId, habitLogs.date],
       set: {
         status,
         value,
+        detail,
         ...(note !== undefined ? { note } : {}),
         loggedAt: sql`(current_timestamp)`,
       },

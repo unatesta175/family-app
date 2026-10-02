@@ -1,14 +1,18 @@
 "use client";
 
-import { useMemo, useOptimistic, useState, useTransition } from "react";
+import { useEffect, useMemo, useOptimistic, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
 import {
   Ban,
   Check,
+  ChevronDown,
   ChevronRight,
   Flame,
+  ListChecks,
   MoreHorizontal,
   Minus,
+  Pause,
+  Play,
   Plus,
   Repeat,
   SkipForward,
@@ -16,21 +20,37 @@ import {
   X,
   PartyPopper,
   AlarmClock,
+  CornerDownRight,
 } from "lucide-react";
 import { logHabitAction, toggleTaskAction } from "@/lib/habit-actions";
-import { colorHex, PRIORITY_META, tint, type DayState } from "@/lib/habits";
+import {
+  STREAK_UNIT_SHORT,
+  WEEKDAY_SHORT,
+  colorHex,
+  formatClock,
+  formatNumber,
+  PRIORITY_META,
+  targetMet,
+  tint,
+  type DayState,
+} from "@/lib/habits";
+import { readTimerStart, startTimer, stopTimer, subscribeTimers } from "@/lib/habit-timer";
 import { HabitIcon } from "@/components/habits/habit-icon";
-import type { BoardHabit, BoardTask } from "@/lib/habit-board";
+import { Checkbox } from "@/components/habits/ui/checkbox";
+import type { BoardGoal, BoardHabit, BoardTask } from "@/lib/habit-board";
+import { parseIso } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "build" | "break" | "tasks";
 type HabitStatus = "done" | "slipped" | "skipped" | "clear";
 
 type Action =
-  | { type: "habit"; id: number; status: HabitStatus; value?: number }
+  | { type: "habit"; id: number; status: HabitStatus; value?: number; checked?: string[] }
   | { type: "task"; id: number; done: boolean };
 
 type State = { habits: BoardHabit[]; tasks: BoardTask[] };
+
+type LogFn = (id: number, status: HabitStatus, value?: number, checked?: string[]) => void;
 
 function isComplete(h: BoardHabit) {
   return h.state === "done";
@@ -49,23 +69,40 @@ function reduce(date: string, today: string) {
       habits: state.habits.map((h) => {
         if (h.id !== action.id) return h;
         const wasComplete = isComplete(h);
+        const isPeriod = h.schedule === "weekly_count";
+        // Where an entry lands when it's cleared (or never logged).
+        const empty: DayState = isPeriod ? "flex" : h.flexible ? (date === today ? "pending" : "flex") : date === today ? "pending" : "missed";
         let nextState: DayState;
         let value = 0;
+        let checklist = h.checklist.map((i) => ({ ...i, checked: false }));
+
         if (action.status === "done") {
-          value = action.value ?? h.dailyTarget;
-          nextState = value >= h.dailyTarget ? "done" : "partial";
+          if (h.kind === "break" || h.evalType === "yes_no") {
+            value = 1;
+            nextState = "done";
+          } else if (h.evalType === "checklist") {
+            const ids = new Set(action.checked ?? []);
+            checklist = h.checklist.map((i) => ({ ...i, checked: ids.has(i.id) }));
+            value = checklist.filter((i) => i.checked).length;
+            nextState = value === 0 ? empty : value >= h.dailyTarget ? "done" : "partial";
+          } else {
+            value = action.value ?? h.dailyTarget;
+            nextState = value === 0 && h.targetOp !== "at_most" ? empty : targetMet(h, value) ? "done" : "partial";
+          }
         } else if (action.status === "slipped") nextState = "slipped";
         else if (action.status === "skipped") nextState = "skipped";
-        else nextState = h.schedule === "weekly_count" ? "flex" : date === today ? "pending" : "missed";
+        else nextState = empty;
+
         const nowComplete = nextState === "done";
         const delta = Number(nowComplete) - Number(wasComplete);
-        const weekDone = h.schedule === "weekly_count" ? Math.max(0, h.weekDone + delta) : h.weekDone;
+        const periodDone = isPeriod ? Math.max(0, h.periodDone + delta) : h.periodDone;
         return {
           ...h,
           state: nextState,
           value,
-          weekDone,
-          weekMet: h.schedule === "weekly_count" && weekDone >= h.weeklyTarget,
+          checklist,
+          periodDone,
+          periodMet: isPeriod && periodDone >= h.periodTarget,
           streak: Math.max(0, h.streak + delta),
         };
       }),
@@ -76,7 +113,7 @@ function reduce(date: string, today: string) {
 function habitSection(h: BoardHabit, future: boolean): "pending" | "done" | "upcoming" {
   if (future) return "upcoming";
   if (h.state === "done" || h.state === "slipped" || h.state === "skipped") return "done";
-  if (h.state === "flex" && h.weekMet) return "done";
+  if (h.state === "flex" && h.periodMet) return "done";
   return "pending";
 }
 
@@ -102,12 +139,12 @@ export function TodayBoard({
   const [, startTransition] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
 
-  function logHabit(id: number, status: HabitStatus, value?: number) {
+  const logHabit: LogFn = (id, status, value, checked) => {
     startTransition(async () => {
-      apply({ type: "habit", id, status, value });
-      await logHabitAction({ habitId: id, date, status, value });
+      apply({ type: "habit", id, status, value, checked });
+      await logHabitAction({ habitId: id, date, status, value, checked });
     });
-  }
+  };
 
   function toggleTask(id: number, done: boolean) {
     startTransition(async () => {
@@ -184,7 +221,7 @@ export function TodayBoard({
       {upcomingHabits.length > 0 && (
         <Section title="Scheduled" count={upcomingHabits.length}>
           {upcomingHabits.map((h) => (
-            <HabitRow key={h.id} habit={h} canEdit={false} onLog={logHabit} upcoming />
+            <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={false} onLog={logHabit} upcoming />
           ))}
         </Section>
       )}
@@ -192,7 +229,7 @@ export function TodayBoard({
       {(pendingHabits.length > 0 || pendingTasks.length > 0) && (
         <Section title={date === today ? "To do" : "Not logged"} count={pendingCount}>
           {pendingHabits.map((h) => (
-            <HabitRow key={h.id} habit={h} canEdit={canEdit} onLog={logHabit} />
+            <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
           ))}
           {pendingTasks.map((t) => (
             <TaskRow key={`t${t.id}`} task={t} canEdit={canEdit} onToggle={toggleTask} />
@@ -211,7 +248,7 @@ export function TodayBoard({
       {doneCount > 0 && !future && (
         <Section title="Completed" count={doneCount} muted>
           {doneHabits.map((h) => (
-            <HabitRow key={h.id} habit={h} canEdit={canEdit} onLog={logHabit} />
+            <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
           ))}
           {doneTasks.map((t) => (
             <TaskRow key={`t${t.id}`} task={t} canEdit={canEdit} onToggle={toggleTask} />
@@ -248,222 +285,464 @@ function Section({
   );
 }
 
+// --- Timer -----------------------------------------------------------------------------------
+
+/** Re-renders every second while `active`, so a running timer's readout ticks. */
+function useNow(active: boolean) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [active]);
+  return now;
+}
+
+/** The running timer for one habit on one day, shared across tabs via localStorage. */
+function useHabitTimer(habitId: number, date: string) {
+  const startedAt = useSyncExternalStore(
+    subscribeTimers,
+    () => readTimerStart(habitId, date),
+    () => null
+  );
+  const now = useNow(startedAt !== null);
+  const elapsed = startedAt === null ? 0 : Math.max(0, Math.floor((now - startedAt) / 1000));
+  return { running: startedAt !== null, elapsed };
+}
+
 // --- Habit row -------------------------------------------------------------------------------
+
+function ProgressBar({ pct, color }: { pct: number; color: string }) {
+  return (
+    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-h-surface2">
+      <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, Math.max(0, pct))}%`, background: color }} />
+    </div>
+  );
+}
+
+/** Click-to-edit number (an amount, or minutes for timers). Enter / blur saves, Escape cancels. */
+function InlineValue({
+  initial,
+  suffix,
+  onCommit,
+  onCancel,
+}: {
+  initial: number;
+  suffix: string;
+  onCommit: (n: number) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(formatNumber(initial));
+  function commit() {
+    const n = Number(draft.replace(",", "."));
+    if (Number.isFinite(n) && n >= 0) onCommit(n);
+    else onCancel();
+  }
+  return (
+    <span className="flex items-center gap-1">
+      <input
+        autoFocus
+        value={draft}
+        inputMode="decimal"
+        aria-label="Value"
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") commit();
+          if (e.key === "Escape") onCancel();
+        }}
+        className="w-16 rounded-md border border-h-brand bg-h-surface2 px-1.5 py-0.5 text-[11px] font-bold tabular-nums text-h-fg outline-none"
+      />
+      <span className="text-[11px] font-bold text-h-muted">{suffix}</span>
+    </span>
+  );
+}
+
+function GoalChip({ goal, color }: { goal: BoardGoal; color: string }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1 rounded-lg bg-h-surface2 px-2 py-1.5">
+      <div className="flex items-baseline justify-between gap-2 text-[10px] font-bold">
+        <span className="text-h-muted">{goal.label}</span>
+        <span className={cn("tabular-nums", goal.met ? "text-h-good" : "text-h-fg")}>
+          {goal.current} <span className="font-medium text-h-muted">/ {goal.target}</span>
+        </span>
+      </div>
+      <div className="h-1 overflow-hidden rounded-full bg-h-border">
+        <div className="h-full rounded-full" style={{ width: `${goal.pct}%`, background: goal.met ? "var(--h-good)" : color }} />
+      </div>
+    </div>
+  );
+}
 
 function HabitRow({
   habit: h,
+  date,
+  today,
   canEdit,
   onLog,
   upcoming,
 }: {
   habit: BoardHabit;
+  date: string;
+  today: string;
   canEdit: boolean;
-  onLog: (id: number, status: HabitStatus, value?: number) => void;
+  onLog: LogFn;
   upcoming?: boolean;
 }) {
   const hex = colorHex(h.color);
   const [menu, setMenu] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const timer = useHabitTimer(h.id, date);
+
   const isBreak = h.kind === "break";
-  const counter = h.dailyTarget > 1;
+  const numeric = !isBreak && h.evalType === "numeric";
+  const isTimer = !isBreak && h.evalType === "timer";
+  const checklist = !isBreak && h.evalType === "checklist";
+  const measured = numeric || isTimer;
+  const atMost = h.targetOp === "at_most";
+  const anyAmount = h.targetOp === "any";
+
   const done = h.state === "done";
   const slipped = h.state === "slipped";
   const skipped = h.state === "skipped";
-  const logged = done || slipped || skipped || h.state === "partial";
+  const partial = h.state === "partial";
+  const logged = done || slipped || skipped || partial;
+  const over = partial && atMost && measured;
+
+  // A running timer adds its live seconds on top of what's already logged.
+  const liveValue = isTimer && timer.running ? h.value + timer.elapsed : h.value;
+  const checkedIds = h.checklist.filter((i) => i.checked).map((i) => i.id);
 
   const circleStyle = done
     ? { background: hex, color: "#fff", borderColor: hex }
-    : slipped
+    : slipped || over
       ? { background: "var(--h-bad)", color: "#fff", borderColor: "var(--h-bad)" }
       : { background: tint(hex, 0.12), color: hex, borderColor: tint(hex, 0.35) };
 
+  function toggleTimer() {
+    if (!canEdit) return;
+    if (timer.running) {
+      const total = h.value + stopTimer(h.id, date);
+      onLog(h.id, "done", total);
+    } else if (done) {
+      onLog(h.id, "clear");
+    } else {
+      startTimer(h.id, date);
+    }
+  }
+
   function primaryTap() {
     if (!canEdit) return;
-    if (counter) {
-      onLog(h.id, "done", Math.min(h.dailyTarget, h.value + 1));
+    if (isTimer) return toggleTimer();
+    if (checklist) {
+      if (done) onLog(h.id, "clear");
+      else onLog(h.id, "done", undefined, h.checklist.map((i) => i.id));
       return;
     }
+    if (numeric) return onLog(h.id, "done", Math.round((h.value + 1) * 100) / 100);
     if (done || slipped || skipped) onLog(h.id, "clear");
     else onLog(h.id, "done");
   }
 
-  return (
-    <div className="h-card relative flex items-center gap-3 p-3">
-      <button
-        type="button"
-        disabled={!canEdit}
-        onClick={primaryTap}
-        aria-label={done ? `Undo ${h.name}` : `Mark ${h.name} done`}
-        style={circleStyle}
-        className={cn(
-          "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 transition-transform",
-          canEdit && "active:scale-90",
-          !canEdit && "cursor-default"
-        )}
-      >
-        {done ? (
-          <Check key="c" className="habit-pop h-6 w-6" strokeWidth={3} />
-        ) : slipped ? (
-          <X className="habit-pop h-6 w-6" strokeWidth={3} />
-        ) : skipped ? (
-          <SkipForward className="h-5 w-5" />
-        ) : (
-          <HabitIcon name={h.icon} className="h-5 w-5" />
-        )}
-      </button>
+  function toggleItem(id: string, on: boolean) {
+    if (!canEdit) return;
+    const next = on ? [...checkedIds, id] : checkedIds.filter((x) => x !== id);
+    onLog(h.id, "done", undefined, next);
+  }
 
-      <div className="min-w-0 flex-1">
-        <Link href={`/habits/${h.id}`} className="group flex items-center gap-1">
-          <span
-            className={cn(
-              "truncate text-sm font-bold leading-tight",
-              (done || skipped) && "text-h-muted line-through decoration-h-muted/50"
-            )}
-          >
-            {h.name}
-          </span>
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 text-h-muted opacity-0 transition-opacity group-hover:opacity-100" />
-        </Link>
-        <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-h-muted">
-          <span
-            className="rounded-md px-1.5 py-px font-bold"
-            style={
-              isBreak
-                ? { background: "var(--h-break-soft)", color: "var(--h-break)" }
-                : { background: "var(--h-brand-soft)", color: "var(--h-brand)" }
-            }
-          >
-            {isBreak ? "Break" : "Build"}
-          </span>
-          {h.categoryName && <span>{h.categoryName}</span>}
-          {h.schedule === "weekly_count" ? (
-            <span className={cn(h.weekMet && "font-bold text-h-good")}>
-              {h.weekDone}/{h.weeklyTarget} this week
-            </span>
+  const carried = h.carriedFrom ? WEEKDAY_SHORT[parseIso(h.carriedFrom).getDay()] : null;
+
+  return (
+    <div className="h-card relative flex flex-col gap-2 p-3">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={!canEdit}
+          onClick={primaryTap}
+          aria-label={
+            isTimer
+              ? timer.running
+                ? `Pause ${h.name}`
+                : `Start ${h.name}`
+              : done
+                ? `Undo ${h.name}`
+                : numeric
+                  ? `Add one to ${h.name}`
+                  : `Mark ${h.name} done`
+          }
+          style={circleStyle}
+          className={cn(
+            "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border-2 transition-transform",
+            canEdit && "active:scale-90",
+            !canEdit && "cursor-default"
+          )}
+        >
+          {done ? (
+            <Check key="c" className="habit-pop h-6 w-6" strokeWidth={3} />
+          ) : slipped ? (
+            <X className="habit-pop h-6 w-6" strokeWidth={3} />
+          ) : skipped ? (
+            <SkipForward className="h-5 w-5" />
+          ) : isTimer && canEdit ? (
+            timer.running ? (
+              <Pause className="h-5 w-5" fill="currentColor" />
+            ) : (
+              <Play className="h-5 w-5" fill="currentColor" />
+            )
+          ) : checklist ? (
+            <ListChecks className="h-5 w-5" />
           ) : (
-            h.schedule === "weekdays" && <span>{h.scheduleLabel}</span>
+            <HabitIcon name={h.icon} className="h-5 w-5" />
           )}
-          {h.streak > 0 && (
-            <span className="flex items-center gap-0.5 font-bold text-h-break">
-              <Flame className="h-3 w-3" />
-              {h.streak}
-              {h.streakUnit === "week" ? "w" : "d"}
+        </button>
+
+        <div className="min-w-0 flex-1">
+          <Link href={`/habits/${h.id}`} className="group flex items-center gap-1">
+            <span
+              className={cn(
+                "truncate text-sm font-bold leading-tight",
+                (done || skipped) && "text-h-muted line-through decoration-h-muted/50"
+              )}
+            >
+              {h.name}
             </span>
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-h-muted opacity-0 transition-opacity group-hover:opacity-100" />
+          </Link>
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-h-muted">
+            <span
+              className="rounded-md px-1.5 py-px font-bold"
+              style={
+                isBreak
+                  ? { background: "var(--h-break-soft)", color: "var(--h-break)" }
+                  : { background: "var(--h-brand-soft)", color: "var(--h-brand)" }
+              }
+            >
+              {isBreak ? "Break" : "Build"}
+            </span>
+            {h.priority > 0 && (
+              <span className="rounded-md bg-h-surface2 px-1.5 py-px font-bold text-h-fg" title={`Priority ${h.priority}`}>
+                P{h.priority}
+              </span>
+            )}
+            {h.categoryName && <span>{h.categoryName}</span>}
+            {h.schedule === "weekly_count" ? (
+              <span className={cn(h.periodMet && "font-bold text-h-good")}>
+                {h.periodDone}/{h.periodTarget} this {h.periodUnit}
+              </span>
+            ) : (
+              h.schedule !== "daily" && <span>{h.scheduleLabel}</span>
+            )}
+            {carried && (
+              <span className="flex items-center gap-0.5 font-bold text-h-break">
+                <CornerDownRight className="h-3 w-3" />
+                From {carried}
+              </span>
+            )}
+            {h.streak > 0 && (
+              <span className="flex items-center gap-0.5 font-bold text-h-break">
+                <Flame className="h-3 w-3" />
+                {h.streak}
+                {STREAK_UNIT_SHORT[h.streakUnit]}
+              </span>
+            )}
+            {h.state === "missed" && <span className="font-bold text-h-bad">Missed</span>}
+            {over && <span className="font-bold text-h-bad">Over limit</span>}
+          </div>
+
+          {measured && !upcoming && (
+            <div className="mt-2 flex items-center gap-2">
+              {!anyAmount && (
+                <ProgressBar
+                  pct={h.dailyTarget > 0 ? (liveValue / h.dailyTarget) * 100 : 0}
+                  color={over || (atMost && liveValue > h.dailyTarget) ? "var(--h-bad)" : hex}
+                />
+              )}
+              {editing && canEdit ? (
+                <InlineValue
+                  initial={isTimer ? Math.round(liveValue / 60) : liveValue}
+                  suffix={isTimer ? "min" : (h.unit ?? "")}
+                  onCancel={() => setEditing(false)}
+                  onCommit={(n) => {
+                    setEditing(false);
+                    onLog(h.id, "done", isTimer ? Math.round(n * 60) : n);
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  disabled={!canEdit}
+                  onClick={() => setEditing(true)}
+                  title="Tap to enter a value"
+                  className={cn(
+                    "whitespace-nowrap text-[11px] font-bold tabular-nums text-h-muted",
+                    canEdit && "rounded-md px-1 hover:bg-h-surface2 hover:text-h-fg"
+                  )}
+                >
+                  {isTimer ? (
+                    <span className={cn(timer.running && "text-h-brand")}>{formatClock(liveValue)}</span>
+                  ) : (
+                    <>
+                      {formatNumber(h.value)}
+                      {h.unit ? ` ${h.unit}` : ""}
+                    </>
+                  )}
+                  {!anyAmount && h.targetLabel && <span className="font-medium"> / {h.targetLabel}</span>}
+                </button>
+              )}
+            </div>
           )}
-          {h.state === "missed" && <span className="font-bold text-h-bad">Missed</span>}
+
+          {checklist && !upcoming && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={expanded}
+              className="mt-2 flex w-full items-center gap-2"
+            >
+              <ProgressBar pct={h.dailyTarget > 0 ? (h.value / h.dailyTarget) * 100 : 0} color={hex} />
+              <span className="flex items-center gap-0.5 whitespace-nowrap text-[11px] font-bold tabular-nums text-h-muted">
+                {h.value}/{h.dailyTarget}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", expanded && "rotate-180")} />
+              </span>
+            </button>
+          )}
         </div>
 
-        {counter && !upcoming && (
-          <div className="mt-2 flex items-center gap-2">
-            <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-h-surface2">
-              <div
-                className="h-full rounded-full transition-all"
-                style={{ width: `${Math.min(100, (h.value / h.dailyTarget) * 100)}%`, background: hex }}
-              />
+        {canEdit && (
+          <div className="flex shrink-0 items-center gap-1">
+            {numeric && (
+              <button
+                type="button"
+                aria-label="Decrease"
+                disabled={h.value <= 0}
+                onClick={() => onLog(h.id, "done", Math.max(0, Math.round((h.value - 1) * 100) / 100))}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-h-surface2 text-h-muted disabled:opacity-40"
+              >
+                <Minus className="h-4 w-4" />
+              </button>
+            )}
+            {numeric && (
+              <button
+                type="button"
+                aria-label="Increase"
+                onClick={primaryTap}
+                style={{ background: tint(hex, 0.14), color: hex }}
+                className="flex h-8 w-8 items-center justify-center rounded-full"
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            )}
+            {numeric && atMost && !logged && h.value === 0 && (
+              <button
+                type="button"
+                onClick={() => onLog(h.id, "done", 0)}
+                className="rounded-full bg-h-good/15 px-2.5 py-1 text-[11px] font-bold text-h-good transition-colors hover:bg-h-good/25"
+              >
+                None
+              </button>
+            )}
+            {isBreak && !logged && (
+              <button
+                type="button"
+                onClick={() => onLog(h.id, "done")}
+                className="rounded-full bg-h-good/15 px-2.5 py-1 text-[11px] font-bold text-h-good transition-colors hover:bg-h-good/25"
+              >
+                Clean
+              </button>
+            )}
+            {isBreak && !logged && (
+              <button
+                type="button"
+                onClick={() => onLog(h.id, "slipped")}
+                className="rounded-full border border-h-border px-2.5 py-1 text-[11px] font-bold text-h-bad transition-colors hover:bg-h-bad/10"
+              >
+                Slipped
+              </button>
+            )}
+            <div className="relative">
+              <button
+                type="button"
+                aria-label="More"
+                onClick={() => setMenu((v) => !v)}
+                className="flex h-8 w-8 items-center justify-center rounded-full text-h-muted hover:bg-h-surface2"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+              {menu && (
+                <>
+                  <div className="fixed inset-0 z-40" onClick={() => setMenu(false)} />
+                  <div className="habit-sheet-in absolute right-0 top-9 z-50 w-44 rounded-xl border border-h-border bg-h-surface p-1 shadow-xl">
+                    {!skipped && (
+                      <MenuItem
+                        icon={SkipForward}
+                        label={date === today ? "Skip today" : "Skip this day"}
+                        onClick={() => {
+                          setMenu(false);
+                          onLog(h.id, "skipped");
+                        }}
+                      />
+                    )}
+                    {isBreak && !slipped && (
+                      <MenuItem
+                        icon={Ban}
+                        label="Mark slipped"
+                        danger
+                        onClick={() => {
+                          setMenu(false);
+                          onLog(h.id, "slipped");
+                        }}
+                      />
+                    )}
+                    {logged && (
+                      <MenuItem
+                        icon={Undo2}
+                        label="Clear entry"
+                        onClick={() => {
+                          setMenu(false);
+                          onLog(h.id, "clear");
+                        }}
+                      />
+                    )}
+                    <Link
+                      href={`/habits/${h.id}`}
+                      className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold hover:bg-h-surface2"
+                    >
+                      <ChevronRight className="h-3.5 w-3.5" />
+                      Details & history
+                    </Link>
+                  </div>
+                </>
+              )}
             </div>
-            <span className="text-[11px] font-bold tabular-nums text-h-muted">
-              {h.value}/{h.dailyTarget}
-              {h.unit ? ` ${h.unit}` : ""}
-            </span>
           </div>
         )}
       </div>
 
-      {canEdit && (
-        <div className="flex shrink-0 items-center gap-1">
-          {counter && !done && h.value > 0 && (
-            <button
-              type="button"
-              aria-label="Decrease"
-              onClick={() => onLog(h.id, "done", h.value - 1)}
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-h-surface2 text-h-muted"
-            >
-              <Minus className="h-4 w-4" />
-            </button>
-          )}
-          {counter && !done && (
-            <button
-              type="button"
-              aria-label="Increase"
-              onClick={primaryTap}
-              style={{ background: tint(hex, 0.14), color: hex }}
-              className="flex h-8 w-8 items-center justify-center rounded-full"
-            >
-              <Plus className="h-4 w-4" strokeWidth={2.5} />
-            </button>
-          )}
-          {isBreak && !logged && (
-            <button
-              type="button"
-              onClick={() => onLog(h.id, "done")}
-              className="rounded-full bg-h-good/15 px-2.5 py-1 text-[11px] font-bold text-h-good transition-colors hover:bg-h-good/25"
-            >
-              Clean
-            </button>
-          )}
-          {isBreak && !logged && (
-            <button
-              type="button"
-              onClick={() => onLog(h.id, "slipped")}
-              className="rounded-full border border-h-border px-2.5 py-1 text-[11px] font-bold text-h-bad transition-colors hover:bg-h-bad/10"
-            >
-              Slipped
-            </button>
-          )}
-          <div className="relative">
-            <button
-              type="button"
-              aria-label="More"
-              onClick={() => setMenu((v) => !v)}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-h-muted hover:bg-h-surface2"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-            {menu && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setMenu(false)} />
-                <div className="habit-sheet-in absolute right-0 top-9 z-50 w-44 rounded-xl border border-h-border bg-h-surface p-1 shadow-xl">
-                  {!skipped && (
-                    <MenuItem
-                      icon={SkipForward}
-                      label="Skip today"
-                      onClick={() => {
-                        setMenu(false);
-                        onLog(h.id, "skipped");
-                      }}
-                    />
-                  )}
-                  {isBreak && !slipped && (
-                    <MenuItem
-                      icon={Ban}
-                      label="Mark slipped"
-                      danger
-                      onClick={() => {
-                        setMenu(false);
-                        onLog(h.id, "slipped");
-                      }}
-                    />
-                  )}
-                  {logged && (
-                    <MenuItem
-                      icon={Undo2}
-                      label="Clear entry"
-                      onClick={() => {
-                        setMenu(false);
-                        onLog(h.id, "clear");
-                      }}
-                    />
-                  )}
-                  <Link
-                    href={`/habits/${h.id}`}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold hover:bg-h-surface2"
-                  >
-                    <ChevronRight className="h-3.5 w-3.5" />
-                    Details & history
-                  </Link>
-                </div>
-              </>
-            )}
-          </div>
+      {checklist && expanded && !upcoming && (
+        <ul className="flex flex-col gap-0.5 rounded-xl bg-h-surface2 p-1.5">
+          {h.checklist.map((item) => (
+            <li key={item.id}>
+              <label className={cn("flex items-center gap-3 rounded-lg px-2 py-2", canEdit ? "cursor-pointer hover:bg-h-surface" : "cursor-default")}>
+                <Checkbox
+                  color={hex}
+                  checked={item.checked}
+                  disabled={!canEdit}
+                  onCheckedChange={(c) => toggleItem(item.id, c === true)}
+                />
+                <span className={cn("text-sm font-semibold", item.checked && "text-h-muted line-through")}>{item.title}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {h.goals.length > 0 && !upcoming && (
+        <div className={cn("grid gap-1.5", h.goals.length > 1 ? "grid-cols-2" : "grid-cols-1")}>
+          {h.goals.map((g) => (
+            <GoalChip key={g.label} goal={g} color={hex} />
+          ))}
         </div>
       )}
     </div>

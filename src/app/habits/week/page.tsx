@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
-import { computeStreak, dayState, weekDates, weekDoneCount } from "@/lib/habits";
+import {
+  PERIOD_DAYS,
+  computeStreak,
+  dayState,
+  isPeriodHabit,
+  parseChecklist,
+  periodDoneCount,
+  weekDates,
+  weekDoneCount,
+} from "@/lib/habits";
 import { addDays, parseIso, todayIso } from "@/lib/date";
 import { WeekGrid, type WeekRow } from "@/components/habits/week-grid";
 import { Ring } from "@/components/habits/ring";
@@ -34,12 +43,16 @@ export default async function HabitsWeekPage({
       kind: h.kind,
       color: h.color,
       icon: h.icon,
+      evalType: h.evalType,
       dailyTarget: h.dailyTarget,
-      weeklyTarget: h.weeklyTarget,
-      schedule: h.schedule,
+      checklistIds: parseChecklist(h.checklist).map((i) => i.id),
+      isPeriod: isPeriodHabit(h),
+      periodUnit: h.periodUnit,
+      periodTarget: h.weeklyTarget,
+      periodDone: isPeriodHabit(h) ? periodDoneCount(h, logs, anchor) : 0,
       cells: dates.map((d) => ({
         date: d,
-        state: dayState(h, logs[d], d, today),
+        state: dayState(h, logs, d, today),
         value: logs[d]?.status === "done" ? logs[d].value : 0,
       })),
     };
@@ -50,14 +63,16 @@ export default async function HabitsWeekPage({
   let expected = 0;
   for (const h of habits) {
     const logs = logsByHabit[h.id] ?? {};
-    if (h.schedule === "weekly_count") {
-      achieved += Math.min(h.weeklyTarget, weekDoneCount(h, logs, anchor));
-      expected += h.weeklyTarget;
+    if (isPeriodHabit(h)) {
+      // A month/year target is spread evenly over its weeks so the weekly score stays comparable.
+      const weekTarget = Math.max(1, Math.ceil((h.weeklyTarget * 7) / PERIOD_DAYS[h.periodUnit]));
+      achieved += Math.min(weekTarget, weekDoneCount(h, logs, anchor));
+      expected += weekTarget;
     } else {
       for (const d of dates) {
         if (d > today) continue;
-        const s = dayState(h, logs[d], d, today);
-        if (s === "off" || s === "skipped" || s === "upcoming") continue;
+        const s = dayState(h, logs, d, today);
+        if (s === "off" || s === "skipped" || s === "upcoming" || s === "flex") continue;
         expected += 1;
         if (s === "done") achieved += 1;
       }

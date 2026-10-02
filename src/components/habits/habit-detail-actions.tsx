@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Archive, ArchiveRestore, Pencil, Trash2 } from "lucide-react";
 import { archiveHabitAction, deleteHabitAction } from "@/lib/habit-actions";
-import { HabitFormSheet, type HabitFormValues } from "@/components/habits/habit-form";
+import { HabitFormSheet } from "@/components/habits/habit-form";
+import type { HabitFormValues } from "@/lib/habit-form-values";
 import type { CategoryOption } from "@/components/habits/form-bits";
 
 export function HabitDetailActions({

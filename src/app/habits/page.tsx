@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import { buildBoardHabits, buildBoardTasks } from "@/lib/habit-board";
-import { computeStreak, dayCompletion, weekDates, WEEKDAY_SHORT } from "@/lib/habits";
+import { computeStreak, dayCompletion, weekDates, WEEKDAY_SHORT, type StreakResult } from "@/lib/habits";
 import { getProfilesInHousehold } from "@/lib/db/repo";
 import { getHabits, getHabitLogsInRange } from "@/lib/db/repo-habits";
 import { requireAuth } from "@/lib/auth";
@@ -44,7 +44,7 @@ export default async function HabitsTodayPage({
   const pct = due === 0 ? 0 : Math.round((done / due) * 100);
 
   // Best running streak, for the highlight chip.
-  let best: { name: string; streak: number; unit: "day" | "week" } | null = null;
+  let best: { name: string; streak: number; unit: StreakResult["unit"] } | null = null;
   for (const h of habits) {
     const s = computeStreak(h, logsByHabit[h.id] ?? {}, today);
     if (s.current > 0 && (!best || s.current > best.streak)) best = { name: h.name, streak: s.current, unit: s.unit };

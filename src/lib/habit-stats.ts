@@ -1,8 +1,10 @@
 import { addDays, parseIso } from "@/lib/date";
 import {
+  PERIOD_DAYS,
+  countsForStreak,
   dayCompletion,
   dayState,
-  isDueOn,
+  isPeriodHabit,
   weekDoneCount,
   weekStart,
   type DayState,
@@ -45,15 +47,16 @@ export function weeklyBars(habit: HabitLite, logs: HabitLogMap, weeks: number, t
     const start = addDays(thisWeek, -7 * i);
     let target = 0;
     let done = 0;
-    if (habit.schedule === "weekly_count") {
-      done = Math.min(habit.weeklyTarget, weekDoneCount(habit, logs, start));
-      target = habit.weeklyTarget;
+    if (isPeriodHabit(habit)) {
+      // A month/year target is spread evenly over its weeks so the bars stay comparable.
+      target = Math.max(1, Math.ceil((habit.weeklyTarget * 7) / PERIOD_DAYS[habit.periodUnit]));
+      done = Math.min(target, weekDoneCount(habit, logs, start));
     } else {
       for (let k = 0; k < 7; k++) {
         const d = addDays(start, k);
-        if (d > today || !isDueOn(habit, d)) continue;
-        const s = dayState(habit, logs[d], d, today);
-        if (s === "skipped" || s === "pending") continue;
+        if (d > today || !countsForStreak(habit, d)) continue;
+        const s = dayState(habit, logs, d, today);
+        if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming") continue;
         target += 1;
         if (s === "done") done += 1;
       }
@@ -80,7 +83,7 @@ export function heatmapWeeks(habit: HabitLite, logs: HabitLogMap, weeks: number,
     cols.push(
       Array.from({ length: 7 }, (_, i) => {
         const d = addDays(start, i);
-        return { date: d, state: dayState(habit, logs[d], d, today), value: logs[d]?.value ?? 0 };
+        return { date: d, state: dayState(habit, logs, d, today), value: logs[d]?.value ?? 0 };
       })
     );
   }

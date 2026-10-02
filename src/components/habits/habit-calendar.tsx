@@ -4,9 +4,20 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, ChevronLeft, ChevronRight, SkipForward, Undo2, X } from "lucide-react";
 import { logHabitAction, saveHabitNoteAction } from "@/lib/habit-actions";
-import { colorHex, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
+import {
+  colorHex,
+  targetLabel,
+  targetMet,
+  tint,
+  WEEKDAY_SHORT,
+  type ChecklistItem,
+  type DayState,
+} from "@/lib/habits";
+import type { HabitEvalType, TargetOp } from "@/lib/db/schema";
 import { Sheet } from "@/components/habits/sheet";
-import { Stepper, inputClass } from "@/components/habits/form-bits";
+import { inputClass } from "@/components/habits/form-bits";
+import { DurationInput, NumberInput } from "@/components/habits/form-fields";
+import { Checkbox } from "@/components/habits/ui/checkbox";
 import { parseIso } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
@@ -14,15 +25,28 @@ export type CalendarDay = {
   date: string;
   state: DayState;
   value: number;
+  /** Checklist habits: ids of the ticked items. */
+  checked: string[];
   note: string | null;
+};
+
+type GoalSpec = {
+  evalType: HabitEvalType;
+  targetOp: TargetOp;
+  dailyTarget: number;
+  unit: string | null;
+  checklist: ChecklistItem[];
 };
 
 export function HabitCalendar({
   habitId,
   kind,
   color,
+  evalType,
+  targetOp,
   dailyTarget,
   unit,
+  checklist,
   monthLabel,
   prevHref,
   nextHref,
@@ -34,8 +58,11 @@ export function HabitCalendar({
   habitId: number;
   kind: "build" | "break";
   color: string;
+  evalType: HabitEvalType;
+  targetOp: TargetOp;
   dailyTarget: number;
   unit: string | null;
+  checklist: ChecklistItem[];
   monthLabel: string;
   prevHref: string;
   nextHref: string | null;
@@ -133,8 +160,7 @@ export function HabitCalendar({
           habitId={habitId}
           kind={kind}
           color={color}
-          dailyTarget={dailyTarget}
-          unit={unit}
+          spec={{ evalType, targetOp, dailyTarget, unit, checklist }}
           day={selected}
           onClose={() => setSelected(null)}
         />
@@ -147,26 +173,35 @@ function DayEditor({
   habitId,
   kind,
   color,
-  dailyTarget,
-  unit,
+  spec,
   day,
   onClose,
 }: {
   habitId: number;
   kind: "build" | "break";
   color: string;
-  dailyTarget: number;
-  unit: string | null;
+  spec: GoalSpec;
   day: CalendarDay;
   onClose: () => void;
 }) {
   const hex = colorHex(color);
-  const counter = dailyTarget > 1;
-  const [value, setValue] = useState(day.state === "done" || day.state === "partial" ? day.value : dailyTarget);
+  const { evalType, dailyTarget, checklist } = spec;
+  const measured = kind === "build" && (evalType === "numeric" || evalType === "timer");
+  const isChecklist = kind === "build" && evalType === "checklist";
+  const logged0 = day.state === "done" || day.state === "partial";
+  // A sensible starting point: what was logged, or the full goal.
+  const [value, setValue] = useState<number>(logged0 ? day.value : dailyTarget > 0 ? dailyTarget : 1);
+  const [checked, setChecked] = useState<string[]>(logged0 ? day.checked : checklist.map((i) => i.id));
   const [note, setNote] = useState(day.note ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const logged = ["done", "partial", "slipped", "skipped"].includes(day.state);
+  const complete = isChecklist
+    ? checked.length >= checklist.length && checklist.length > 0
+    : measured
+      ? targetMet(spec, value)
+      : true;
+  const saveLabel = complete ? "Done" : "Save progress";
 
   const label = parseIso(day.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
@@ -174,7 +209,13 @@ function DayEditor({
     setError(null);
     startTransition(async () => {
       try {
-        await logHabitAction({ habitId, date: day.date, status, value: status === "done" ? value : undefined });
+        await logHabitAction({
+          habitId,
+          date: day.date,
+          status,
+          value: status === "done" && measured ? value : undefined,
+          checked: status === "done" && isChecklist ? checked : undefined,
+        });
         // Persist the note alongside the entry (only meaningful when an entry exists).
         if (status !== "clear" && (note.trim() || day.note)) {
           const res = await saveHabitNoteAction({ habitId, date: day.date, note });
@@ -193,13 +234,43 @@ function DayEditor({
   return (
     <Sheet open onClose={onClose} title={label}>
       <div className="flex flex-col gap-4 pb-2 pt-1">
-        {counter && (
-          <div className="flex items-center justify-between rounded-xl bg-h-surface2 px-3 py-2">
-            <span className="text-sm font-semibold">
-              Amount{unit ? ` (${unit})` : ""} · goal {dailyTarget}
-            </span>
-            <Stepper value={value} onChange={setValue} min={1} max={9999} />
+        {measured && (
+          <div className="flex flex-col gap-2 rounded-xl bg-h-surface2 p-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="text-sm font-semibold">{evalType === "timer" ? "Time spent" : "Amount"}</span>
+              <span className="text-[11px] font-bold text-h-muted">Goal {targetLabel(spec)}</span>
+            </div>
+            {evalType === "timer" ? (
+              <DurationInput seconds={value} onChange={setValue} />
+            ) : (
+              <div className="flex items-center gap-2">
+                <NumberInput value={value} min={0} onChange={(n) => setValue(n ?? 0)} className="max-w-32" />
+                {spec.unit && <span className="text-sm font-semibold text-h-muted">{spec.unit}</span>}
+              </div>
+            )}
           </div>
+        )}
+
+        {isChecklist && (
+          <ul className="flex flex-col gap-1.5 rounded-xl bg-h-surface2 p-2">
+            {checklist.map((item) => {
+              const on = checked.includes(item.id);
+              return (
+                <li key={item.id}>
+                  <label className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 hover:bg-h-surface">
+                    <Checkbox
+                      color={hex}
+                      checked={on}
+                      onCheckedChange={(c) =>
+                        setChecked((prev) => (c ? [...prev, item.id] : prev.filter((id) => id !== item.id)))
+                      }
+                    />
+                    <span className={cn("text-sm font-semibold", on && "text-h-muted line-through")}>{item.title}</span>
+                  </label>
+                </li>
+              );
+            })}
+          </ul>
         )}
 
         <div className={cn("grid gap-2", kind === "break" ? "grid-cols-3" : "grid-cols-2")}>
@@ -207,7 +278,7 @@ function DayEditor({
             onClick={() => save("done")}
             disabled={pending}
             icon={Check}
-            label={kind === "break" ? "Stayed clean" : counter && value < dailyTarget ? "Save progress" : "Done"}
+            label={kind === "break" ? "Stayed clean" : saveLabel}
             style={{ background: hex, color: "#fff" }}
           />
           {kind === "break" && (

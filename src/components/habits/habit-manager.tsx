@@ -4,9 +4,10 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Archive, ArchiveRestore, Flame, Pencil, Plus, Trash2 } from "lucide-react";
 import { archiveHabitAction, deleteCategoryAction, deleteHabitAction } from "@/lib/habit-actions";
-import { colorHex, tint } from "@/lib/habits";
+import { STREAK_UNIT_SHORT, colorHex, tint, type StreakResult } from "@/lib/habits";
 import { habitIcon } from "@/lib/habit-icons";
-import { HabitFormSheet, type HabitFormValues } from "@/components/habits/habit-form";
+import { HabitFormSheet } from "@/components/habits/habit-form";
+import type { HabitFormValues } from "@/lib/habit-form-values";
 import { CategorySheet } from "@/components/habits/category-sheet";
 import type { CategoryOption } from "@/components/habits/form-bits";
 import { cn } from "@/lib/utils";
@@ -14,9 +15,10 @@ import { cn } from "@/lib/utils";
 export type ManageHabit = HabitFormValues & {
   id: number;
   scheduleLabel: string;
+  targetLabel: string | null;
   archived: boolean;
   streak: number;
-  streakUnit: "day" | "week";
+  streakUnit: StreakResult["unit"];
 };
 
 export function HabitManager({
@@ -67,17 +69,13 @@ export function HabitManager({
                 {h.kind === "break" ? "Break" : "Build"}
               </span>
               <span>{h.scheduleLabel}</span>
-              {h.dailyTarget > 1 && (
-                <span>
-                  {h.dailyTarget}
-                  {h.unit ? ` ${h.unit}` : "×"}/day
-                </span>
-              )}
+              {h.targetLabel && <span>{h.targetLabel}/day</span>}
+              {h.priority > 0 && <span className="font-bold">P{h.priority}</span>}
               {h.streak > 0 && (
                 <span className="flex items-center gap-0.5 font-bold text-h-break">
                   <Flame className="h-3 w-3" />
                   {h.streak}
-                  {h.streakUnit === "week" ? "w" : "d"}
+                  {STREAK_UNIT_SHORT[h.streakUnit]}
                 </span>
               )}
             </span>

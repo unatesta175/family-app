@@ -190,9 +190,32 @@ export const qadaLedger = sqliteTable("qada_ledger", {
 export const HABIT_KINDS = ["build", "break"] as const;
 export type HabitKind = (typeof HABIT_KINDS)[number];
 
-/** daily = every day, weekdays = chosen days of the week, weekly_count = N times any day of the week. */
-export const HABIT_SCHEDULES = ["daily", "weekdays", "weekly_count"] as const;
+/**
+ * How often a habit comes up:
+ *  daily        = every day
+ *  weekdays     = chosen days of the week
+ *  month_days   = chosen days of the month (1-31)
+ *  year_days    = chosen calendar dates of the year ("MM-DD")
+ *  weekly_count = "some days per period": N days per week / month / year (see `periodUnit`; the name
+ *                 is historic, from when it only meant "N times a week")
+ *  repeat       = every N days from the start date
+ */
+export const HABIT_SCHEDULES = ["daily", "weekdays", "month_days", "year_days", "weekly_count", "repeat"] as const;
 export type HabitSchedule = (typeof HABIT_SCHEDULES)[number];
+
+export const PERIOD_UNITS = ["week", "month", "year"] as const;
+export type PeriodUnit = (typeof PERIOD_UNITS)[number];
+
+/** How a day's result is judged: a yes/no tick, a number, time on a timer, or a set of sub-items. */
+export const HABIT_EVAL_TYPES = ["yes_no", "numeric", "timer", "checklist"] as const;
+export type HabitEvalType = (typeof HABIT_EVAL_TYPES)[number];
+
+export const TARGET_OPS = ["at_least", "at_most", "exactly", "any"] as const;
+export type TargetOp = (typeof TARGET_OPS)[number];
+
+/** Extra goals measured over a longer span than a day. "single" = reached in one go (one day). */
+export const GOAL_PERIODS = ["week", "month", "year", "all_time", "single"] as const;
+export type GoalPeriod = (typeof GOAL_PERIODS)[number];
 
 /** done = did it / stayed clean, slipped = broke a break-habit, skipped = deliberate rest day. */
 export const HABIT_LOG_STATUSES = ["done", "slipped", "skipped"] as const;
@@ -236,9 +259,23 @@ export const habits = sqliteTable("habits", {
   schedule: text("schedule", { enum: HABIT_SCHEDULES }).notNull().default("daily"),
   weekdays: text("weekdays").notNull().default("0,1,2,3,4,5,6"), // 0 = Sunday, for schedule=weekdays
   weeklyTarget: integer("weekly_target").notNull().default(3), // for schedule=weekly_count
-  dailyTarget: integer("daily_target").notNull().default(1), // >1 makes it a counter (e.g. 8 glasses)
+  // The daily goal: a count/amount (numeric), seconds (timer) or number of items (checklist). 1 for yes/no.
+  dailyTarget: real("daily_target").notNull().default(1),
   unit: text("unit"),
   startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  evalType: text("eval_type", { enum: HABIT_EVAL_TYPES }).notNull().default("yes_no"),
+  targetOp: text("target_op", { enum: TARGET_OPS }).notNull().default("at_least"),
+  // Shown every day until done instead of counting as missed (weekdays/month/year/repeat schedules).
+  flexible: integer("flexible", { mode: "boolean" }).notNull().default(false),
+  repeatEvery: integer("repeat_every").notNull().default(1), // schedule=repeat: every N days
+  alternate: integer("alternate", { mode: "boolean" }).notNull().default(false), // repeat: N days on, N days off
+  monthDays: text("month_days").notNull().default(""), // schedule=month_days, e.g. "1,15,31"
+  yearDays: text("year_days").notNull().default(""), // schedule=year_days, e.g. "03-15,12-25"
+  periodUnit: text("period_unit", { enum: PERIOD_UNITS }).notNull().default("week"), // schedule=weekly_count
+  priority: integer("priority").notNull().default(0), // 1 = highest; 0 = none
+  checklist: text("checklist").notNull().default("[]"), // JSON [{id,title}]
+  goals: text("goals").notNull().default("[]"), // JSON [{period,op,value}]
   archivedAt: text("archived_at"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at")
@@ -255,7 +292,8 @@ export const habitLogs = sqliteTable(
       .references(() => habits.id, { onDelete: "cascade" }),
     date: text("date").notNull(), // ISO yyyy-mm-dd
     status: text("status", { enum: HABIT_LOG_STATUSES }).notNull().default("done"),
-    value: integer("value").notNull().default(1), // progress towards dailyTarget
+    value: real("value").notNull().default(1), // progress towards dailyTarget (seconds for timers)
+    detail: text("detail"), // checklist habits: JSON array of the ticked item ids
     note: text("note"),
     loggedAt: text("logged_at")
       .notNull()

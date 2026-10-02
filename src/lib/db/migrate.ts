@@ -20,6 +20,20 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   },
   { table: "users", column: "google_id", ddl: "ALTER TABLE users ADD COLUMN google_id TEXT" },
   { table: "users", column: "email", ddl: "ALTER TABLE users ADD COLUMN email TEXT" },
+  // Habit evaluation types, extra goals and richer frequencies.
+  { table: "habits", column: "eval_type", ddl: "ALTER TABLE habits ADD COLUMN eval_type TEXT NOT NULL DEFAULT 'yes_no'" },
+  { table: "habits", column: "target_op", ddl: "ALTER TABLE habits ADD COLUMN target_op TEXT NOT NULL DEFAULT 'at_least'" },
+  { table: "habits", column: "end_date", ddl: "ALTER TABLE habits ADD COLUMN end_date TEXT" },
+  { table: "habits", column: "flexible", ddl: "ALTER TABLE habits ADD COLUMN flexible INTEGER NOT NULL DEFAULT 0" },
+  { table: "habits", column: "repeat_every", ddl: "ALTER TABLE habits ADD COLUMN repeat_every INTEGER NOT NULL DEFAULT 1" },
+  { table: "habits", column: "alternate", ddl: "ALTER TABLE habits ADD COLUMN alternate INTEGER NOT NULL DEFAULT 0" },
+  { table: "habits", column: "month_days", ddl: "ALTER TABLE habits ADD COLUMN month_days TEXT NOT NULL DEFAULT ''" },
+  { table: "habits", column: "year_days", ddl: "ALTER TABLE habits ADD COLUMN year_days TEXT NOT NULL DEFAULT ''" },
+  { table: "habits", column: "period_unit", ddl: "ALTER TABLE habits ADD COLUMN period_unit TEXT NOT NULL DEFAULT 'week'" },
+  { table: "habits", column: "priority", ddl: "ALTER TABLE habits ADD COLUMN priority INTEGER NOT NULL DEFAULT 0" },
+  { table: "habits", column: "checklist", ddl: "ALTER TABLE habits ADD COLUMN checklist TEXT NOT NULL DEFAULT '[]'" },
+  { table: "habits", column: "goals", ddl: "ALTER TABLE habits ADD COLUMN goals TEXT NOT NULL DEFAULT '[]'" },
+  { table: "habit_logs", column: "detail", ddl: "ALTER TABLE habit_logs ADD COLUMN detail TEXT" },
 ];
 
 /**
@@ -195,6 +209,14 @@ export async function runStartupMigrations() {
     // Multiple households will have people sharing a display name — drop the old global
     // uniqueness constraint on profiles.name. Index-only change; no rows are touched.
     await client.execute(`DROP INDEX IF EXISTS profiles_name_unique`);
+
+    // Habits that used to be counters (daily target above 1) become "numeric" habits. One-off, guarded
+    // by a flag so it never touches habits the user later edits.
+    const evalFlag = await client.execute({ sql: "SELECT value FROM app_meta WHERE key = ?", args: ["habit_eval_types_v1"] });
+    if (evalFlag.rows.length === 0) {
+      await client.execute(`UPDATE habits SET eval_type = 'numeric' WHERE daily_target > 1 AND eval_type = 'yes_no'`);
+      await client.execute({ sql: "INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)", args: ["habit_eval_types_v1", "1"] });
+    }
 
     await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS users_google_id_unique ON users (google_id)`);
     await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)`);

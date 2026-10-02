@@ -4,8 +4,24 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertOwnProfile, getOwnProfileId } from "@/lib/auth";
 import { todayIso } from "@/lib/date";
-import { HABIT_KINDS, HABIT_SCHEDULES, TASK_PRIORITIES, TASK_RECURRENCES } from "@/lib/db/schema";
-import { HABIT_COLOR_KEYS, serializeWeekdays } from "@/lib/habits";
+import {
+  GOAL_PERIODS,
+  HABIT_EVAL_TYPES,
+  HABIT_KINDS,
+  HABIT_SCHEDULES,
+  PERIOD_UNITS,
+  TARGET_OPS,
+  TASK_PRIORITIES,
+  TASK_RECURRENCES,
+} from "@/lib/db/schema";
+import {
+  HABIT_COLOR_KEYS,
+  PERIOD_MAX,
+  parseChecklist,
+  serializeMonthDays,
+  serializeWeekdays,
+  serializeYearDays,
+} from "@/lib/habits";
 import { HABIT_ICON_KEYS } from "@/lib/habit-icons";
 import {
   applyStarterPack,
@@ -75,19 +91,36 @@ const logSchema = z.object({
   habitId: z.number().int().positive(),
   date: isoDateSchema,
   status: z.enum(["done", "slipped", "skipped", "clear"]),
-  value: z.number().int().min(0).max(100_000).optional(),
+  value: z.number().min(0).max(1_000_000_000).optional(),
+  checked: z.array(z.string().max(40)).max(50).optional(),
 });
 
-/** Set (or clear) a habit's entry for one date. Counter habits pass `value` for partial progress. */
+/**
+ * Set (or clear) a habit's entry for one date. Numeric/timer habits pass `value` (an amount / seconds),
+ * checklist habits pass the ids of the ticked items in `checked`.
+ */
 export async function logHabitAction(input: z.input<typeof logSchema>) {
   const parsed = logSchema.parse(input);
   const habit = await ownHabit(parsed.habitId);
   if (parsed.date > todayIso()) throw new Error("You can't log a future date.");
 
-  if (parsed.status === "clear" || (parsed.status === "done" && parsed.value === 0)) {
+  if (parsed.status === "clear") {
     await clearHabitLog(habit.id, parsed.date);
   } else if (parsed.status === "done") {
-    await upsertHabitLog(habit.id, parsed.date, "done", parsed.value ?? habit.dailyTarget);
+    if (habit.kind === "break" || habit.evalType === "yes_no") {
+      await upsertHabitLog(habit.id, parsed.date, "done", 1);
+    } else if (habit.evalType === "checklist") {
+      const valid = new Set(parseChecklist(habit.checklist).map((i) => i.id));
+      const checked = [...new Set(parsed.checked ?? [])].filter((id) => valid.has(id));
+      if (checked.length === 0) await clearHabitLog(habit.id, parsed.date);
+      else await upsertHabitLog(habit.id, parsed.date, "done", checked.length, undefined, checked);
+    } else {
+      const raw = parsed.value ?? habit.dailyTarget;
+      const value = habit.evalType === "timer" ? Math.round(raw) : Math.round(raw * 100) / 100;
+      // Zero means "nothing logged" — except for "less than" goals, where 0 is a perfect day.
+      if (value === 0 && habit.targetOp !== "at_most") await clearHabitLog(habit.id, parsed.date);
+      else await upsertHabitLog(habit.id, parsed.date, "done", value);
+    }
   } else {
     await upsertHabitLog(habit.id, parsed.date, parsed.status, 0);
   }
@@ -102,7 +135,14 @@ export async function saveHabitNoteAction(input: { habitId: number; date: string
     const habit = await ownHabit(parsed.habitId);
     const existing = (await getAllLogsForHabit(habit.id))[parsed.date];
     if (!existing) return { ok: false, error: "Log the habit for that day first, then add a note." };
-    await upsertHabitLog(habit.id, parsed.date, existing.status, existing.value, parsed.note.trim() || null);
+    await upsertHabitLog(
+      habit.id,
+      parsed.date,
+      existing.status,
+      existing.value,
+      parsed.note.trim() || null,
+      existing.checked ?? null
+    );
     refresh();
     return { ok: true };
   } catch (err) {
@@ -111,6 +151,17 @@ export async function saveHabitNoteAction(input: { habitId: number; date: string
 }
 
 // --- Habits ----------------------------------------------------------------------------------
+
+const goalSchema = z.object({
+  period: z.enum(GOAL_PERIODS),
+  op: z.enum(["at_least", "at_most", "exactly"]),
+  value: z.number().positive("Goals need a value above zero.").max(1_000_000_000),
+});
+
+const checklistItemSchema = z.object({
+  id: z.string().min(1).max(40),
+  title: z.string().trim().min(1, "Checklist items can't be empty.").max(80),
+});
 
 const habitSchema = z
   .object({
@@ -122,14 +173,40 @@ const habitSchema = z
     color: colorSchema,
     schedule: z.enum(HABIT_SCHEDULES),
     weekdays: z.array(z.number().int().min(0).max(6)),
-    weeklyTarget: z.number().int().min(1).max(7),
-    dailyTarget: z.number().int().min(1).max(1000),
+    weeklyTarget: z.number().int().min(1).max(366),
+    // Amount (numeric), seconds (timer); ignored for yes/no and checklist habits.
+    dailyTarget: z.number().min(0).max(1_000_000_000),
     unit: z.string().trim().max(20).optional().nullable(),
     startDate: isoDateSchema,
+    endDate: isoDateSchema.nullable().optional(),
+    evalType: z.enum(HABIT_EVAL_TYPES).default("yes_no"),
+    targetOp: z.enum(TARGET_OPS).default("at_least"),
+    checklist: z.array(checklistItemSchema).max(30).default([]),
+    goals: z.array(goalSchema).max(5).default([]),
+    flexible: z.boolean().default(false),
+    repeatEvery: z.number().int().min(1).max(365).default(1),
+    alternate: z.boolean().default(false),
+    monthDays: z.array(z.number().int().min(1).max(31)).default([]),
+    yearDays: z.array(z.string().regex(/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)).default([]),
+    periodUnit: z.enum(PERIOD_UNITS).default("week"),
+    priority: z.number().int().min(0).max(99).nullable().optional(),
   })
-  .refine((v) => v.schedule !== "weekdays" || v.weekdays.length > 0, {
-    message: "Pick at least one day of the week.",
-    path: ["weekdays"],
+  .superRefine((v, ctx) => {
+    const issue = (message: string, path: string) => ctx.addIssue({ code: "custom", message, path: [path] });
+    if (v.schedule === "weekdays" && v.weekdays.length === 0) issue("Pick at least one day of the week.", "weekdays");
+    if (v.schedule === "month_days" && v.monthDays.length === 0) issue("Pick at least one day of the month.", "monthDays");
+    if (v.schedule === "year_days" && v.yearDays.length === 0) issue("Add at least one date.", "yearDays");
+    if (v.schedule === "weekly_count" && v.weeklyTarget > PERIOD_MAX[v.periodUnit]) {
+      issue(`There aren't ${v.weeklyTarget} days in a ${v.periodUnit}.`, "weeklyTarget");
+    }
+    if (v.endDate && v.endDate < v.startDate) issue("The end date can't be before the start date.", "endDate");
+    if (v.kind === "build" && (v.evalType === "numeric" || v.evalType === "timer")) {
+      if (v.targetOp !== "any" && v.dailyTarget <= 0) issue("Set a goal above zero.", "dailyTarget");
+    }
+    if (v.kind === "build" && v.evalType === "checklist" && v.checklist.length === 0) {
+      issue("Add at least one checklist item.", "checklist");
+    }
+    if (new Set(v.goals.map((g) => g.period)).size !== v.goals.length) issue("Each extra goal can only be added once.", "goals");
   });
 
 export type HabitFormInput = z.input<typeof habitSchema>;
@@ -140,6 +217,22 @@ async function habitInput(raw: HabitFormInput, profileId: number) {
     const cat = await getCategory(v.categoryId);
     if (!cat || cat.profileId !== profileId) throw new Error("Unknown category.");
   }
+
+  // Break habits are always a plain clean/slipped check-in.
+  const evalType = v.kind === "break" ? "yes_no" : v.evalType;
+  const measured = evalType === "numeric" || evalType === "timer";
+  const checklist = evalType === "checklist" ? v.checklist.map((i) => ({ id: i.id, title: i.title })) : [];
+  const targetOp = measured ? v.targetOp : "at_least";
+  const dailyTarget =
+    evalType === "checklist"
+      ? checklist.length
+      : measured
+        ? evalType === "timer"
+          ? Math.round(v.dailyTarget)
+          : Math.round(v.dailyTarget * 100) / 100
+        : 1;
+  const repeating = v.schedule === "repeat";
+
   return {
     name: v.name,
     description: v.description?.trim() || null,
@@ -150,9 +243,22 @@ async function habitInput(raw: HabitFormInput, profileId: number) {
     schedule: v.schedule,
     weekdays: v.schedule === "weekdays" ? serializeWeekdays(v.weekdays) : "0,1,2,3,4,5,6",
     weeklyTarget: v.weeklyTarget,
-    dailyTarget: v.dailyTarget,
-    unit: v.unit?.trim() || null,
+    dailyTarget,
+    unit: evalType === "numeric" ? v.unit?.trim() || null : null,
     startDate: v.startDate,
+    endDate: v.endDate || null,
+    evalType,
+    targetOp,
+    // "Flexible" only makes sense where an occurrence lands on specific days.
+    flexible: v.flexible && ["weekdays", "month_days", "year_days", "repeat"].includes(v.schedule),
+    repeatEvery: repeating ? v.repeatEvery : 1,
+    alternate: repeating && v.alternate,
+    monthDays: v.schedule === "month_days" ? serializeMonthDays(v.monthDays) : "",
+    yearDays: v.schedule === "year_days" ? serializeYearDays(v.yearDays) : "",
+    periodUnit: v.periodUnit,
+    priority: v.priority ?? 0,
+    checklist: JSON.stringify(checklist),
+    goals: JSON.stringify(measured ? v.goals : []),
   };
 }
 

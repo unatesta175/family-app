@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Flame, Target, TrendingUp, Trophy, ListChecks, CheckCircle2 } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import { buildBoardHabits, buildBoardTasks } from "@/lib/habit-board";
-import { colorHex, completionRate, computeStreak, tint, totalDone } from "@/lib/habits";
+import { STREAK_UNIT_SHORT, colorHex, completionRate, computeStreak, tint, totalDone } from "@/lib/habits";
 import { dailyTrend, heatmapWeeks } from "@/lib/habit-stats";
 import { addDays, todayIso } from "@/lib/date";
 import { habitIcon } from "@/lib/habit-icons";
@@ -75,7 +75,7 @@ export default async function HabitsStatsPage({
 
   // Still pending today (habits + tasks), with quick-complete controls.
   const boardHabits = buildBoardHabits(habits, categories, logsByHabit, today, today).filter(
-    (h) => h.state === "pending" || h.state === "partial" || (h.state === "flex" && !h.weekMet)
+    (h) => h.state === "pending" || h.state === "partial" || (h.state === "flex" && !h.periodMet)
   );
   const boardTasks = buildBoardTasks(tasks, categories, completions, today, today).filter((t) => !t.done);
 
@@ -135,8 +135,8 @@ export default async function HabitsStatsPage({
                 <p className="text-[11px] text-h-muted">Average across habits, last {range} days</p>
               </div>
             </div>
-            <Tile icon={Flame} tone="var(--h-break)" value={bestCurrent?.streak.current ?? 0} unit={bestCurrent?.streak.unit === "week" ? "wk" : "d"} label="Longest running streak" sub={bestCurrent?.habit.name} />
-            <Tile icon={Trophy} tone="#f59e0b" value={bestEver?.streak.best ?? 0} unit={bestEver?.streak.unit === "week" ? "wk" : "d"} label="Best streak ever" sub={bestEver?.habit.name} />
+            <Tile icon={Flame} tone="var(--h-break)" value={bestCurrent?.streak.current ?? 0} unit={bestCurrent ? STREAK_UNIT_SHORT[bestCurrent.streak.unit] : "d"} label="Longest running streak" sub={bestCurrent?.habit.name} />
+            <Tile icon={Trophy} tone="#f59e0b" value={bestEver?.streak.best ?? 0} unit={bestEver ? STREAK_UNIT_SHORT[bestEver.streak.unit] : "d"} label="Best streak ever" sub={bestEver?.habit.name} />
             <Tile icon={Target} tone="var(--h-brand)" value={totalCheckIns} label={`Check-ins (${range}d)`} sub={`${tasksDone} task${tasksDone === 1 ? "" : "s"} done · ${tasksOpen} open`} />
           </div>
 
@@ -214,7 +214,7 @@ export default async function HabitsStatsPage({
                       <p className="mt-1 flex items-center justify-end gap-0.5 text-[11px] font-bold text-h-break">
                         <Flame className="h-3 w-3" />
                         {p.streak.current}
-                        {p.streak.unit === "week" ? "w" : "d"}
+                        {STREAK_UNIT_SHORT[p.streak.unit]}
                         <span className="font-medium text-h-muted"> · best {p.streak.best}</span>
                       </p>
                     </div>
