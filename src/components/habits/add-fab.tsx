@@ -8,7 +8,7 @@ import type { CategoryOption } from "@/components/habits/form-bits";
 import { cn } from "@/lib/utils";
 
 /** Global "+" (habit or task). Only rendered when the viewer is looking at their own data. */
-export function AddFab({ categories }: { categories: CategoryOption[] }) {
+export function AddFab({ categories, circleSize = 1 }: { categories: CategoryOption[]; circleSize?: number }) {
   const [menu, setMenu] = useState(false);
   const [habitOpen, setHabitOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -67,7 +67,13 @@ export function AddFab({ categories }: { categories: CategoryOption[] }) {
       </div>
 
       {habitOpen && (
-        <HabitFormSheet open onClose={() => setHabitOpen(false)} initial={emptyHabit()} categories={categories} />
+        <HabitFormSheet
+          open
+          onClose={() => setHabitOpen(false)}
+          initial={emptyHabit()}
+          categories={categories}
+          circleSize={circleSize}
+        />
       )}
       {taskOpen && (
         <TaskFormSheet open onClose={() => setTaskOpen(false)} initial={emptyTask()} categories={categories} />

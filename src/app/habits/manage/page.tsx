@@ -1,4 +1,6 @@
 import { loadHabitData } from "@/lib/habit-data";
+import { requireAuth } from "@/lib/auth";
+import { getProfilesInHousehold } from "@/lib/db/repo";
 import { getHabits } from "@/lib/db/repo-habits";
 import { computeStreak, scheduleLabel, targetLabel } from "@/lib/habits";
 import { habitToFormValues } from "@/lib/habit-form-values";
@@ -9,6 +11,8 @@ export default async function HabitsManagePage() {
   const today = todayIso();
   const { profileId, profile, readOnly, categories, logsByHabit } = await loadHabitData();
   const all = await getHabits(profileId, { includeArchived: true });
+  const session = await requireAuth();
+  const circleSize = (await getProfilesInHousehold(session.householdId)).length;
 
   const habits: ManageHabit[] = all.map((h) => {
     const streak = computeStreak(h, logsByHabit[h.id] ?? {}, today);
@@ -34,6 +38,7 @@ export default async function HabitsManagePage() {
         habits={habits}
         categories={categories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon }))}
         readOnly={readOnly}
+        circleSize={circleSize}
       />
     </div>
   );

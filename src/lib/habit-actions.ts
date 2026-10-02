@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { assertOwnProfile, getOwnProfileId } from "@/lib/auth";
+import { assertOwnProfile, getOwnProfileId, requireAuth } from "@/lib/auth";
+import { getProfilesInHousehold } from "@/lib/db/repo";
 import { todayIso } from "@/lib/date";
 import {
   GOAL_PERIODS,
@@ -34,7 +35,9 @@ import {
   deleteHabit,
   deleteTask,
   getAllLogsForHabit,
+  getCategories,
   getCategory,
+  getHabits,
   getHabit,
   getTask,
   setHabitArchived,
@@ -204,6 +207,8 @@ const habitSchema = z
     yearDays: z.array(z.string().regex(/^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)).default([]),
     periodUnit: z.enum(PERIOD_UNITS).default("week"),
     priority: z.number().int().min(0).max(99).nullable().optional(),
+    // Also add the habit for everyone else in the family circle (household).
+    forEveryone: z.boolean().default(false),
   })
   .superRefine((v, ctx) => {
     const issue = (message: string, path: string) => ctx.addIssue({ code: "custom", message, path: [path] });
@@ -276,12 +281,44 @@ async function habitInput(raw: HabitFormInput, profileId: number) {
   };
 }
 
-export async function createHabitAction(raw: HabitFormInput): Promise<ActionResult<{ id: number }>> {
+/**
+ * Adds a copy of a habit to every other member of the caller's household who doesn't already have a
+ * habit with the same name (archived ones count, so nothing is duplicated). Categories are matched by
+ * name and created for the member when missing. Returns how many members got a new habit.
+ */
+async function shareWithCircle(ownerProfileId: number, input: Awaited<ReturnType<typeof habitInput>>): Promise<number> {
+  const session = await requireAuth();
+  const others = (await getProfilesInHousehold(session.householdId)).filter((p) => p.id !== ownerProfileId);
+  const ownCategory = input.categoryId !== null ? await getCategory(input.categoryId) : null;
+  const wanted = input.name.trim().toLowerCase();
+
+  let shared = 0;
+  for (const member of others) {
+    const theirs = await getHabits(member.id, { includeArchived: true });
+    if (theirs.some((h) => h.name.trim().toLowerCase() === wanted)) continue;
+
+    let categoryId: number | null = null;
+    if (ownCategory) {
+      const cats = await getCategories(member.id);
+      const found = cats.find((c) => c.name.toLowerCase() === ownCategory.name.toLowerCase());
+      categoryId = found
+        ? found.id
+        : (await createCategory(member.id, { name: ownCategory.name, color: ownCategory.color, icon: ownCategory.icon })).id;
+    }
+    await createHabit(member.id, { ...input, categoryId });
+    shared += 1;
+  }
+  return shared;
+}
+
+export async function createHabitAction(raw: HabitFormInput): Promise<ActionResult<{ id: number; shared: number }>> {
   try {
     const profileId = await requireOwnProfileId();
-    const habit = await createHabit(profileId, await habitInput(raw, profileId));
+    const input = await habitInput(raw, profileId);
+    const habit = await createHabit(profileId, input);
+    const shared = raw.forEveryone ? await shareWithCircle(profileId, input) : 0;
     refresh();
-    return { ok: true, data: { id: habit.id } };
+    return { ok: true, data: { id: habit.id, shared } };
   } catch (err) {
     return fail(err);
   }
@@ -290,7 +327,9 @@ export async function createHabitAction(raw: HabitFormInput): Promise<ActionResu
 export async function updateHabitAction(id: number, raw: HabitFormInput): Promise<ActionResult> {
   try {
     const habit = await ownHabit(id);
-    await updateHabit(id, await habitInput(raw, habit.profileId));
+    const input = await habitInput(raw, habit.profileId);
+    await updateHabit(id, input);
+    if (raw.forEveryone) await shareWithCircle(habit.profileId, input);
     refresh();
     return { ok: true };
   } catch (err) {

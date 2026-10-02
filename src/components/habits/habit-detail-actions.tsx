@@ -12,10 +12,12 @@ export function HabitDetailActions({
   habit,
   archived,
   categories,
+  circleSize = 1,
 }: {
   habit: HabitFormValues & { id: number };
   archived: boolean;
   categories: CategoryOption[];
+  circleSize?: number;
 }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
@@ -77,7 +79,7 @@ export function HabitDetailActions({
         )}
       </div>
       {editing && (
-        <HabitFormSheet open onClose={() => setEditing(false)} initial={habit} categories={categories} />
+        <HabitFormSheet open onClose={() => setEditing(false)} initial={habit} categories={categories} circleSize={circleSize} />
       )}
     </>
   );

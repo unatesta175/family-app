@@ -78,7 +78,7 @@ export default async function HabitsLayout({ children }: { children: React.React
             <InstallPrompt />
             {children}
           </main>
-          {!readOnly && <AddFab categories={categories} />}
+          {!readOnly && <AddFab categories={categories} circleSize={profiles.length} />}
           <HabitBottomNav />
         </div>
       </div>

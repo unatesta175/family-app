@@ -25,10 +25,12 @@ export function HabitManager({
   habits,
   categories,
   readOnly,
+  circleSize = 1,
 }: {
   habits: ManageHabit[];
   categories: CategoryOption[];
   readOnly: boolean;
+  circleSize?: number;
 }) {
   const [editing, setEditing] = useState<ManageHabit | null>(null);
   const [catSheet, setCatSheet] = useState<{ cat: CategoryOption | null } | null>(null);
@@ -222,6 +224,7 @@ export function HabitManager({
           onClose={() => setEditing(null)}
           initial={editing}
           categories={categories}
+          circleSize={circleSize}
         />
       )}
       {catSheet && <CategorySheet onClose={() => setCatSheet(null)} initial={catSheet.cat} />}

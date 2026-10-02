@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Ban, Sprout, X } from "lucide-react";
+import { Ban, Sprout, Users, X } from "lucide-react";
 import { createHabitAction, updateHabitAction, type HabitFormInput } from "@/lib/habit-actions";
 import { colorHex } from "@/lib/habits";
 import { emptyHabit, type HabitFormValues } from "@/lib/habit-form-values";
@@ -10,7 +10,8 @@ import { Sheet } from "@/components/habits/sheet";
 import { CategorySelect } from "@/components/habits/category-select";
 import { EvaluationFields } from "@/components/habits/eval-fields";
 import { FrequencyFields } from "@/components/habits/frequency-fields";
-import { Caption, FormSection, NumberInput } from "@/components/habits/form-fields";
+import { Caption, FormSection, NumberInput, ToggleRow } from "@/components/habits/form-fields";
+import { Switch } from "@/components/habits/ui/switch";
 import {
   ColorPicker,
   Field,
@@ -29,15 +30,19 @@ export function HabitFormSheet({
   onClose,
   initial,
   categories: initialCategories,
+  circleSize = 1,
 }: {
   open: boolean;
   onClose: () => void;
   initial: HabitFormValues;
   categories: CategoryOption[];
+  /** Number of people in the family circle, including the user. The share option shows when above 1. */
+  circleSize?: number;
 }) {
   const editing = initial.id !== undefined;
   const [v, setV] = useState<HabitFormValues>(initial);
   const [categories, setCategories] = useState(initialCategories);
+  const [forEveryone, setForEveryone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const hex = colorHex(v.color);
@@ -96,6 +101,7 @@ export function HabitFormSheet({
       startDate: v.startDate,
       endDate: v.endDate,
       priority: v.priority,
+      forEveryone,
     };
     startTransition(async () => {
       const res = editing ? await updateHabitAction(initial.id!, payload) : await createHabitAction(payload);
@@ -258,6 +264,27 @@ export function HabitFormSheet({
             <span className="text-[11px] leading-snug text-h-muted">1 is the highest priority and sits at the top of your list.</span>
           </label>
         </FormSection>
+
+        {circleSize > 1 && (
+          <FormSection title="Family circle">
+            <ToggleRow
+              title={editing ? "Also add for everyone" : "Create for everyone"}
+              description={
+                editing
+                  ? `Adds this habit for the ${circleSize - 1} other ${circleSize === 2 ? "person" : "people"} in your circle who don't have it yet. Anyone who already has a habit with this name keeps theirs.`
+                  : `Creates this habit for the ${circleSize - 1} other ${circleSize === 2 ? "person" : "people"} in your circle too. Everyone tracks their own copy and can change it.`
+              }
+            >
+              <Switch checked={forEveryone} onCheckedChange={setForEveryone} aria-label="Create for everyone in my circle" />
+            </ToggleRow>
+            {forEveryone && (
+              <p className="-mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-h-brand">
+                <Users className="h-3.5 w-3.5" />
+                Shared with {circleSize - 1} {circleSize === 2 ? "person" : "people"} when you save.
+              </p>
+            )}
+          </FormSection>
+        )}
       </div>
     </Sheet>
   );

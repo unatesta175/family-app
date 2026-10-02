@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Flame, Trophy, Percent, CheckCheck } from "lucide-react";
+import { ArrowLeft, BarChart3, CalendarDays } from "lucide-react";
 import { requireAuth, getOwnProfileId } from "@/lib/auth";
 import { getProfile, getProfilesInHousehold } from "@/lib/db/repo";
 import { getAllLogsForHabit, getCategories, getHabit, getHabitNotesInRange } from "@/lib/db/repo-habits";
 import { addDays, addMonths, parseIso, todayIso } from "@/lib/date";
 import {
-  STREAK_UNIT_SHORT,
   colorHex,
   completionRate,
   computeStreak,
@@ -19,27 +18,28 @@ import {
   scheduleLabel,
   targetLabel,
   tint,
-  totalDone,
 } from "@/lib/habits";
 import { habitToFormValues } from "@/lib/habit-form-values";
-import { heatmapWeeks, weeklyBars } from "@/lib/habit-stats";
+import { heatmapWeeks } from "@/lib/habit-stats";
+import { buildStatDays, habitScore } from "@/lib/habit-insights";
 import { HabitIcon } from "@/components/habits/habit-icon";
 import { HabitCalendar, type CalendarDay } from "@/components/habits/habit-calendar";
 import { HabitDetailActions } from "@/components/habits/habit-detail-actions";
-import { Heatmap } from "@/components/habits/heatmap";
-import { WeeklyBars } from "@/components/habits/charts";
+import { HabitStatistics } from "@/components/habits/habit-statistics";
+import { cn } from "@/lib/utils";
 
 export default async function HabitDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; tab?: string }>;
 }) {
   const { id: rawId } = await params;
-  const { month: rawMonth } = await searchParams;
+  const { month: rawMonth, tab: rawTab } = await searchParams;
   const id = Number(rawId);
   if (!Number.isInteger(id) || id <= 0) notFound();
+  const tab = rawTab === "stats" ? "stats" : "calendar";
 
   const session = await requireAuth();
   const habit = await getHabit(id);
@@ -52,9 +52,6 @@ export default async function HabitDetailPage({
   const readOnly = ownProfileId !== habit.profileId;
 
   const today = todayIso();
-  const monthAnchor = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? `${rawMonth}-01` : `${today.slice(0, 7)}-01`;
-  const monthStart = monthAnchor;
-  const monthEnd = addDays(addMonths(monthStart, 1), -1);
 
   const [owner, logs, categories, notes] = await Promise.all([
     getProfile(habit.profileId),
@@ -65,40 +62,11 @@ export default async function HabitDetailPage({
 
   const hex = colorHex(habit.color);
   const category = categories.find((c) => c.id === habit.categoryId);
-  const streak = computeStreak(habit, logs, today);
-  const rate30 = completionRate(habit, logs, addDays(today, -29), today, today);
-  const rateAll = completionRate(habit, logs, habit.startDate, today, today);
-  const noteByDate = new Map(notes.filter((n) => n.note).map((n) => [n.date, n.note as string]));
 
-  const days: CalendarDay[] = [];
-  for (let d = monthStart; d <= monthEnd; d = addDays(d, 1)) {
-    days.push({
-      date: d,
-      state: dayState(habit, logs, d, today),
-      value: logs[d]?.status === "done" ? logs[d].value : 0,
-      checked: logs[d]?.status === "done" ? (logs[d].checked ?? []) : [],
-      note: noteByDate.get(d) ?? null,
-    });
-  }
-
-  const currentMonth = `${today.slice(0, 7)}-01`;
-  const monthLabel = parseIso(monthStart).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-  const prevHref = `/habits/${habit.id}?month=${addMonths(monthStart, -1).slice(0, 7)}`;
-  const nextHref = monthStart < currentMonth ? `/habits/${habit.id}?month=${addMonths(monthStart, 1).slice(0, 7)}` : null;
-
-  const recentNotes = notes.filter((n) => n.note).slice(0, 5);
-
-  const goalRows = parseGoals(habit.goals).map((g) => {
-    const { current, met } = goalProgress(habit, logs, g, today);
-    const sym = g.op === "at_least" ? "≥" : g.op === "at_most" ? "≤" : "=";
-    return {
-      label: `${GOAL_PERIOD_LABEL[g.period]} goal`,
-      current: formatAmount(habit, current),
-      target: `${sym} ${formatAmount(habit, g.value)}`,
-      pct: g.value > 0 ? Math.min(100, Math.round((current / g.value) * 100)) : 0,
-      met,
-    };
-  });
+  const tabs = [
+    { key: "calendar", label: "Calendar", icon: CalendarDays, href: `/habits/${habit.id}` },
+    { key: "stats", label: "Statistics", icon: BarChart3, href: `/habits/${habit.id}?tab=stats` },
+  ] as const;
 
   return (
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
@@ -136,16 +104,116 @@ export default async function HabitDetailPage({
           archived={habit.archivedAt !== null}
           categories={categories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon }))}
           habit={{ ...habitToFormValues(habit), id: habit.id }}
+          circleSize={household.length}
         />
       )}
 
-      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-        <Stat icon={Flame} tone="var(--h-break)" value={`${streak.current}${STREAK_UNIT_SHORT[streak.unit]}`} label="Current streak" />
-        <Stat icon={Trophy} tone="#f59e0b" value={`${streak.best}${STREAK_UNIT_SHORT[streak.unit]}`} label="Best streak" />
-        <Stat icon={Percent} tone={hex} value={rate30 === null ? "–" : `${rate30}%`} label="Last 30 days" sub={rateAll === null ? undefined : `${rateAll}% all time`} />
-        <Stat icon={CheckCheck} tone="var(--h-good)" value={String(totalDone(habit, logs))} label="Total check-ins" />
-      </div>
+      <nav className="flex gap-1 rounded-xl bg-h-surface2 p-1" aria-label="Habit sections">
+        {tabs.map((t) => (
+          <Link
+            key={t.key}
+            href={t.href}
+            aria-current={tab === t.key ? "page" : undefined}
+            className={cn(
+              "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-bold transition-all",
+              tab === t.key ? "bg-h-surface text-h-fg shadow-sm" : "text-h-muted hover:text-h-fg"
+            )}
+          >
+            <t.icon className="h-3.5 w-3.5" />
+            {t.label}
+          </Link>
+        ))}
+      </nav>
 
+      {tab === "stats" ? (
+        <StatsTab habit={habit} logs={logs} today={today} />
+      ) : (
+        <CalendarTab habit={habit} logs={logs} notes={notes} today={today} rawMonth={rawMonth} readOnly={readOnly} hex={hex} />
+      )}
+    </div>
+  );
+}
+
+type HabitRow = NonNullable<Awaited<ReturnType<typeof getHabit>>>;
+type Logs = Awaited<ReturnType<typeof getAllLogsForHabit>>;
+
+function StatsTab({ habit, logs, today }: { habit: HabitRow; logs: Logs; today: string }) {
+  const score = habitScore(habit, logs, today);
+  const monthAgo = addDays(today, -30);
+  const scoreDelta = habit.startDate <= monthAgo ? score - habitScore(habit, logs, today, monthAgo) : null;
+
+  return (
+    <HabitStatistics
+      kind={habit.kind}
+      color={habit.color}
+      evalType={habit.evalType}
+      unit={habit.unit}
+      startDate={habit.startDate}
+      today={today}
+      days={buildStatDays(habit, logs, today)}
+      score={score}
+      scoreDelta={scoreDelta}
+      streak={computeStreak(habit, logs, today)}
+      rate30={completionRate(habit, logs, addDays(today, -29), today, today)}
+      rateAll={completionRate(habit, logs, habit.startDate, today, today)}
+      heat={heatmapWeeks(habit, logs, 26, today)}
+    />
+  );
+}
+
+function CalendarTab({
+  habit,
+  logs,
+  notes,
+  today,
+  rawMonth,
+  readOnly,
+  hex,
+}: {
+  habit: HabitRow;
+  logs: Logs;
+  notes: Awaited<ReturnType<typeof getHabitNotesInRange>>;
+  today: string;
+  rawMonth: string | undefined;
+  readOnly: boolean;
+  hex: string;
+}) {
+  const monthStart = rawMonth && /^\d{4}-\d{2}$/.test(rawMonth) ? `${rawMonth}-01` : `${today.slice(0, 7)}-01`;
+  const monthEnd = addDays(addMonths(monthStart, 1), -1);
+  const noteByDate = new Map(notes.filter((n) => n.note).map((n) => [n.date, n.note as string]));
+
+  const days: CalendarDay[] = [];
+  for (let d = monthStart; d <= monthEnd; d = addDays(d, 1)) {
+    days.push({
+      date: d,
+      state: dayState(habit, logs, d, today),
+      value: logs[d]?.status === "done" ? logs[d].value : 0,
+      checked: logs[d]?.status === "done" ? (logs[d].checked ?? []) : [],
+      note: noteByDate.get(d) ?? null,
+    });
+  }
+
+  const currentMonth = `${today.slice(0, 7)}-01`;
+  const monthLabel = parseIso(monthStart).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  const prevHref = `/habits/${habit.id}?month=${addMonths(monthStart, -1).slice(0, 7)}`;
+  const nextHref = monthStart < currentMonth ? `/habits/${habit.id}?month=${addMonths(monthStart, 1).slice(0, 7)}` : null;
+
+  const recentNotes = notes.filter((n) => n.note).slice(0, 5);
+
+  const goalRows = parseGoals(habit.goals).map((g) => {
+    const { current, met } = goalProgress(habit, logs, g, today);
+    const sym = g.op === "at_least" ? "≥" : g.op === "at_most" ? "≤" : "=";
+    return {
+      label: `${GOAL_PERIOD_LABEL[g.period]} goal`,
+      current: formatAmount(habit, current),
+      target: `${sym} ${formatAmount(habit, g.value)}`,
+      pct: g.value > 0 ? Math.min(100, Math.round((current / g.value) * 100)) : 0,
+      met,
+    };
+  });
+
+  return (
+    <>
       {goalRows.length > 0 && (
         <section className="h-card flex flex-col gap-3 p-4">
           <h3 className="text-sm font-extrabold">Goals</h3>
@@ -186,18 +254,6 @@ export default async function HabitDetailPage({
         readOnly={readOnly}
       />
 
-      <section className="h-card p-4">
-        <h3 className="mb-3 text-sm font-extrabold">Last 26 weeks</h3>
-        <div className="scrollbar-hide overflow-x-auto">
-          <Heatmap weeks={heatmapWeeks(habit, logs, 26, today)} color={habit.color} cell={12} />
-        </div>
-      </section>
-
-      <section className="h-card p-4">
-        <h3 className="mb-1 text-sm font-extrabold">Weekly completion</h3>
-        <WeeklyBars bars={weeklyBars(habit, logs, 12, today)} color={hex} />
-      </section>
-
       {recentNotes.length > 0 && (
         <section className="h-card p-4">
           <h3 className="mb-2 text-sm font-extrabold">Recent notes</h3>
@@ -213,31 +269,6 @@ export default async function HabitDetailPage({
           </ul>
         </section>
       )}
-    </div>
-  );
-}
-
-function Stat({
-  icon: Icon,
-  tone,
-  value,
-  label,
-  sub,
-}: {
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
-  tone: string;
-  value: string;
-  label: string;
-  sub?: string;
-}) {
-  return (
-    <div className="h-card flex flex-col gap-2 p-4">
-      <Icon className="h-5 w-5" style={{ color: tone }} />
-      <div>
-        <p className="text-2xl font-extrabold leading-none tabular-nums">{value}</p>
-        <p className="mt-1 text-[11px] font-semibold text-h-muted">{label}</p>
-        {sub && <p className="text-[11px] font-bold">{sub}</p>}
-      </div>
-    </div>
+    </>
   );
 }
