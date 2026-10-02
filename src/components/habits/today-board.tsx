@@ -15,8 +15,8 @@ import {
   Play,
   Plus,
   Repeat,
+  RotateCcw,
   SkipForward,
-  Undo2,
   X,
   PartyPopper,
   AlarmClock,
@@ -37,12 +37,14 @@ import {
 import { readTimerStart, startTimer, stopTimer, subscribeTimers } from "@/lib/habit-timer";
 import { HabitIcon } from "@/components/habits/habit-icon";
 import { Checkbox } from "@/components/habits/ui/checkbox";
+import { ConfirmDialog } from "@/components/habits/confirm-dialog";
+import { ProgressDialog } from "@/components/habits/progress-dialog";
 import type { BoardGoal, BoardHabit, BoardTask } from "@/lib/habit-board";
 import { parseIso } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "build" | "break" | "tasks";
-type HabitStatus = "done" | "slipped" | "skipped" | "clear";
+type HabitStatus = "done" | "slipped" | "skipped" | "missed" | "clear";
 
 type Action =
   | { type: "habit"; id: number; status: HabitStatus; value?: number; checked?: string[] }
@@ -91,6 +93,7 @@ function reduce(date: string, today: string) {
           }
         } else if (action.status === "slipped") nextState = "slipped";
         else if (action.status === "skipped") nextState = "skipped";
+        else if (action.status === "missed") nextState = "missed";
         else nextState = empty;
 
         const nowComplete = nextState === "done";
@@ -110,9 +113,11 @@ function reduce(date: string, today: string) {
   };
 }
 
-function habitSection(h: BoardHabit, future: boolean): "pending" | "done" | "upcoming" {
+function habitSection(h: BoardHabit, future: boolean, isToday: boolean): "pending" | "done" | "upcoming" {
   if (future) return "upcoming";
   if (h.state === "done" || h.state === "slipped" || h.state === "skipped") return "done";
+  // Today can only be "missed" by an explicit mark, so it's handled; past days stay in "Not logged".
+  if (h.state === "missed" && isToday) return "done";
   if (h.state === "flex" && h.periodMet) return "done";
   return "pending";
 }
@@ -159,9 +164,9 @@ export function TodayBoard({
   );
   const shownTasks = filter === "all" || filter === "tasks" ? state.tasks : [];
 
-  const pendingHabits = shownHabits.filter((h) => habitSection(h, future) === "pending");
-  const doneHabits = shownHabits.filter((h) => habitSection(h, future) === "done");
-  const upcomingHabits = shownHabits.filter((h) => habitSection(h, future) === "upcoming");
+  const pendingHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "pending");
+  const doneHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "done");
+  const upcomingHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "upcoming");
   const pendingTasks = shownTasks.filter((t) => !t.done);
   const doneTasks = shownTasks.filter((t) => t.done);
 
@@ -394,6 +399,8 @@ function HabitRow({
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [dialog, setDialog] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const timer = useHabitTimer(h.id, date);
 
   const isBreak = h.kind === "break";
@@ -408,7 +415,10 @@ function HabitRow({
   const slipped = h.state === "slipped";
   const skipped = h.state === "skipped";
   const partial = h.state === "partial";
-  const logged = done || slipped || skipped || partial;
+  const missed = h.state === "missed";
+  const logged = done || slipped || skipped || partial || missed;
+  // Numeric, timer and checklist habits are adjusted in a dialog instead of a one-tap toggle.
+  const adjustable = measured || checklist;
   const over = partial && atMost && measured;
 
   // A running timer adds its live seconds on top of what's already logged.
@@ -419,7 +429,13 @@ function HabitRow({
     ? { background: hex, color: "#fff", borderColor: hex }
     : slipped || over
       ? { background: "var(--h-bad)", color: "#fff", borderColor: "var(--h-bad)" }
-      : { background: tint(hex, 0.12), color: hex, borderColor: tint(hex, 0.35) };
+      : missed
+        ? {
+            background: "color-mix(in srgb, var(--h-bad) 12%, transparent)",
+            color: "var(--h-bad)",
+            borderColor: "color-mix(in srgb, var(--h-bad) 45%, transparent)",
+          }
+        : { background: tint(hex, 0.12), color: hex, borderColor: tint(hex, 0.35) };
 
   function toggleTimer() {
     if (!canEdit) return;
@@ -433,17 +449,28 @@ function HabitRow({
     }
   }
 
+  function increase() {
+    if (canEdit) onLog(h.id, "done", Math.round((h.value + 1) * 100) / 100);
+  }
+
+  /** Tapping the habit's icon: adjust the amount, or cycle done -> missed -> pending for a plain tick. */
   function primaryTap() {
     if (!canEdit) return;
-    if (isTimer) return toggleTimer();
-    if (checklist) {
-      if (done) onLog(h.id, "clear");
-      else onLog(h.id, "done", undefined, h.checklist.map((i) => i.id));
+    if (adjustable) return setDialog(true);
+    if (isBreak) {
+      if (done || slipped || skipped) onLog(h.id, "clear");
+      else onLog(h.id, "done");
       return;
     }
-    if (numeric) return onLog(h.id, "done", Math.round((h.value + 1) * 100) / 100);
-    if (done || slipped || skipped) onLog(h.id, "clear");
+    if (done) onLog(h.id, "missed");
+    else if (missed) onLog(h.id, date === today ? "clear" : "done");
+    else if (skipped) onLog(h.id, "clear");
     else onLog(h.id, "done");
+  }
+
+  function resetProgress() {
+    stopTimer(h.id, date); // drop a running timer too
+    onLog(h.id, "clear");
   }
 
   function toggleItem(id: string, on: boolean) {
@@ -462,14 +489,12 @@ function HabitRow({
           disabled={!canEdit}
           onClick={primaryTap}
           aria-label={
-            isTimer
-              ? timer.running
-                ? `Pause ${h.name}`
-                : `Start ${h.name}`
+            adjustable
+              ? `Log progress for ${h.name}`
               : done
-                ? `Undo ${h.name}`
-                : numeric
-                  ? `Add one to ${h.name}`
+                ? `Mark ${h.name} missed`
+                : missed
+                  ? `Reset ${h.name}`
                   : `Mark ${h.name} done`
           }
           style={circleStyle}
@@ -481,16 +506,10 @@ function HabitRow({
         >
           {done ? (
             <Check key="c" className="habit-pop h-6 w-6" strokeWidth={3} />
-          ) : slipped ? (
+          ) : slipped || missed ? (
             <X className="habit-pop h-6 w-6" strokeWidth={3} />
           ) : skipped ? (
             <SkipForward className="h-5 w-5" />
-          ) : isTimer && canEdit ? (
-            timer.running ? (
-              <Pause className="h-5 w-5" fill="currentColor" />
-            ) : (
-              <Play className="h-5 w-5" fill="currentColor" />
-            )
           ) : checklist ? (
             <ListChecks className="h-5 w-5" />
           ) : (
@@ -627,11 +646,22 @@ function HabitRow({
               <button
                 type="button"
                 aria-label="Increase"
-                onClick={primaryTap}
+                onClick={increase}
                 style={{ background: tint(hex, 0.14), color: hex }}
                 className="flex h-8 w-8 items-center justify-center rounded-full"
               >
                 <Plus className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            )}
+            {isTimer && date === today && (
+              <button
+                type="button"
+                aria-label={timer.running ? `Pause ${h.name}` : `Start ${h.name}`}
+                onClick={toggleTimer}
+                style={timer.running ? { background: hex, color: "#fff" } : { background: tint(hex, 0.14), color: hex }}
+                className="flex h-8 w-8 items-center justify-center rounded-full"
+              >
+                {timer.running ? <Pause className="h-4 w-4" fill="currentColor" /> : <Play className="h-4 w-4" fill="currentColor" />}
               </button>
             )}
             {numeric && atMost && !logged && h.value === 0 && (
@@ -695,13 +725,25 @@ function HabitRow({
                         }}
                       />
                     )}
-                    {logged && (
+                    {!isBreak && !missed && (
                       <MenuItem
-                        icon={Undo2}
-                        label="Clear entry"
+                        icon={X}
+                        label="Mark missed"
+                        danger
                         onClick={() => {
                           setMenu(false);
-                          onLog(h.id, "clear");
+                          stopTimer(h.id, date);
+                          onLog(h.id, "missed");
+                        }}
+                      />
+                    )}
+                    {(logged || timer.running) && (
+                      <MenuItem
+                        icon={RotateCcw}
+                        label="Reset progress"
+                        onClick={() => {
+                          setMenu(false);
+                          setConfirmReset(true);
                         }}
                       />
                     )}
@@ -744,6 +786,37 @@ function HabitRow({
             <GoalChip key={g.label} goal={g} color={hex} />
           ))}
         </div>
+      )}
+
+      {dialog && (
+        <ProgressDialog
+          name={h.name}
+          dateLabel={parseIso(date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+          color={h.color}
+          spec={{ evalType: h.evalType, targetOp: h.targetOp, dailyTarget: h.dailyTarget, unit: h.unit, checklist: h.checklist }}
+          initialValue={checklist ? 0 : liveValue}
+          initialChecked={checkedIds}
+          onClose={() => setDialog(false)}
+          onSave={({ value, checked }) => {
+            stopTimer(h.id, date); // the entered time replaces a running timer
+            onLog(h.id, "done", value, checked);
+          }}
+          onMissed={() => {
+            stopTimer(h.id, date);
+            onLog(h.id, "missed");
+          }}
+          onReset={resetProgress}
+        />
+      )}
+
+      {confirmReset && (
+        <ConfirmDialog
+          title="Reset progress?"
+          message={`This clears everything logged for ${h.name} on ${parseIso(date).toLocaleDateString("en-US", { month: "long", day: "numeric" })}. You can't undo it.`}
+          confirmLabel="Reset"
+          onClose={() => setConfirmReset(false)}
+          onConfirm={resetProgress}
+        />
       )}
     </div>
   );

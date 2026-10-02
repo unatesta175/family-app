@@ -367,6 +367,7 @@ export function dayState(habit: HabitLite, logs: HabitLogMap, date: string, toda
   const log = logs[date];
   if (log?.status === "slipped") return "slipped";
   if (log?.status === "skipped") return "skipped";
+  if (log?.status === "missed") return "missed";
   if (log?.status === "done") return targetMet(habit, log.value) ? "done" : "partial";
   if (date < habit.startDate || (habit.endDate !== null && date > habit.endDate)) return "off";
 
@@ -383,7 +384,10 @@ export function dayState(habit: HabitLite, logs: HabitLogMap, date: string, toda
   const last = w.endExclusive === null || w.endExclusive > today ? today : addDays(w.endExclusive, -1);
   for (let d = w.start; d <= last; d = addDays(d, 1)) {
     const l = logs[d];
-    if (l && (l.status === "skipped" || l.status === "slipped" || (l.status === "done" && targetMet(habit, l.value)))) {
+    if (
+      l &&
+      (l.status === "skipped" || l.status === "slipped" || l.status === "missed" || (l.status === "done" && targetMet(habit, l.value)))
+    ) {
       return "off"; // this occurrence was already handled on another day of its window
     }
   }

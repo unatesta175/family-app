@@ -26,6 +26,7 @@ import { HABIT_ICON_KEYS } from "@/lib/habit-icons";
 import {
   applyStarterPack,
   clearHabitLog,
+  clearHabitLogsInRange,
   createCategory,
   createHabit,
   createTask,
@@ -90,7 +91,7 @@ function fail(err: unknown): { ok: false; error: string } {
 const logSchema = z.object({
   habitId: z.number().int().positive(),
   date: isoDateSchema,
-  status: z.enum(["done", "slipped", "skipped", "clear"]),
+  status: z.enum(["done", "slipped", "skipped", "missed", "clear"]),
   value: z.number().min(0).max(1_000_000_000).optional(),
   checked: z.array(z.string().max(40)).max(50).optional(),
 });
@@ -103,6 +104,10 @@ export async function logHabitAction(input: z.input<typeof logSchema>) {
   const parsed = logSchema.parse(input);
   const habit = await ownHabit(parsed.habitId);
   if (parsed.date > todayIso()) throw new Error("You can't log a future date.");
+
+  if (parsed.status === "missed" && habit.kind === "break") {
+    throw new Error("Break habits are marked clean or slipped, not missed.");
+  }
 
   if (parsed.status === "clear") {
     await clearHabitLog(habit.id, parsed.date);
@@ -124,6 +129,15 @@ export async function logHabitAction(input: z.input<typeof logSchema>) {
   } else {
     await upsertHabitLog(habit.id, parsed.date, parsed.status, 0);
   }
+  refresh();
+}
+
+/** Wipes a habit's entries between two dates (inclusive) — used by "Reset progress" on Today / Week. */
+export async function resetHabitProgressAction(input: { habitId: number; from: string; to: string }) {
+  const parsed = z.object({ habitId: z.number().int().positive(), from: isoDateSchema, to: isoDateSchema }).parse(input);
+  if (parsed.from > parsed.to) throw new Error("Invalid date range.");
+  const habit = await ownHabit(parsed.habitId);
+  await clearHabitLogsInRange(habit.id, parsed.from, parsed.to);
   refresh();
 }
 

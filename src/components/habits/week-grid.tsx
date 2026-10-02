@@ -1,16 +1,19 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, Minus, X } from "lucide-react";
-import { logHabitAction } from "@/lib/habit-actions";
-import { colorHex, formatNumber, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
-import type { HabitEvalType, PeriodUnit } from "@/lib/db/schema";
+import { Check, ChevronRight, Minus, MoreHorizontal, RotateCcw, X } from "lucide-react";
+import { logHabitAction, resetHabitProgressAction } from "@/lib/habit-actions";
+import { colorHex, formatNumber, targetMet, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
+import type { HabitEvalType, PeriodUnit, TargetOp } from "@/lib/db/schema";
 import { habitIcon } from "@/lib/habit-icons";
+import { Sheet } from "@/components/habits/sheet";
+import { ConfirmDialog } from "@/components/habits/confirm-dialog";
+import { ProgressDialog } from "@/components/habits/progress-dialog";
 import { cn } from "@/lib/utils";
 import { parseIso } from "@/lib/date";
 
-export type WeekCell = { date: string; state: DayState; value: number };
+export type WeekCell = { date: string; state: DayState; value: number; checked: string[] };
 export type WeekRow = {
   id: number;
   name: string;
@@ -18,8 +21,10 @@ export type WeekRow = {
   color: string;
   icon: string;
   evalType: HabitEvalType;
+  targetOp: TargetOp;
   dailyTarget: number;
-  checklistIds: string[];
+  unit: string | null;
+  checklist: { id: string; title: string }[];
   /** "Some days per period" habit: the Wk column shows days done this period / needed. */
   isPeriod: boolean;
   periodUnit: PeriodUnit;
@@ -30,33 +35,63 @@ export type WeekRow = {
 
 /** What a one-tap "done" logs for this habit: the full goal. */
 function doneEntry(row: WeekRow): { value: number; checked?: string[] } {
-  if (row.evalType === "checklist") return { value: row.checklistIds.length, checked: row.checklistIds };
+  if (row.evalType === "checklist") {
+    const ids = row.checklist.map((i) => i.id);
+    return { value: ids.length, checked: ids };
+  }
   if (row.evalType === "yes_no") return { value: 1 };
   return { value: row.dailyTarget > 0 ? row.dailyTarget : 1 };
 }
 
 function partialText(row: WeekRow, value: number): string {
   if (row.evalType === "timer") return `${Math.max(1, Math.round(value / 60))}m`;
-  if (row.evalType === "checklist") return `${value}/${row.checklistIds.length}`;
+  if (row.evalType === "checklist") return `${value}/${row.checklist.length}`;
   return formatNumber(value);
 }
 
-type Change = { habitId: number; date: string; state: DayState; value: number };
+type Change = { habitId: number; date: string; state: DayState; value: number; checked: string[] };
 
-type Next = { status: "done" | "slipped" | "clear"; state: DayState; value: number; checked?: string[] };
+type Next = { status: "done" | "slipped" | "missed" | "clear"; state: DayState; value: number; checked?: string[] };
 
-function nextForClick(row: WeekRow, cell: WeekCell): Next {
-  const complete = cell.state === "done";
+/**
+ * One tap on a day cell. Break habits go none -> clean -> slipped -> none. Plain build habits go
+ * pending -> done -> missed -> pending. (Numeric, timer and checklist habits open the progress dialog
+ * instead, see onCell.)
+ */
+function nextForClick(row: WeekRow, cell: WeekCell, today: string): Next {
   if (row.kind === "break") {
-    // none -> clean -> slipped -> none
     if (cell.state === "done") return { status: "slipped", state: "slipped", value: 0 };
     if (cell.state === "slipped") return { status: "clear", state: "flex", value: 0 };
     return { status: "done", state: "done", ...doneEntry(row) };
   }
-  if (complete || cell.state === "slipped" || cell.state === "skipped" || cell.state === "partial") {
+  if (cell.state === "done") return { status: "missed", state: "missed", value: 0 };
+  if (cell.state === "missed") {
+    // Today (or a period habit) goes back to pending; a past day has no pending, so it flips to done.
+    return cell.date === today || row.isPeriod
+      ? { status: "clear", state: "flex", value: 0 }
+      : { status: "done", state: "done", ...doneEntry(row) };
+  }
+  if (cell.state === "slipped" || cell.state === "skipped" || cell.state === "partial") {
     return { status: "clear", state: "flex", value: 0 };
   }
   return { status: "done", state: "done", ...doneEntry(row) };
+}
+
+/** The state a cell shows once its entry is cleared (or if it was never logged). */
+function emptyState(row: WeekRow, date: string, today: string): DayState {
+  return row.isPeriod ? "flex" : date === today ? "pending" : "missed";
+}
+
+/** The state a saved numeric / timer / checklist entry lands on: done only if it meets the goal. */
+function entryState(row: WeekRow, date: string, today: string, entry: { value?: number; checked?: string[] }): DayState {
+  if (row.evalType === "checklist") {
+    const n = entry.checked?.length ?? 0;
+    if (n === 0) return emptyState(row, date, today);
+    return n >= row.checklist.length ? "done" : "partial";
+  }
+  const value = entry.value ?? 0;
+  if (value === 0 && row.targetOp !== "at_most") return emptyState(row, date, today);
+  return targetMet(row, value) ? "done" : "partial";
 }
 
 export function WeekGrid({
@@ -74,29 +109,53 @@ export function WeekGrid({
     state.map((r) =>
       r.id !== c.habitId
         ? r
-        : { ...r, cells: r.cells.map((cell) => (cell.date === c.date ? { ...cell, state: c.state, value: c.value } : cell)) }
+        : {
+            ...r,
+            cells: r.cells.map((cell) =>
+              cell.date === c.date ? { ...cell, state: c.state, value: c.value, checked: c.checked } : cell
+            ),
+          }
     )
   );
   const [, startTransition] = useTransition();
+  // Which cell's progress dialog / which row's options and reset confirmation are open.
+  const [adjusting, setAdjusting] = useState<{ rowId: number; date: string } | null>(null);
+  const [optionsFor, setOptionsFor] = useState<number | null>(null);
+  const [confirmWeekFor, setConfirmWeekFor] = useState<number | null>(null);
+
+  function send(row: WeekRow, date: string, status: Next["status"], state: DayState, value: number, checked?: string[]) {
+    startTransition(async () => {
+      applyChange({ habitId: row.id, date, state, value, checked: checked ?? [] });
+      await logHabitAction({ habitId: row.id, date, status, value, checked });
+    });
+  }
 
   function onCell(row: WeekRow, cell: WeekCell) {
     if (readOnly || cell.date > today) return;
-    const next = nextForClick(row, cell);
+    // Numeric, timer and checklist habits: adjust the amount in a dialog.
+    if (row.kind === "build" && row.evalType !== "yes_no") {
+      setAdjusting({ rowId: row.id, date: cell.date });
+      return;
+    }
+    const next = nextForClick(row, cell, today);
     // "Cleared" lands back on the natural empty state for that day, matching the server.
-    const clearedState: DayState =
-      row.isPeriod ? "flex" : cell.date === today ? "pending" : "missed";
-    const state = next.status === "clear" ? clearedState : next.state;
+    const state = next.status === "clear" ? emptyState(row, cell.date, today) : next.state;
+    send(row, cell.date, next.status, state, next.value, next.checked);
+  }
+
+  function resetWeek(row: WeekRow) {
     startTransition(async () => {
-      applyChange({ habitId: row.id, date: cell.date, state, value: next.value });
-      await logHabitAction({
-        habitId: row.id,
-        date: cell.date,
-        status: next.status,
-        value: next.value,
-        checked: next.checked,
-      });
+      for (const cell of row.cells) {
+        applyChange({ habitId: row.id, date: cell.date, state: emptyState(row, cell.date, today), value: 0, checked: [] });
+      }
+      await resetHabitProgressAction({ habitId: row.id, from: dates[0], to: dates[dates.length - 1] });
     });
   }
+
+  const adjustRow = adjusting ? optimistic.find((r) => r.id === adjusting.rowId) : undefined;
+  const adjustCell = adjustRow?.cells.find((c) => c.date === adjusting?.date);
+  const optionsRow = optionsFor !== null ? optimistic.find((r) => r.id === optionsFor) : undefined;
+  const confirmRow = confirmWeekFor !== null ? optimistic.find((r) => r.id === confirmWeekFor) : undefined;
 
   // Bottom totals: how many habits were done each day.
   const totals = dates.map((d) => {
@@ -113,6 +172,7 @@ export function WeekGrid({
   });
 
   return (
+    <>
     <div className="h-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] border-collapse">
@@ -158,20 +218,32 @@ export function WeekGrid({
               return (
                 <tr key={row.id} className="border-b border-h-border/60 last:border-b-0">
                   <td className="sticky left-0 z-10 bg-h-surface px-3 py-2">
-                    <Link href={`/habits/${row.id}`} className="flex items-center gap-2">
-                      <span
-                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
-                        style={{ background: tint(hex, 0.14), color: hex }}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-xs font-bold leading-tight">{row.name}</span>
-                        <span className="block text-[10px] font-medium leading-tight text-h-muted">
-                          {row.kind === "break" ? "Break" : "Build"}
+                    <div className="flex items-center gap-1">
+                      <Link href={`/habits/${row.id}`} className="flex min-w-0 flex-1 items-center gap-2">
+                        <span
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+                          style={{ background: tint(hex, 0.14), color: hex }}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
                         </span>
-                      </span>
-                    </Link>
+                        <span className="min-w-0">
+                          <span className="block truncate text-xs font-bold leading-tight">{row.name}</span>
+                          <span className="block text-[10px] font-medium leading-tight text-h-muted">
+                            {row.kind === "break" ? "Break" : "Build"}
+                          </span>
+                        </span>
+                      </Link>
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          aria-label={`Options for ${row.name}`}
+                          onClick={() => setOptionsFor(row.id)}
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-h-muted hover:bg-h-surface2 hover:text-h-fg"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                   {row.cells.map((cell) => (
                     <td key={cell.date} className="px-0.5 py-1.5 text-center">
@@ -221,6 +293,69 @@ export function WeekGrid({
         </table>
       </div>
     </div>
+
+    {adjustRow && adjustCell && (
+      <ProgressDialog
+        name={adjustRow.name}
+        dateLabel={parseIso(adjustCell.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+        color={adjustRow.color}
+        spec={{
+          evalType: adjustRow.evalType,
+          targetOp: adjustRow.targetOp,
+          dailyTarget: adjustRow.dailyTarget,
+          unit: adjustRow.unit,
+          checklist: adjustRow.checklist,
+        }}
+        initialValue={adjustRow.evalType === "checklist" ? 0 : adjustCell.value}
+        initialChecked={adjustCell.checked}
+        onClose={() => setAdjusting(null)}
+        onSave={(entry) => {
+          const state = entryState(adjustRow, adjustCell.date, today, entry);
+          send(adjustRow, adjustCell.date, "done", state, entry.value ?? entry.checked?.length ?? 0, entry.checked);
+        }}
+        onMissed={() => send(adjustRow, adjustCell.date, "missed", "missed", 0)}
+        onReset={() => send(adjustRow, adjustCell.date, "clear", emptyState(adjustRow, adjustCell.date, today), 0)}
+      />
+    )}
+
+    {optionsRow && (
+      <Sheet open onClose={() => setOptionsFor(null)} title={optionsRow.name} className="sm:max-w-sm">
+        <div className="flex flex-col gap-2 pb-2 pt-1">
+          <button
+            type="button"
+            onClick={() => {
+              setConfirmWeekFor(optionsRow.id);
+              setOptionsFor(null);
+            }}
+            className="flex items-center gap-3 rounded-xl border border-h-border px-4 py-3 text-left text-sm font-bold hover:bg-h-surface2"
+          >
+            <RotateCcw className="h-4 w-4 text-h-bad" />
+            <span className="flex-1">
+              Reset this week
+              <span className="block text-[11px] font-medium text-h-muted">Clears every entry for this habit in the week shown.</span>
+            </span>
+          </button>
+          <Link
+            href={`/habits/${optionsRow.id}`}
+            className="flex items-center gap-3 rounded-xl border border-h-border px-4 py-3 text-sm font-bold hover:bg-h-surface2"
+          >
+            <ChevronRight className="h-4 w-4 text-h-muted" />
+            Details & history
+          </Link>
+        </div>
+      </Sheet>
+    )}
+
+    {confirmRow && (
+      <ConfirmDialog
+        title="Reset this week?"
+        message={`This clears every entry for ${confirmRow.name} from ${parseIso(dates[0]).toLocaleDateString("en-US", { month: "short", day: "numeric" })} to ${parseIso(dates[dates.length - 1]).toLocaleDateString("en-US", { month: "short", day: "numeric" })}. You can't undo it.`}
+        confirmLabel="Reset week"
+        onClose={() => setConfirmWeekFor(null)}
+        onConfirm={() => resetWeek(confirmRow)}
+      />
+    )}
+    </>
   );
 }
 
@@ -261,8 +396,9 @@ function CellButton({
       content = <Minus className="h-3.5 w-3.5" />;
       break;
     case "missed":
-      style = { background: "color-mix(in srgb, var(--h-bad) 10%, transparent)" };
+      style = { background: "color-mix(in srgb, var(--h-bad) 10%, transparent)", color: "var(--h-bad)" };
       extra = "border border-dashed border-h-bad/30";
+      content = <X className="h-3.5 w-3.5 opacity-60" strokeWidth={2.5} />;
       break;
     case "pending":
       style = { borderColor: hex, background: tint(hex, 0.08) };

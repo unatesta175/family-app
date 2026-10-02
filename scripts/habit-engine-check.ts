@@ -150,5 +150,27 @@ eq("label: alternate", scheduleLabel(alt), "2 days on, 2 off");
 eq("label: flexible", scheduleLabel(flex), "Mon · flexible");
 eq("label: per month", scheduleLabel({ ...base, schedule: "weekly_count", weeklyTarget: 5, periodUnit: "month" }), "5× per month");
 
+// --- Explicit "missed" -----------------------------------------------------------------------
+const missedLog = (): HabitLogMap[string] => ({ status: "missed", value: 0 });
+eq("explicit missed today", dayState(base, { [today]: missedLog() }, today, today), "missed");
+eq(
+  "explicit missed breaks the streak",
+  computeStreak(base, { ...dailyLogs, "2026-10-01": missedLog() }, today).current,
+  0
+);
+eq(
+  "explicit missed counts against the rate",
+  completionRate(base, { ...dailyLogs, "2026-10-01": missedLog() }, "2026-09-28", "2026-10-01", today),
+  75
+);
+// Flexible: giving up on Monday's occurrence closes its window, so carry days stop showing.
+eq("flexible: explicit missed on start", dayState(flex, { "2026-09-28": missedLog() }, "2026-09-28", today), "missed");
+eq("flexible: explicit missed closes window", dayState(flex, { "2026-09-28": missedLog() }, today, today), "off");
+eq(
+  "missed never counts as a done day for period habits",
+  dayState({ ...base, schedule: "weekly_count" }, { [today]: missedLog() }, today, today),
+  "missed"
+);
+
 console.log(failed === 0 ? "\nAll checks passed" : `\n${failed} check(s) FAILED`);
 process.exit(failed === 0 ? 0 : 1);

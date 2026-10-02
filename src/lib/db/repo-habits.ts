@@ -222,6 +222,13 @@ export async function clearHabitLog(habitId: number, date: string) {
   await db.delete(habitLogs).where(and(eq(habitLogs.habitId, habitId), eq(habitLogs.date, date)));
 }
 
+/** Removes every entry for a habit inside [from, to] (inclusive) — "reset progress". */
+export async function clearHabitLogsInRange(habitId: number, from: string, to: string) {
+  await db
+    .delete(habitLogs)
+    .where(and(eq(habitLogs.habitId, habitId), gte(habitLogs.date, from), lte(habitLogs.date, to)));
+}
+
 // --- Tasks -----------------------------------------------------------------------------------
 
 export type TaskInput = {

@@ -217,8 +217,12 @@ export type TargetOp = (typeof TARGET_OPS)[number];
 export const GOAL_PERIODS = ["week", "month", "year", "all_time", "single"] as const;
 export type GoalPeriod = (typeof GOAL_PERIODS)[number];
 
-/** done = did it / stayed clean, slipped = broke a break-habit, skipped = deliberate rest day. */
-export const HABIT_LOG_STATUSES = ["done", "slipped", "skipped"] as const;
+/**
+ * done = did it / stayed clean, slipped = broke a break-habit, skipped = deliberate rest day,
+ * missed = explicitly marked as not done (build habits; a day with no entry at all is also "missed"
+ * once it has passed, but only an explicit entry is stored).
+ */
+export const HABIT_LOG_STATUSES = ["done", "slipped", "skipped", "missed"] as const;
 export type HabitLogStatus = (typeof HABIT_LOG_STATUSES)[number];
 
 export const TASK_RECURRENCES = ["none", "daily", "weekly", "monthly"] as const;

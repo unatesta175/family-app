@@ -195,7 +195,7 @@ function DayEditor({
   const [note, setNote] = useState(day.note ?? "");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const logged = ["done", "partial", "slipped", "skipped"].includes(day.state);
+  const logged = ["done", "partial", "slipped", "skipped", "missed"].includes(day.state);
   const complete = isChecklist
     ? checked.length >= checklist.length && checklist.length > 0
     : measured
@@ -205,7 +205,7 @@ function DayEditor({
 
   const label = parseIso(day.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 
-  function save(status: "done" | "slipped" | "skipped" | "clear") {
+  function save(status: "done" | "slipped" | "skipped" | "missed" | "clear") {
     setError(null);
     startTransition(async () => {
       try {
@@ -273,7 +273,7 @@ function DayEditor({
           </ul>
         )}
 
-        <div className={cn("grid gap-2", kind === "break" ? "grid-cols-3" : "grid-cols-2")}>
+        <div className="grid grid-cols-3 gap-2">
           <ActionBtn
             onClick={() => save("done")}
             disabled={pending}
@@ -281,13 +281,24 @@ function DayEditor({
             label={kind === "break" ? "Stayed clean" : saveLabel}
             style={{ background: hex, color: "#fff" }}
           />
-          {kind === "break" && (
+          {kind === "break" ? (
             <ActionBtn
               onClick={() => save("slipped")}
               disabled={pending}
               icon={X}
               label="Slipped"
               style={{ background: "var(--h-bad)", color: "#fff" }}
+            />
+          ) : (
+            <ActionBtn
+              onClick={() => save("missed")}
+              disabled={pending}
+              icon={X}
+              label="Missed"
+              style={{
+                background: "color-mix(in srgb, var(--h-bad) 14%, transparent)",
+                color: "var(--h-bad)",
+              }}
             />
           )}
           <ActionBtn onClick={() => save("skipped")} disabled={pending} icon={SkipForward} label="Skip day" />

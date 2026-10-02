@@ -44,8 +44,10 @@ export default async function HabitsWeekPage({
       color: h.color,
       icon: h.icon,
       evalType: h.evalType,
+      targetOp: h.targetOp,
       dailyTarget: h.dailyTarget,
-      checklistIds: parseChecklist(h.checklist).map((i) => i.id),
+      unit: h.unit,
+      checklist: parseChecklist(h.checklist),
       isPeriod: isPeriodHabit(h),
       periodUnit: h.periodUnit,
       periodTarget: h.weeklyTarget,
@@ -54,6 +56,7 @@ export default async function HabitsWeekPage({
         date: d,
         state: dayState(h, logs, d, today),
         value: logs[d]?.status === "done" ? logs[d].value : 0,
+        checked: logs[d]?.status === "done" ? (logs[d].checked ?? []) : [],
       })),
     };
   });
@@ -152,7 +155,7 @@ export default async function HabitsWeekPage({
                 {l.label}
               </span>
             ))}
-            {!readOnly && <span>· Tap a day to check it off. Break habits cycle clean → slipped → cleared.</span>}
+            {!readOnly && <span>· Tap a day to cycle done → missed → pending. Numbers, timers and checklists open a dialog. Break habits cycle clean → slipped → cleared.</span>}
           </div>
         </>
       )}
