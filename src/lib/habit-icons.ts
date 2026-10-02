@@ -37,6 +37,18 @@ import {
   Guitar,
   ShoppingCart,
   Ban,
+  Brush,
+  Flower2,
+  GraduationCap,
+  Ticket,
+  MessageSquare,
+  DollarSign,
+  Briefcase,
+  House,
+  Utensils,
+  Mountain,
+  LayoutGrid,
+  Cross,
   type LucideIcon,
 } from "lucide-react";
 
@@ -80,6 +92,18 @@ export const HABIT_ICONS: Record<string, LucideIcon> = {
   plane: Plane,
   ban: Ban,
   layers: Layers,
+  brush: Brush,
+  "flower-2": Flower2,
+  "graduation-cap": GraduationCap,
+  ticket: Ticket,
+  "message-square": MessageSquare,
+  "dollar-sign": DollarSign,
+  briefcase: Briefcase,
+  house: House,
+  utensils: Utensils,
+  mountain: Mountain,
+  "layout-grid": LayoutGrid,
+  cross: Cross,
 };
 
 export const HABIT_ICON_KEYS = Object.keys(HABIT_ICONS);

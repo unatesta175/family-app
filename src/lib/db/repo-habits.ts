@@ -327,6 +327,67 @@ export async function seedStarterHabitsOnce() {
   await db.$client.execute({ sql: "INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)", args: [SEED_FLAG, "1"] });
 }
 
+const CATEGORY_SYNC_FLAG = "habit_categories_sync_v1";
+
+/** Where habits (and tasks) from a removed multi-word category move to. */
+const CATEGORY_REMAP: Record<string, string> = {
+  "health & fitness": "Health",
+  "digital detox": "Quit a bad habit",
+  "mindful spending": "Finance",
+};
+
+/**
+ * One-time: gives every profile the standard category list (STARTER_CATEGORIES) and removes the
+ * older multi-word categories. Habits/tasks in a removed category are moved to its closest
+ * replacement first so nothing ends up uncategorised. Guarded by a flag row, so after this runs
+ * the categories are ordinary user data again.
+ */
+export async function syncHabitCategoriesOnce() {
+  const flagRes = await db.$client.execute({ sql: "SELECT value FROM app_meta WHERE key = ?", args: [CATEGORY_SYNC_FLAG] });
+  if (flagRes.rows.length > 0) return;
+
+  const keep = new Set(STARTER_CATEGORIES.map((c) => c.name.toLowerCase()));
+  const allProfiles = await db.select({ id: profiles.id }).from(profiles);
+
+  for (const p of allProfiles) {
+    // Push anything the user already had behind the standard list.
+    await db.$client.execute({
+      sql: "UPDATE habit_categories SET sort_order = sort_order + 100 WHERE profile_id = ?",
+      args: [p.id],
+    });
+
+    for (const [i, cat] of STARTER_CATEGORIES.entries()) {
+      await db.$client.execute({
+        sql: `INSERT INTO habit_categories (profile_id, name, color, icon, sort_order)
+              SELECT ?, ?, ?, ?, ? WHERE NOT EXISTS
+                (SELECT 1 FROM habit_categories WHERE profile_id = ? AND lower(name) = lower(?))`,
+        args: [p.id, cat.name, cat.color, cat.icon, i, p.id, cat.name],
+      });
+    }
+
+    const cats = (await db.$client.execute({
+      sql: "SELECT id, name FROM habit_categories WHERE profile_id = ?",
+      args: [p.id],
+    })).rows as unknown as { id: number; name: string }[];
+
+    for (const c of cats) {
+      const name = String(c.name).trim();
+      if (!/\s/.test(name) || keep.has(name.toLowerCase())) continue; // single word, or in the new list
+      const target = cats.find((t) => t.name.toLowerCase() === (CATEGORY_REMAP[name.toLowerCase()] ?? "").toLowerCase());
+      for (const table of ["habits", "habit_tasks"]) {
+        await db.$client.execute({
+          sql: `UPDATE ${table} SET category_id = ? WHERE category_id = ?`,
+          args: [target ? Number(target.id) : null, Number(c.id)],
+        });
+      }
+      await db.$client.execute({ sql: "DELETE FROM habit_categories WHERE id = ?", args: [Number(c.id)] });
+      console.log(`[habits] removed category "${name}" for profile ${p.id}`);
+    }
+  }
+
+  await db.$client.execute({ sql: "INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)", args: [CATEGORY_SYNC_FLAG, "1"] });
+}
+
 /** Active habits for several profiles at once (used by the household "family" strip). */
 export async function getHabitsForProfiles(profileIds: number[]) {
   if (profileIds.length === 0) return [];

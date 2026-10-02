@@ -20,17 +20,27 @@ export type StarterHabit = {
 };
 
 export const STARTER_CATEGORIES: StarterCategory[] = [
-  { key: "health", name: "Health & Fitness", color: "emerald", icon: "dumbbell" },
-  { key: "learning", name: "Learning", color: "indigo", icon: "book-open" },
-  { key: "detox", name: "Digital Detox", color: "orange", icon: "smartphone" },
-  { key: "spending", name: "Mindful Spending", color: "teal", icon: "wallet" },
+  { key: "quit", name: "Quit a bad habit", color: "rose", icon: "ban" },
+  { key: "art", name: "Art", color: "pink", icon: "brush" },
+  { key: "meditation", name: "Meditation", color: "pink", icon: "flower-2" },
+  { key: "study", name: "Study", color: "violet", icon: "graduation-cap" },
+  { key: "sports", name: "Sports", color: "indigo", icon: "bike" },
+  { key: "entertainment", name: "Entertainment", color: "teal", icon: "ticket" },
+  { key: "social", name: "Social", color: "emerald", icon: "message-square" },
+  { key: "finance", name: "Finance", color: "emerald", icon: "dollar-sign" },
+  { key: "health", name: "Health", color: "emerald", icon: "cross" },
+  { key: "work", name: "Work", color: "amber", icon: "briefcase" },
+  { key: "nutrition", name: "Nutrition", color: "amber", icon: "utensils" },
+  { key: "home", name: "Home", color: "orange", icon: "house" },
+  { key: "outdoor", name: "Outdoor", color: "orange", icon: "mountain" },
+  { key: "other", name: "Other", color: "rose", icon: "layout-grid" },
 ];
 
 export const STARTER_HABITS: StarterHabit[] = [
   {
     name: "Study",
     description: "Focused study time — books, courses, revision.",
-    category: "learning",
+    category: "study",
     kind: "build",
     icon: "book-open",
     color: "indigo",
@@ -59,7 +69,7 @@ export const STARTER_HABITS: StarterHabit[] = [
   {
     name: "Stop gaming",
     description: "Check in each day you stayed off games.",
-    category: "detox",
+    category: "quit",
     kind: "break",
     icon: "gamepad-2",
     color: "violet",
@@ -68,7 +78,7 @@ export const STARTER_HABITS: StarterHabit[] = [
   {
     name: "Stop doomscrolling",
     description: "No mindless scrolling through feeds and news.",
-    category: "detox",
+    category: "quit",
     kind: "break",
     icon: "smartphone",
     color: "orange",
@@ -77,7 +87,7 @@ export const STARTER_HABITS: StarterHabit[] = [
   {
     name: "Stop watching TV",
     description: "No TV / series binges.",
-    category: "detox",
+    category: "quit",
     kind: "break",
     icon: "tv",
     color: "amber",
@@ -86,7 +96,7 @@ export const STARTER_HABITS: StarterHabit[] = [
   {
     name: "Stop YouTube / TikTok",
     description: "No short-video rabbit holes.",
-    category: "detox",
+    category: "quit",
     kind: "break",
     icon: "play",
     color: "sky",
@@ -95,7 +105,7 @@ export const STARTER_HABITS: StarterHabit[] = [
   {
     name: "Stop impulse shopping",
     description: "No unplanned online or in-store purchases.",
-    category: "spending",
+    category: "finance",
     kind: "break",
     icon: "shopping-bag",
     color: "teal",

@@ -205,8 +205,9 @@ export async function runStartupMigrations() {
   // Runs after the raw client above is closed: uses the shared drizzle client so the seed goes
   // through the exact same code path as the in-app "starter habits" button.
   try {
-    const { seedStarterHabitsOnce } = await import("@/lib/db/repo-habits");
+    const { seedStarterHabitsOnce, syncHabitCategoriesOnce } = await import("@/lib/db/repo-habits");
     await seedStarterHabitsOnce();
+    await syncHabitCategoriesOnce();
   } catch (err) {
     console.error("[migrate] starter habit seeding failed", err);
   }
