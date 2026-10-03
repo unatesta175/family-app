@@ -113,8 +113,9 @@ function reduce(date: string, today: string) {
   };
 }
 
-function habitSection(h: BoardHabit, future: boolean, isToday: boolean): "pending" | "done" | "upcoming" {
+function habitSection(h: BoardHabit, future: boolean, isToday: boolean): "pending" | "done" | "upcoming" | "notstarted" {
   if (future) return "upcoming";
+  if (h.state === "prestart") return "notstarted";
   if (h.state === "done" || h.state === "slipped" || h.state === "skipped") return "done";
   // Today can only be "missed" by an explicit mark, so it's handled; past days stay in "Not logged".
   if (h.state === "missed" && isToday) return "done";
@@ -167,13 +168,16 @@ export function TodayBoard({
   const pendingHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "pending");
   const doneHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "done");
   const upcomingHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "upcoming");
+  const notStartedHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "notstarted");
   const pendingTasks = shownTasks.filter((t) => !t.done);
   const doneTasks = shownTasks.filter((t) => t.done);
 
+  // Habits that haven't started yet on this date aren't part of the day's list, so they aren't counted.
+  const started = state.habits.filter((h) => h.state !== "prestart");
   const counts = {
-    all: state.habits.length + state.tasks.length,
-    build: state.habits.filter((h) => h.kind === "build").length,
-    break: state.habits.filter((h) => h.kind === "break").length,
+    all: started.length + state.tasks.length,
+    build: started.filter((h) => h.kind === "build").length,
+    break: started.filter((h) => h.kind === "break").length,
     tasks: state.tasks.length,
   };
 
@@ -261,7 +265,18 @@ export function TodayBoard({
         </Section>
       )}
 
-      {counts.all > 0 && pendingCount + doneCount + upcomingHabits.length + (future ? shownTasks.length : 0) === 0 && (
+      {notStartedHabits.length > 0 && (
+        <Section title="Not started yet" count={notStartedHabits.length} muted>
+          <p className="-mt-1 px-1 text-[11px] leading-snug text-h-muted">
+            These start later. Logging one here moves its start date back to this day.
+          </p>
+          {notStartedHabits.map((h) => (
+            <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
+          ))}
+        </Section>
+      )}
+
+      {counts.all > 0 && pendingCount + doneCount + upcomingHabits.length + (future ? shownTasks.length : 0) === 0 && notStartedHabits.length === 0 && (
         <p className="py-8 text-center text-sm text-h-muted">Nothing in this filter for this day.</p>
       )}
     </div>
@@ -458,7 +473,9 @@ function HabitRow({
     if (!canEdit) return;
     if (adjustable) return setDialog(true);
     if (isBreak) {
-      if (done || slipped || skipped) onLog(h.id, "clear");
+      // Break habits: tap to cycle clean -> slipped -> pending.
+      if (done) onLog(h.id, "slipped");
+      else if (slipped || skipped) onLog(h.id, "clear");
       else onLog(h.id, "done");
       return;
     }
@@ -521,7 +538,7 @@ function HabitRow({
           <Link href={`/habits/${h.id}`} className="group flex items-center gap-1">
             <span
               className={cn(
-                "truncate text-sm font-bold leading-tight",
+                "break-words text-sm font-bold leading-snug",
                 (done || skipped) && "text-h-muted line-through decoration-h-muted/50"
               )}
             >
@@ -552,6 +569,11 @@ function HabitRow({
               </span>
             ) : (
               h.schedule !== "daily" && <span>{h.scheduleLabel}</span>
+            )}
+            {h.state === "prestart" && (
+              <span className="font-bold text-h-muted">
+                Starts {parseIso(h.startDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+              </span>
             )}
             {carried && (
               <span className="flex items-center gap-0.5 font-bold text-h-break">
@@ -671,24 +693,6 @@ function HabitRow({
                 className="rounded-full bg-h-good/15 px-2.5 py-1 text-[11px] font-bold text-h-good transition-colors hover:bg-h-good/25"
               >
                 None
-              </button>
-            )}
-            {isBreak && !logged && (
-              <button
-                type="button"
-                onClick={() => onLog(h.id, "done")}
-                className="rounded-full bg-h-good/15 px-2.5 py-1 text-[11px] font-bold text-h-good transition-colors hover:bg-h-good/25"
-              >
-                Clean
-              </button>
-            )}
-            {isBreak && !logged && (
-              <button
-                type="button"
-                onClick={() => onLog(h.id, "slipped")}
-                className="rounded-full border border-h-border px-2.5 py-1 text-[11px] font-bold text-h-bad transition-colors hover:bg-h-bad/10"
-              >
-                Slipped
               </button>
             )}
             <div className="relative">
@@ -876,7 +880,7 @@ export function TaskRow({
         {t.done && <Check className="habit-pop h-3.5 w-3.5 text-h-brand-fg" strokeWidth={3.5} />}
       </button>
       <div className="min-w-0 flex-1">
-        <p className={cn("truncate text-sm font-bold leading-tight", t.done && "text-h-muted line-through")}>
+        <p className={cn("line-clamp-3 break-words text-sm font-bold leading-tight", t.done && "text-h-muted line-through")}>
           {t.title}
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-h-muted">

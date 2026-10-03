@@ -3,6 +3,7 @@ import {
   completionRate,
   countsForStreak,
   dayState,
+  effectiveStart,
   isPeriodHabit,
   type DayState,
   type HabitLite,
@@ -24,11 +25,12 @@ const MAX_HISTORY_DAYS = 1830; // ~5 years
 export function buildStatDays(habit: HabitLite, logs: HabitLogMap, today: string): StatDay[] {
   const end = habit.endDate !== null && habit.endDate < today ? habit.endDate : today;
   const earliest = addDays(today, -MAX_HISTORY_DAYS);
-  const from = habit.startDate > earliest ? habit.startDate : earliest;
+  const begin = effectiveStart(habit, logs);
+  const from = begin > earliest ? begin : earliest;
   const out: StatDay[] = [];
   for (let d = from; d <= end; d = addDays(d, 1)) {
     const state = dayState(habit, logs, d, today);
-    if (state === "off") continue;
+    if (state === "off" || state === "prestart") continue;
     const log = logs[d];
     out.push([d, state, log?.status === "done" ? log.value : 0]);
   }
@@ -47,13 +49,14 @@ export function habitScore(habit: HabitLite, logs: HabitLogMap, today: string, a
     return completionRate(habit, logs, addDays(asOf, -89), asOf, asOf) ?? 0;
   }
   const earliest = addDays(asOf, -MAX_HISTORY_DAYS);
-  const from = habit.startDate > earliest ? habit.startDate : earliest;
+  const begin = effectiveStart(habit, logs);
+  const from = begin > earliest ? begin : earliest;
   const to = habit.endDate !== null && habit.endDate < asOf ? habit.endDate : asOf;
   let score = 0;
   for (let d = from; d <= to; d = addDays(d, 1)) {
     if (!countsForStreak(habit, d)) continue;
     const s = dayState(habit, logs, d, asOf);
-    if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming") continue;
+    if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming" || s === "prestart") continue;
     score = score * SCORE_DECAY + (s === "done" ? 1 : 0) * (1 - SCORE_DECAY);
   }
   return Math.round(score * 100);

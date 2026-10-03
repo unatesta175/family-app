@@ -56,7 +56,7 @@ export function weeklyBars(habit: HabitLite, logs: HabitLogMap, weeks: number, t
         const d = addDays(start, k);
         if (d > today || !countsForStreak(habit, d)) continue;
         const s = dayState(habit, logs, d, today);
-        if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming") continue;
+        if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming" || s === "prestart") continue;
         target += 1;
         if (s === "done") done += 1;
       }

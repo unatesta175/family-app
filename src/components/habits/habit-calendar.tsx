@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, ChevronLeft, ChevronRight, SkipForward, Undo2, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Minus, SkipForward, Undo2, X } from "lucide-react";
 import { logHabitAction, saveHabitNoteAction } from "@/lib/habit-actions";
 import {
   colorHex,
@@ -103,33 +103,47 @@ export function HabitCalendar({
           const dayNum = parseIso(d.date).getDate();
           const isToday = d.date === today;
           let style: React.CSSProperties = {};
+          let icon: React.ReactNode = null;
           let extra = "";
           switch (d.state) {
             case "done":
-              style = { background: hex, color: "#fff" };
+              style = { background: hex, color: "#fff", borderColor: hex };
+              icon = <Check className="h-4 w-4" strokeWidth={3.5} />;
               break;
             case "partial":
-              style = { background: tint(hex, 0.3), color: hex };
+              style = { background: tint(hex, 0.22), color: hex, borderColor: tint(hex, 0.6) };
+              icon = <Minus className="h-4 w-4" strokeWidth={3.5} />;
               break;
             case "slipped":
-              style = { background: "var(--h-bad)", color: "#fff" };
-              break;
-            case "skipped":
-              style = { background: "var(--h-surface-2)", color: "var(--h-muted)" };
-              extra = "line-through";
+              style = { background: "var(--h-bad)", color: "#fff", borderColor: "var(--h-bad)" };
+              icon = <X className="h-4 w-4" strokeWidth={3.5} />;
               break;
             case "missed":
-              style = { background: "color-mix(in srgb, var(--h-bad) 12%, transparent)", color: "var(--h-bad)" };
+              style = {
+                background: "color-mix(in srgb, var(--h-bad) 12%, transparent)",
+                color: "var(--h-bad)",
+                borderColor: "color-mix(in srgb, var(--h-bad) 45%, transparent)",
+              };
+              icon = <X className="h-4 w-4" strokeWidth={3} />;
+              break;
+            case "skipped":
+              style = { background: "var(--h-surface-2)", color: "var(--h-muted)", borderColor: "var(--h-border)" };
+              icon = <SkipForward className="h-3.5 w-3.5" />;
               break;
             case "pending":
-              style = { background: tint(hex, 0.1), color: hex };
-              break;
             case "flex":
-              style = { background: "var(--h-surface-2)" };
+              // Due but not logged yet: a dashed outline in the habit's colour with a dot.
+              style = { background: tint(hex, 0.06), color: hex, borderColor: hex };
+              extra = "border-dashed";
+              icon = <span className="h-1.5 w-1.5 rounded-full bg-current" />;
               break;
             case "upcoming":
             case "off":
-              style = { color: "var(--h-muted)", opacity: 0.55 };
+              style = { color: "var(--h-muted)", opacity: 0.5, borderColor: "transparent" };
+              break;
+            case "prestart":
+              // Before the habit's start date: still loggable (saving pulls the start date back).
+              style = { color: "var(--h-muted)", opacity: 0.8, borderColor: "transparent" };
               break;
           }
           return (
@@ -141,18 +155,53 @@ export function HabitCalendar({
               aria-label={`${d.date}: ${d.state}`}
               style={style}
               className={cn(
-                "relative flex aspect-square items-center justify-center rounded-xl text-xs font-bold transition-transform",
+                "relative flex aspect-square flex-col items-center justify-center gap-0.5 rounded-xl border-2 text-[11px] font-bold leading-none transition-transform",
                 extra,
                 !readOnly && d.date <= today && "hover:scale-105 active:scale-95",
                 isToday && "ring-2 ring-h-fg ring-offset-1 ring-offset-h-surface"
               )}
             >
-              {dayNum}
+              <span className="tabular-nums">{dayNum}</span>
+              <span className="flex h-4 items-center justify-center">{icon}</span>
               {d.note && <span className="absolute right-1 top-1 h-1 w-1 rounded-full bg-current opacity-70" />}
             </button>
           );
         })}
       </div>
+
+      <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-h-border pt-3 text-[11px] font-semibold text-h-muted sm:grid-cols-3">
+        <LegendItem label={kind === "break" ? "Clean" : "Done"}>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ background: hex, color: "#fff" }}>
+            <Check className="h-3 w-3" strokeWidth={3.5} />
+          </span>
+        </LegendItem>
+        <LegendItem label={kind === "break" ? "Slipped / missed" : "Missed"}>
+          <span
+            className="flex h-5 w-5 items-center justify-center rounded-md border-2"
+            style={{ background: "color-mix(in srgb, var(--h-bad) 12%, transparent)", color: "var(--h-bad)", borderColor: "color-mix(in srgb, var(--h-bad) 45%, transparent)" }}
+          >
+            <X className="h-3 w-3" strokeWidth={3} />
+          </span>
+        </LegendItem>
+        <LegendItem label="Pending">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-dashed" style={{ borderColor: hex, color: hex, background: tint(hex, 0.06) }}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+          </span>
+        </LegendItem>
+        <LegendItem label="Partial">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2" style={{ background: tint(hex, 0.22), color: hex, borderColor: tint(hex, 0.6) }}>
+            <Minus className="h-3 w-3" strokeWidth={3.5} />
+          </span>
+        </LegendItem>
+        <LegendItem label="Skipped">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-h-border bg-h-surface2 text-h-muted">
+            <SkipForward className="h-3 w-3" />
+          </span>
+        </LegendItem>
+        <LegendItem label="Not due / future">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md text-[10px] opacity-60">1</span>
+        </LegendItem>
+      </ul>
 
       {selected && (
         <DayEditor
@@ -166,6 +215,15 @@ export function HabitCalendar({
         />
       )}
     </div>
+  );
+}
+
+function LegendItem({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-2">
+      {children}
+      {label}
+    </li>
   );
 }
 

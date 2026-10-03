@@ -163,7 +163,7 @@ export function WeekGrid({
     let due = 0;
     for (const r of optimistic) {
       const cell = r.cells.find((c) => c.date === d)!;
-      if (cell.state === "off" || cell.state === "upcoming" || cell.state === "skipped") continue;
+      if (cell.state === "off" || cell.state === "upcoming" || cell.state === "skipped" || cell.state === "prestart") continue;
       if (cell.state === "flex") continue;
       due += 1;
       if (cell.state === "done") done += 1;
@@ -173,7 +173,7 @@ export function WeekGrid({
 
   return (
     <>
-    <div className="h-card overflow-hidden">
+    <div className="h-card hidden overflow-hidden md:block">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] border-collapse">
           <thead>
@@ -212,7 +212,7 @@ export function WeekGrid({
               const doneCount = row.cells.filter((c) => c.state === "done").length;
               const dueCount = row.isPeriod
                 ? row.periodTarget
-                : row.cells.filter((c) => c.state !== "off" && c.state !== "skipped" && c.state !== "flex").length;
+                : row.cells.filter((c) => c.state !== "off" && c.state !== "skipped" && c.state !== "flex" && c.state !== "prestart").length;
               const shownDone = row.isPeriod ? row.periodDone : doneCount;
               const suffix = row.isPeriod && row.periodUnit !== "week" ? (row.periodUnit === "month" ? "/mo" : "/yr") : "";
               return (
@@ -292,6 +292,107 @@ export function WeekGrid({
           </tfoot>
         </table>
       </div>
+    </div>
+
+    {/* Phones: one card per habit with its seven days in an even strip (the table needs sideways scrolling). */}
+    <div className="flex flex-col gap-2.5 md:hidden">
+      {optimistic.map((row) => {
+        const hex = colorHex(row.color);
+        const Icon = habitIcon(row.icon);
+        const doneCount = row.cells.filter((c) => c.state === "done").length;
+        const dueCount = row.isPeriod
+          ? row.periodTarget
+          : row.cells.filter((c) => !["off", "skipped", "flex", "prestart"].includes(c.state)).length;
+        const shownDone = row.isPeriod ? row.periodDone : doneCount;
+        const pct = dueCount > 0 ? Math.min(100, (shownDone / dueCount) * 100) : 0;
+        const suffix = row.isPeriod && row.periodUnit !== "week" ? (row.periodUnit === "month" ? " /mo" : " /yr") : "";
+        return (
+          <section key={row.id} className="h-card p-3">
+            <div className="flex items-start gap-2.5">
+              <Link href={`/habits/${row.id}`} className="flex min-w-0 flex-1 items-start gap-2.5">
+                <span
+                  className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: tint(hex, 0.14), color: hex }}
+                >
+                  <Icon className="h-4 w-4" />
+                </span>
+                <span className="min-w-0">
+                  <span className="line-clamp-2 break-words text-sm font-bold leading-snug">{row.name}</span>
+                  <span className="block text-[11px] font-medium text-h-muted">{row.kind === "break" ? "Break" : "Build"}</span>
+                </span>
+              </Link>
+              <span
+                className={cn(
+                  "mt-0.5 shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold tabular-nums",
+                  dueCount > 0 && shownDone >= dueCount ? "bg-h-good/15 text-h-good" : "bg-h-surface2 text-h-muted"
+                )}
+              >
+                {shownDone}/{dueCount}
+                {suffix}
+              </span>
+              {!readOnly && (
+                <button
+                  type="button"
+                  aria-label={`Options for ${row.name}`}
+                  onClick={() => setOptionsFor(row.id)}
+                  className="-mr-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-h-muted hover:bg-h-surface2"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            <div className="mt-2.5 h-1 overflow-hidden rounded-full bg-h-surface2">
+              <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: shownDone >= dueCount && dueCount > 0 ? "var(--h-good)" : hex }} />
+            </div>
+
+            <div className="mt-2.5 grid grid-cols-7 gap-1">
+              {row.cells.map((cell) => {
+                const dt = parseIso(cell.date);
+                const isToday = cell.date === today;
+                return (
+                  <div key={cell.date} className="flex flex-col items-center gap-1">
+                    <span className={cn("text-[10px] font-bold uppercase", isToday ? "text-h-brand" : "text-h-muted")}>
+                      {WEEKDAY_SHORT[dt.getDay()][0]}
+                    </span>
+                    <CellButton
+                      cell={cell}
+                      hex={hex}
+                      row={row}
+                      disabled={readOnly || cell.date > today}
+                      onClick={() => onCell(row, cell)}
+                    />
+                    <span
+                      className={cn(
+                        "flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-extrabold tabular-nums",
+                        isToday ? "bg-h-brand text-h-brand-fg" : "text-h-muted"
+                      )}
+                    >
+                      {dt.getDate()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+
+      <div className="h-card grid grid-cols-7 gap-1 bg-h-surface2/60 p-3">
+        {totals.map((t, i) => (
+          <div key={dates[i]} className="flex flex-col items-center gap-0.5">
+            <span className="text-[10px] font-bold uppercase text-h-muted">{WEEKDAY_SHORT[parseIso(dates[i]).getDay()][0]}</span>
+            {dates[i] > today || t.due === 0 ? (
+              <span className="text-[11px] font-extrabold text-h-muted/50">–</span>
+            ) : (
+              <span className={cn("text-[11px] font-extrabold tabular-nums", t.done === t.due && "text-h-good")}>
+                {t.done}/{t.due}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+      <p className="px-1 text-center text-[10px] font-bold uppercase tracking-wider text-h-muted">Day total</p>
     </div>
 
     {adjustRow && adjustCell && (
@@ -409,6 +510,11 @@ function CellButton({
       break;
     case "upcoming":
       extra = "border border-dashed border-h-border";
+      break;
+    case "prestart":
+      // Before the start date: faint, but tappable (logging it pulls the start date back).
+      extra = "border border-dashed border-h-border/70";
+      content = <span className="h-1 w-1 rounded-full bg-h-border" />;
       break;
     case "off":
       content = <span className="h-1 w-1 rounded-full bg-h-border" />;

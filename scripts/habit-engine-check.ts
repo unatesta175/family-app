@@ -7,6 +7,7 @@ import {
   goalProgress,
   scheduleLabel,
   scheduledOn,
+  startDateFor,
   targetMet,
   type HabitLite,
   type HabitLogMap,
@@ -171,6 +172,20 @@ eq(
   dayState({ ...base, schedule: "weekly_count" }, { [today]: missedLog() }, today, today),
   "missed"
 );
+
+// --- Before the start date -----------------------------------------------------------------
+const early: HabitLogMap = { "2026-08-30": done(), "2026-08-31": done() }; // base starts 2026-09-01
+eq("prestart: unlogged day before start", dayState(base, {}, "2026-08-20", today), "prestart");
+eq("prestart: logged day before start", dayState(base, early, "2026-08-30", today), "done");
+eq("prestart: future date before a future start is off", dayState({ ...base, startDate: "2026-12-01" }, {}, "2026-11-01", today), "off");
+const withEarly: HabitLogMap = { ...early };
+for (let i = 1; i <= 30; i++) withEarly["2026-09-" + String(i).padStart(2, "0")] = done();
+eq("early logs extend the streak", computeStreak(base, withEarly, "2026-09-30").current, 32);
+eq("startDateFor moves back to the date", startDateFor(base, "2026-08-25"), "2026-08-25");
+eq("startDateFor keeps a later date", startDateFor(base, "2026-09-10"), "2026-09-01");
+const rep3: HabitLite = { ...base, schedule: "repeat", repeatEvery: 3 };
+eq("startDateFor keeps the repeat rhythm", startDateFor(rep3, "2026-08-28"), "2026-08-26");
+eq("repeat rhythm holds before the start", scheduledOn(rep3, "2026-08-29"), true);
 
 console.log(failed === 0 ? "\nAll checks passed" : `\n${failed} check(s) FAILED`);
 process.exit(failed === 0 ? 0 : 1);

@@ -49,6 +49,7 @@ export type BoardHabit = {
   checklist: { id: string; title: string; checked: boolean }[];
   goals: BoardGoal[];
   priority: number;
+  startDate: string;
   flexible: boolean;
   /** A flexible habit that's still open from an earlier day: the day it was scheduled. */
   carriedFrom: string | null;
@@ -131,6 +132,7 @@ export function buildBoardHabits(
       checklist: checklist.map((i) => ({ id: i.id, title: i.title, checked: checkedIds.has(i.id) })),
       goals,
       priority: h.priority,
+      startDate: h.startDate,
       flexible: h.flexible,
       carriedFrom: state === "pending" || state === "flex" ? carriedFromDate(h, date) : null,
     });

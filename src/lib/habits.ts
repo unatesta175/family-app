@@ -29,6 +29,18 @@ export const HABIT_COLORS = {
   rose: "#f43f5e",
   pink: "#ec4899",
   slate: "#64748b",
+  red: "#ef4444",
+  coral: "#fb7185",
+  gold: "#eab308",
+  lime: "#84cc16",
+  green: "#22c55e",
+  mint: "#2dd4bf",
+  cyan: "#06b6d4",
+  blue: "#3b82f6",
+  purple: "#a855f7",
+  fuchsia: "#d946ef",
+  brown: "#a16207",
+  graphite: "#334155",
 } as const;
 export type HabitColor = keyof typeof HABIT_COLORS;
 export const HABIT_COLOR_KEYS = Object.keys(HABIT_COLORS) as HabitColor[];
@@ -83,7 +95,8 @@ export type DayState =
   | "pending" // due today, not yet logged
   | "upcoming" // due in the future
   | "flex" // open but not overdue: any-day period habits, or a flexible habit still carrying over
-  | "off"; // not scheduled / before the habit started / already handled elsewhere in its window
+  | "prestart" // before the habit's start date and nothing logged: can still be logged, which pulls the start back
+  | "off"; // not scheduled / after the end date / already handled elsewhere in its window
 
 export const WEEKDAY_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 export const WEEKDAY_INITIAL = ["S", "M", "T", "W", "T", "F", "S"] as const;
@@ -299,7 +312,7 @@ function isLeap(year: number): boolean {
  * period" habits (any day can count) and outside the start/end dates.
  */
 export function scheduledOn(h: HabitLite, date: string): boolean {
-  if (date < h.startDate || (h.endDate !== null && date > h.endDate)) return false;
+  if (h.endDate !== null && date > h.endDate) return false;
   const dt = parseIso(date);
   switch (h.schedule) {
     case "daily":
@@ -319,13 +332,35 @@ export function scheduledOn(h: HabitLite, date: string): boolean {
     }
     case "repeat": {
       const every = Math.max(1, h.repeatEvery);
-      const n = daysBetween(h.startDate, date);
+      const n = daysBetween(h.startDate, date); // negative before the start date
       // "Alternate days": N days on, then N days off, repeating.
-      return h.alternate ? Math.floor(n / every) % 2 === 0 : n % every === 0;
+      return h.alternate ? (((Math.floor(n / every) % 2) + 2) % 2 === 0) : ((n % every) + every) % every === 0;
     }
     case "weekly_count":
       return false;
   }
+}
+
+/**
+ * Where the habit's history really begins: its start date, or an earlier day if something was logged
+ * before it (older entries, or ones saved before the start date was pulled back).
+ */
+export function effectiveStart(habit: Pick<HabitLite, "startDate">, logs: HabitLogMap): string {
+  let start = habit.startDate;
+  for (const d of Object.keys(logs)) if (d < start) start = d;
+  return start;
+}
+
+/**
+ * The start date to use when an entry is saved on `date`, before the habit's current start. Normally
+ * that's the date itself. A "repeat every N days" habit instead moves back by whole cycles, so its
+ * on/off rhythm stays exactly where it was.
+ */
+export function startDateFor(habit: Pick<HabitLite, "schedule" | "startDate" | "repeatEvery" | "alternate">, date: string): string {
+  if (date >= habit.startDate) return habit.startDate;
+  if (habit.schedule !== "repeat") return date;
+  const cycle = Math.max(1, habit.repeatEvery) * (habit.alternate ? 2 : 1);
+  return addDays(habit.startDate, -Math.ceil(daysBetween(date, habit.startDate) / cycle) * cycle);
 }
 
 export function isComplete(habit: HabitLite, log: LogLite | undefined): boolean {
@@ -369,7 +404,8 @@ export function dayState(habit: HabitLite, logs: HabitLogMap, date: string, toda
   if (log?.status === "skipped") return "skipped";
   if (log?.status === "missed") return "missed";
   if (log?.status === "done") return targetMet(habit, log.value) ? "done" : "partial";
-  if (date < habit.startDate || (habit.endDate !== null && date > habit.endDate)) return "off";
+  if (habit.endDate !== null && date > habit.endDate) return "off";
+  if (date < habit.startDate) return date > today ? "off" : "prestart";
 
   if (isPeriodHabit(habit)) return date > today ? "upcoming" : "flex";
 
@@ -439,7 +475,8 @@ export function countsForStreak(habit: HabitLite, d: string): boolean {
 
 function dayStreak(habit: HabitLite, logs: HabitLogMap, today: string): StreakResult {
   const earliest = addDays(today, -STREAK_HORIZON_DAYS);
-  const from = habit.startDate > earliest ? habit.startDate : earliest;
+  const begin = effectiveStart(habit, logs);
+  const from = begin > earliest ? begin : earliest;
   const to = habit.endDate !== null && habit.endDate < today ? habit.endDate : today;
 
   // Best: walk forward once.
@@ -451,7 +488,7 @@ function dayStreak(habit: HabitLite, logs: HabitLogMap, today: string): StreakRe
     if (s === "done") {
       run += 1;
       best = Math.max(best, run);
-    } else if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming") {
+    } else if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming" || s === "prestart") {
       continue; // neutral: neither extends nor breaks
     } else {
       run = 0;
@@ -464,7 +501,7 @@ function dayStreak(habit: HabitLite, logs: HabitLogMap, today: string): StreakRe
     if (!countsForStreak(habit, d)) continue;
     const s = dayState(habit, logs, d, today);
     if (s === "done") current += 1;
-    else if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming") continue;
+    else if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming" || s === "prestart") continue;
     else break;
   }
   return { current, best, unit: "day" };
@@ -472,7 +509,7 @@ function dayStreak(habit: HabitLite, logs: HabitLogMap, today: string): StreakRe
 
 function periodStreak(habit: HabitLite, logs: HabitLogMap, today: string): StreakResult {
   const unit = habit.periodUnit;
-  const firstPeriod = periodStart(habit.startDate, unit);
+  const firstPeriod = periodStart(effectiveStart(habit, logs), unit);
   const thisPeriod = periodStart(today, unit);
   const target = Math.max(1, habit.weeklyTarget);
 
@@ -514,7 +551,8 @@ export function completionRate(
   to: string,
   today: string
 ): number | null {
-  const start = from < habit.startDate ? habit.startDate : from;
+  const begin = effectiveStart(habit, logs);
+  const start = from < begin ? begin : from;
   let end = to > today ? today : to;
   if (habit.endDate !== null && habit.endDate < end) end = habit.endDate;
   if (start > end) return null;
@@ -533,7 +571,7 @@ export function completionRate(
   for (let d = start; d <= end; d = addDays(d, 1)) {
     if (!countsForStreak(habit, d)) continue;
     const s = dayState(habit, logs, d, today);
-    if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming") continue;
+    if (s === "skipped" || s === "pending" || s === "flex" || s === "off" || s === "upcoming" || s === "prestart") continue;
     due += 1;
     if (s === "done") done += 1;
   }
@@ -566,7 +604,7 @@ export function dayCompletion(
       continue;
     }
     const s = dayState(h, logs, date, today);
-    if (s === "skipped" || s === "off" || s === "upcoming" || s === "flex") continue;
+    if (s === "skipped" || s === "off" || s === "upcoming" || s === "flex" || s === "prestart") continue;
     due += 1;
     if (s === "done") done += 1;
   }
@@ -578,7 +616,8 @@ export function dayCompletion(
 /** The span a goal is measured over, for the day `date` (all-time / single run from the habit's start). */
 export function goalRange(h: Pick<HabitLite, "startDate">, period: GoalPeriod, date: string): [string, string] {
   if (period === "week" || period === "month" || period === "year") return [periodStart(date, period), periodEnd(date, period)];
-  return [h.startDate, date];
+  void h;
+  return ["0000-01-01", date];
 }
 
 /**

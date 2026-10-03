@@ -75,7 +75,7 @@ export default async function HabitsWeekPage({
       for (const d of dates) {
         if (d > today) continue;
         const s = dayState(h, logs, d, today);
-        if (s === "off" || s === "skipped" || s === "upcoming" || s === "flex") continue;
+        if (s === "off" || s === "skipped" || s === "upcoming" || s === "flex" || s === "prestart") continue;
         expected += 1;
         if (s === "done") achieved += 1;
       }

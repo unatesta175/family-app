@@ -46,6 +46,7 @@ export function Heatmap({
                 bg = "transparent";
                 border = "var(--h-border)";
                 break;
+              case "prestart":
               case "off":
                 bg = "color-mix(in srgb, var(--h-surface-2) 50%, transparent)";
                 break;

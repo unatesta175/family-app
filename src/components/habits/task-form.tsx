@@ -98,12 +98,13 @@ export function TaskFormSheet({
     >
       <div className="flex flex-col gap-5 pt-1">
         <Field label="Task">
-          <input
+          <textarea
             value={v.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="e.g. Pay internet bill, Clean the room"
-            maxLength={120}
-            className={inputClass}
+            maxLength={500}
+            rows={2}
+            className={`${inputClass} resize-none`}
             autoFocus={!editing}
           />
         </Field>

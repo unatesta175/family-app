@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertOwnProfile, getOwnProfileId, requireAuth } from "@/lib/auth";
 import { getProfilesInHousehold } from "@/lib/db/repo";
-import { todayIso } from "@/lib/date";
+import { addDays, todayIso } from "@/lib/date";
 import {
   GOAL_PERIODS,
   HABIT_EVAL_TYPES,
@@ -22,6 +22,7 @@ import {
   serializeMonthDays,
   serializeWeekdays,
   serializeYearDays,
+  startDateFor,
 } from "@/lib/habits";
 import { HABIT_ICON_KEYS } from "@/lib/habit-icons";
 import {
@@ -41,6 +42,7 @@ import {
   getHabit,
   getTask,
   setHabitArchived,
+  setHabitStartDate,
   setRecurringTaskDone,
   setSingleTaskCompleted,
   updateCategory,
@@ -52,6 +54,8 @@ import {
 export type ActionResult<T = undefined> =
   | ({ ok: true } & (T extends undefined ? object : { data: T }))
   | { ok: false; error: string };
+
+const MAX_BACKFILL_DAYS = 730;
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const colorSchema = z.enum(HABIT_COLOR_KEYS as [string, ...string[]]);
@@ -107,6 +111,15 @@ export async function logHabitAction(input: z.input<typeof logSchema>) {
   const parsed = logSchema.parse(input);
   const habit = await ownHabit(parsed.habitId);
   if (parsed.date > todayIso()) throw new Error("You can't log a future date.");
+
+  // An entry before the habit's start date pulls the start back to that day, so the day (and every day
+  // after it) counts towards streaks, rates and the calendar.
+  if (parsed.status !== "clear" && parsed.date < habit.startDate) {
+    if (parsed.date < addDays(todayIso(), -MAX_BACKFILL_DAYS)) {
+      throw new Error("You can only log up to two years back.");
+    }
+    await setHabitStartDate(habit.id, startDateFor(habit, parsed.date));
+  }
 
   if (parsed.status === "missed" && habit.kind === "break") {
     throw new Error("Break habits are marked clean or slipped, not missed.");
@@ -408,7 +421,7 @@ export async function deleteCategoryAction(id: number) {
 
 const taskSchema = z
   .object({
-    title: z.string().trim().min(1, "Give the task a title.").max(120),
+    title: z.string().trim().min(1, "Give the task a title.").max(500),
     notes: z.string().trim().max(500).optional().nullable(),
     categoryId: z.number().int().positive().nullable(),
     priority: z.enum(TASK_PRIORITIES),

@@ -127,6 +127,10 @@ export async function updateHabit(id: number, input: HabitInput) {
   await db.update(habits).set(input).where(eq(habits.id, id));
 }
 
+export async function setHabitStartDate(id: number, startDate: string) {
+  await db.update(habits).set({ startDate }).where(eq(habits.id, id));
+}
+
 export async function setHabitArchived(id: number, archived: boolean) {
   await db
     .update(habits)
