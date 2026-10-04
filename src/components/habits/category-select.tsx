@@ -6,7 +6,7 @@ import { createCategoryAction } from "@/lib/habit-actions";
 import { colorHex, tint } from "@/lib/habits";
 import { habitIcon } from "@/lib/habit-icons";
 import { cn } from "@/lib/utils";
-import { inputClass, type CategoryOption } from "@/components/habits/form-bits";
+import { ColorPicker, IconPicker, inputClass, type CategoryOption } from "@/components/habits/form-bits";
 
 /** Category chips with inline "New" creation — categories are user data, not a fixed list. */
 export function CategorySelect({
@@ -24,13 +24,16 @@ export function CategorySelect({
 }) {
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState("");
+  const [icon, setIcon] = useState("layers");
+  const [color, setColor] = useState<string | null>(null); // null = follow the form's colour
+  const chosenColor = color ?? fallbackColor;
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function create() {
     setError(null);
     startTransition(async () => {
-      const res = await createCategoryAction({ name, color: fallbackColor, icon: "layers" });
+      const res = await createCategoryAction({ name, color: chosenColor, icon });
       if (!res.ok) {
         setError(res.error);
         return;
@@ -38,6 +41,8 @@ export function CategorySelect({
       onCreated(res.data);
       onChange(res.data.id);
       setName("");
+      setIcon("layers");
+      setColor(null);
       setAdding(false);
     });
   }
@@ -87,28 +92,38 @@ export function CategorySelect({
         </button>
       </div>
       {adding && (
-        <div className="flex gap-2">
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Category name"
-            maxLength={40}
-            className={inputClass}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                create();
-              }
-            }}
-          />
-          <button
-            type="button"
-            disabled={pending || !name.trim()}
-            onClick={create}
-            className="rounded-xl bg-h-brand px-4 text-sm font-bold text-h-brand-fg disabled:opacity-50"
-          >
-            Add
-          </button>
+        <div className="flex flex-col gap-3 rounded-xl border border-h-border bg-h-surface2 p-3">
+          <div className="flex gap-2">
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Category name"
+              maxLength={40}
+              className={inputClass}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  create();
+                }
+              }}
+            />
+            <button
+              type="button"
+              disabled={pending || !name.trim()}
+              onClick={create}
+              className="rounded-xl bg-h-brand px-4 text-sm font-bold text-h-brand-fg disabled:opacity-50"
+            >
+              Add
+            </button>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-h-muted">Icon</span>
+            <IconPicker value={icon} onChange={setIcon} color={colorHex(chosenColor)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-h-muted">Colour</span>
+            <ColorPicker value={chosenColor} onChange={setColor} />
+          </div>
         </div>
       )}
       {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
