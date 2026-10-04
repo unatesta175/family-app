@@ -39,6 +39,7 @@ import { HabitIcon } from "@/components/habits/habit-icon";
 import { Checkbox } from "@/components/habits/ui/checkbox";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { ProgressDialog } from "@/components/habits/progress-dialog";
+import { StatusGuideButton } from "@/components/habits/status-guide";
 import type { BoardGoal, BoardHabit, BoardTask } from "@/lib/habit-board";
 import { parseIso } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -145,6 +146,7 @@ export function TodayBoard({
   const [state, apply] = useOptimistic<State, Action>({ habits, tasks }, reduce(date, today));
   const [, startTransition] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
+  const [category, setCategory] = useState<string | null>(null); // null = every category
 
   const logHabit: LogFn = (id, status, value, checked) => {
     startTransition(async () => {
@@ -160,11 +162,24 @@ export function TodayBoard({
     });
   }
 
+  // Categories that actually appear on this day, with how many items each holds.
+  const categoryChips = useMemo(() => {
+    const counts = new Map<string, number>();
+    const bump = (name: string | null) => counts.set(name ?? "", (counts.get(name ?? "") ?? 0) + 1);
+    for (const h of state.habits) if (h.state !== "prestart") bump(h.categoryName);
+    for (const t of state.tasks) bump(t.categoryName);
+    const named = [...counts.entries()].filter(([n]) => n !== "").sort((a, b) => a[0].localeCompare(b[0]));
+    return { named, none: counts.get("") ?? 0 };
+  }, [state.habits, state.tasks]);
+  // "" stands for "no category".
+  const inCategory = (name: string | null) => category === null || (name ?? "") === category;
+
   const shownHabits = useMemo(
-    () => state.habits.filter((h) => filter === "all" || filter === h.kind),
-    [state.habits, filter]
+    () => state.habits.filter((h) => (filter === "all" || filter === h.kind) && inCategory(h.categoryName)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [state.habits, filter, category]
   );
-  const shownTasks = filter === "all" || filter === "tasks" ? state.tasks : [];
+  const shownTasks = (filter === "all" || filter === "tasks" ? state.tasks : []).filter((t) => inCategory(t.categoryName));
 
   const pendingHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "pending");
   const doneHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "done");
@@ -189,7 +204,8 @@ export function TodayBoard({
   return (
     <div className="flex flex-col gap-4">
       {!compact && (
-      <div className="scrollbar-hide -mx-4 flex gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0">
+      <div className="flex items-center gap-2">
+      <div className="scrollbar-hide -mx-4 flex min-w-0 flex-1 gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0">
         {(
           [
             { key: "all", label: "All" },
@@ -214,6 +230,35 @@ export function TodayBoard({
           </button>
         ))}
       </div>
+      <StatusGuideButton />
+      </div>
+      )}
+
+
+      {!compact && (categoryChips.named.length > 0) && (
+        <div className="scrollbar-hide -mx-4 flex items-center gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0" aria-label="Filter by category">
+          {[
+            { key: null as string | null, label: "All categories", n: null as number | null },
+            ...categoryChips.named.map(([name, n]) => ({ key: name as string | null, label: name, n })),
+            ...(categoryChips.none > 0 ? [{ key: "" as string | null, label: "No category", n: categoryChips.none }] : []),
+          ].map((c) => (
+            <button
+              key={c.key ?? "all"}
+              type="button"
+              onClick={() => setCategory(c.key)}
+              aria-pressed={category === c.key}
+              className={cn(
+                "shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-colors",
+                category === c.key
+                  ? "border-h-fg bg-h-fg text-h-bg"
+                  : "border-h-border bg-h-surface text-h-muted hover:text-h-fg"
+              )}
+            >
+              {c.label}
+              {c.n !== null && <span className="ml-1 opacity-60">{c.n}</span>}
+            </button>
+          ))}
+        </div>
       )}
 
       {everythingDone && (
