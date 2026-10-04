@@ -629,36 +629,36 @@ html:has(.habits-app) {
 }
 
 /*
- * Goals module theme: warm amber and gold on a cream canvas (dark mode: deep brown). It sits on top of
+ * Goals module theme: warm amber and gold on a clean near-white canvas (dark mode: neutral charcoal), with amber kept for accents only. It sits on top of
  * the habits theme, so every component keeps working and only the palette changes. Amber is the
  * colour of ambition and achievement, and it keeps Goals clearly apart from Habits (indigo) and
  * Prayer (emerald).
  */
 .habits-theme.goals-theme {
-  --h-bg: #fbf7ef;
+  --h-bg: #fafaf9;
   --h-surface: #ffffff;
-  --h-surface-2: #f7f0e2;
-  --h-border: #ebdfc8;
-  --h-fg: #2b2216;
-  --h-muted: #7b6c55;
+  --h-surface-2: #f4f4f2;
+  --h-border: #e7e5e0;
+  --h-fg: #1c1917;
+  --h-muted: #78716c;
   --h-brand: #d97706;
   --h-brand-fg: #ffffff;
-  --h-brand-soft: #fdeccb;
+  --h-brand-soft: #fef3dc;
   --h-break: #c2410c;
   --h-break-soft: #ffedd5;
-  --h-shadow: 0 1px 2px rgb(43 34 22 / 0.05), 0 4px 16px rgb(120 80 20 / 0.08);
+  --h-shadow: 0 1px 2px rgb(28 25 23 / 0.04), 0 4px 16px rgb(28 25 23 / 0.06);
 }
 
 .dark .habits-theme.goals-theme {
-  --h-bg: #15110a;
-  --h-surface: #201a10;
-  --h-surface-2: #2a2216;
-  --h-border: #3c3120;
-  --h-fg: #f7efe0;
-  --h-muted: #b9a888;
+  --h-bg: #121211;
+  --h-surface: #1b1b1a;
+  --h-surface-2: #252524;
+  --h-border: #333331;
+  --h-fg: #f5f5f4;
+  --h-muted: #a8a29e;
   --h-brand: #fbbf24;
   --h-brand-fg: #1c1406;
-  --h-brand-soft: #3b2a0a;
+  --h-brand-soft: #3a2d10;
   --h-break: #fb923c;
   --h-break-soft: #3a2314;
   --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
