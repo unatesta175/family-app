@@ -52,7 +52,7 @@ function partialText(row: WeekRow, value: number): string {
 
 type Change = { habitId: number; date: string; state: DayState; value: number; checked: string[]; logged: boolean };
 
-type Next = { status: "done" | "slipped" | "missed" | "clear"; state: DayState; value: number; checked?: string[] };
+type Next = { status: "done" | "slipped" | "missed" | "skipped" | "clear"; state: DayState; value: number; checked?: string[] };
 
 /**
  * One tap on a day cell cycles: empty -> done -> slipped -> missed -> skipped -> empty. (Numeric, timer
