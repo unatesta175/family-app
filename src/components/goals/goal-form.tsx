@@ -178,8 +178,8 @@ export function GoalFormSheet({
               value={v.why}
               onChange={(e) => set("why", e.target.value)}
               placeholder="Your reason, in your own words. It helps on the hard days."
-              maxLength={600}
-              rows={3}
+              maxLength={2000}
+              rows={4}
               className={cn(inputClass, "resize-none")}
             />
           </Field>
@@ -272,7 +272,7 @@ export function GoalFormSheet({
                 value={steps}
                 onChange={(e) => setSteps(e.target.value)}
                 placeholder={"Find a teacher\nFinish the first chapter"}
-                rows={3}
+                rows={4}
                 className={cn(inputClass, "resize-none")}
               />
             </Field>

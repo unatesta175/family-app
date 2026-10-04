@@ -94,7 +94,7 @@ async function contributableGoal(id: number): Promise<{ goal: GoalRow; profileId
 const goalSchema = z
   .object({
     title: z.string().trim().min(1, "Give the goal a title.").max(120),
-    why: z.string().trim().max(600).nullable().optional(),
+    why: z.string().trim().max(2000).nullable().optional(),
     area: z.string().trim().min(1, "Pick a life area.").max(30),
     icon: iconSchema,
     color: colorSchema,
