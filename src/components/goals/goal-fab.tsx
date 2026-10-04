@@ -33,7 +33,7 @@ export function GoalFab() {
 
   return (
     <>
-      <div ref={ref} className="pointer-events-none fixed bottom-24 right-4 z-30 flex flex-col items-end gap-2 md:bottom-8 md:right-8">
+      <div ref={ref} className="no-print pointer-events-none fixed bottom-24 right-4 z-30 flex flex-col items-end gap-2 md:bottom-8 md:right-8">
         {menu && (
           <div className="habit-sheet-in pointer-events-auto flex flex-col gap-1 rounded-2xl border border-h-border bg-h-surface p-1.5 shadow-xl">
             <button

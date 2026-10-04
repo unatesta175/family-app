@@ -167,3 +167,15 @@ export async function loadGoalsData(): Promise<GoalsData> {
 
   return { today, viewerId, household: profiles.map((p) => ({ id: p.id, name: p.name })), views };
 }
+
+/** Goals a habit can be pointed at: your own open goals, plus goals family members have shared. */
+export async function loadSelectableGoals(): Promise<{ id: number; title: string }[]> {
+  const session = await requireAuth();
+  const viewerId = await getOwnProfileId();
+  if (viewerId === null) return [];
+  const profiles = await getProfilesInHousehold(session.householdId);
+  const all = await getGoalsByProfiles(profiles.map((p) => p.id));
+  return all
+    .filter((g) => (g.profileId === viewerId || g.visibility === "shared") && ["active", "idea", "paused"].includes(g.status))
+    .map((g) => ({ id: g.id, title: g.title }));
+}

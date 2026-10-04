@@ -22,6 +22,7 @@ import {
   AlarmClock,
   CornerDownRight,
   Layers,
+  Target,
 } from "lucide-react";
 import { logHabitAction, toggleTaskAction } from "@/lib/habit-actions";
 import {
@@ -639,6 +640,17 @@ function HabitRow({
               </span>
             )}
             {h.categoryName && <span>{h.categoryName}</span>}
+            {h.lifeGoal && (
+              <Link
+                href={`/goals/${h.lifeGoal.id}`}
+                title={`Contributes to the goal: ${h.lifeGoal.title}`}
+                className="inline-flex max-w-40 items-center gap-1 truncate rounded-md px-1.5 py-px font-bold"
+                style={{ background: tint(colorHex(h.lifeGoal.color), 0.14), color: colorHex(h.lifeGoal.color) }}
+              >
+                <Target className="h-3 w-3 shrink-0" />
+                <span className="truncate">{h.lifeGoal.title}</span>
+              </Link>
+            )}
             {h.schedule === "weekly_count" ? (
               <span className={cn(h.periodMet && "font-bold text-h-good")}>
                 {h.periodDone}/{h.periodTarget} this {h.periodUnit}

@@ -8,7 +8,15 @@ import type { CategoryOption } from "@/components/habits/form-bits";
 import { cn } from "@/lib/utils";
 
 /** Global "+" (habit or task). Only rendered when the viewer is looking at their own data. */
-export function AddFab({ categories, circleSize = 1 }: { categories: CategoryOption[]; circleSize?: number }) {
+export function AddFab({
+  categories,
+  circleSize = 1,
+  goals = [],
+}: {
+  categories: CategoryOption[];
+  circleSize?: number;
+  goals?: { id: number; title: string }[];
+}) {
   const [menu, setMenu] = useState(false);
   const [habitOpen, setHabitOpen] = useState(false);
   const [taskOpen, setTaskOpen] = useState(false);
@@ -73,6 +81,7 @@ export function AddFab({ categories, circleSize = 1 }: { categories: CategoryOpt
           initial={emptyHabit()}
           categories={categories}
           circleSize={circleSize}
+          goals={goals}
         />
       )}
       {taskOpen && (

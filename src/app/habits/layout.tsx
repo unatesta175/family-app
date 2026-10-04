@@ -8,6 +8,7 @@ import { getActiveProfileId } from "@/lib/session";
 import { requireAuth, getOwnProfileId } from "@/lib/auth";
 import { getProfilesInHousehold } from "@/lib/db/repo";
 import { getCategories } from "@/lib/db/repo-habits";
+import { loadSelectableGoals } from "@/lib/goal-data";
 
 // The Habits module is installable as its own app: separate manifest, name, icons and theme colour.
 export const metadata: Metadata = {
@@ -49,6 +50,7 @@ export default async function HabitsLayout({ children }: { children: React.React
   const readOnly = ownProfileId === null || activeProfileId !== ownProfileId;
   const viewing = profiles.find((p) => p.id === activeProfileId);
   const categories = readOnly ? [] : await getCategories(activeProfileId);
+  const goals = readOnly ? [] : await loadSelectableGoals();
 
   return (
     <div className="habits-theme habits-app flex min-h-dvh flex-1 flex-col bg-h-bg text-h-fg">
@@ -78,7 +80,7 @@ export default async function HabitsLayout({ children }: { children: React.React
             <InstallPrompt />
             {children}
           </main>
-          {!readOnly && <AddFab categories={categories} circleSize={profiles.length} />}
+          {!readOnly && <AddFab categories={categories} circleSize={profiles.length} goals={goals} />}
           <HabitBottomNav />
         </div>
       </div>

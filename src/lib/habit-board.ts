@@ -53,6 +53,8 @@ export type BoardHabit = {
   flexible: boolean;
   /** A flexible habit that's still open from an earlier day: the day it was scheduled. */
   carriedFrom: string | null;
+  /** The life goal (Goals module) this habit contributes to, if any. */
+  lifeGoal: { id: number; title: string; color: string } | null;
   /** An entry exists for this day (a past day with none just looks "missed"). */
   logged: boolean;
 };
@@ -84,7 +86,8 @@ export function buildBoardHabits(
   categories: CategoryRow[],
   logsByHabit: Record<number, HabitLogMap>,
   date: string,
-  today: string
+  today: string,
+  goalChips?: Map<number, { goalId: number; title: string; color: string }>
 ): BoardHabit[] {
   const catName = new Map(categories.map((c) => [c.id, c.name]));
   const out: BoardHabit[] = [];
@@ -137,6 +140,7 @@ export function buildBoardHabits(
       startDate: h.startDate,
       flexible: h.flexible,
       logged: !!log,
+      lifeGoal: goalChips?.get(h.id) ? { id: goalChips.get(h.id)!.goalId, title: goalChips.get(h.id)!.title, color: goalChips.get(h.id)!.color } : null,
       carriedFrom: state === "pending" || state === "flex" ? carriedFromDate(h, date) : null,
     });
   }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { assertOwnProfile, getOwnProfileId, requireAuth } from "@/lib/auth";
 import { getProfilesInHousehold } from "@/lib/db/repo";
+import { setHabitGoalAction } from "@/lib/goal-actions";
 import { addDays, todayIso } from "@/lib/date";
 import {
   GOAL_PERIODS,
@@ -218,6 +219,8 @@ const habitSchema = z
     priority: z.number().int().min(0).max(99).nullable().optional(),
     // Also add the habit for everyone else in the family circle (household).
     forEveryone: z.boolean().default(false),
+    // Link the habit to one of your life goals (null = none, undefined = leave as is).
+    goalId: z.number().int().positive().nullable().optional(),
   })
   .superRefine((v, ctx) => {
     const issue = (message: string, path: string) => ctx.addIssue({ code: "custom", message, path: [path] });
@@ -325,6 +328,7 @@ export async function createHabitAction(raw: HabitFormInput): Promise<ActionResu
     const profileId = await requireOwnProfileId();
     const input = await habitInput(raw, profileId);
     const habit = await createHabit(profileId, input);
+    if (raw.goalId) await setHabitGoalAction(habit.id, raw.goalId);
     const shared = raw.forEveryone ? await shareWithCircle(profileId, input) : 0;
     refresh();
     return { ok: true, data: { id: habit.id, shared } };
@@ -338,6 +342,7 @@ export async function updateHabitAction(id: number, raw: HabitFormInput): Promis
     const habit = await ownHabit(id);
     const input = await habitInput(raw, habit.profileId);
     await updateHabit(id, input);
+    if (raw.goalId !== undefined) await setHabitGoalAction(id, raw.goalId);
     if (raw.forEveryone) await shareWithCircle(habit.profileId, input);
     refresh();
     return { ok: true };

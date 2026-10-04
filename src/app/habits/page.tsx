@@ -2,6 +2,10 @@ import Link from "next/link";
 import { ChevronLeft, ChevronRight, Flame } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import { buildBoardHabits, buildBoardTasks } from "@/lib/habit-board";
+import { loadGoalsData } from "@/lib/goal-data";
+import { getGoalChipsForHabits } from "@/lib/db/repo-goals";
+import { GoalsFocus } from "@/components/goals/goals-focus";
+import { TodayMilestones, type TodayMilestone } from "@/components/goals/today-milestones";
 import { computeStreak, dayCompletion, weekDates, WEEKDAY_SHORT, type StreakResult } from "@/lib/habits";
 import { getProfilesInHousehold } from "@/lib/db/repo";
 import { getHabits, getHabitLogsInRange } from "@/lib/db/repo-habits";
@@ -33,7 +37,29 @@ export default async function HabitsTodayPage({
   const { profileId, profile, readOnly, habits, categories, logsByHabit, tasks, completions } =
     await loadHabitData();
 
-  const boardHabits = buildBoardHabits(habits, categories, logsByHabit, date, today);
+  const goalChips = await getGoalChipsForHabits(habits.map((h) => h.id));
+  const boardHabits = buildBoardHabits(habits, categories, logsByHabit, date, today, goalChips);
+
+  // Goals: the focus card, and milestones that are due today. Only for your own habit page.
+  const goalsData = readOnly ? null : await loadGoalsData();
+  const milestoneRows: TodayMilestone[] =
+    goalsData && date === today
+      ? goalsData.views
+          .filter((v) => v.mine && v.goal.status === "active")
+          .flatMap((v) =>
+            v.milestones
+              .filter((m) => m.doneAt === date || (!m.doneAt && m.dueDate !== null && m.dueDate <= date))
+              .map((m) => ({
+                id: m.id,
+                title: m.title,
+                goalId: v.goal.id,
+                goalTitle: v.goal.title,
+                color: v.goal.color,
+                overdue: !m.doneAt && m.dueDate !== null && m.dueDate < date,
+                done: !!m.doneAt,
+              }))
+          )
+      : [];
   const boardTasks = buildBoardTasks(tasks, categories, completions, date, today);
 
   // Summary numbers for the selected day.
@@ -189,6 +215,8 @@ export default async function HabitsTodayPage({
         </div>
       )}
 
+      {goalsData && <GoalsFocus views={goalsData.views} />}
+
       {empty ? (
         readOnly ? (
           <p className="h-card p-6 text-center text-sm text-h-muted">
@@ -207,6 +235,8 @@ export default async function HabitsTodayPage({
           tasks={boardTasks}
         />
       )}
+
+      {milestoneRows.length > 0 && <TodayMilestones items={milestoneRows} canEdit={!readOnly} />}
 
       <FamilyStrip members={family} activeId={profileId} />
     </div>

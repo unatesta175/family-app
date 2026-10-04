@@ -20,6 +20,8 @@ import {
   tint,
 } from "@/lib/habits";
 import { habitToFormValues } from "@/lib/habit-form-values";
+import { loadSelectableGoals } from "@/lib/goal-data";
+import { getGoalChipsForHabits } from "@/lib/db/repo-goals";
 import { heatmapWeeks } from "@/lib/habit-stats";
 import { buildStatDays, habitScore } from "@/lib/habit-insights";
 import { HabitIcon } from "@/components/habits/habit-icon";
@@ -61,6 +63,8 @@ export default async function HabitDetailPage({
   ]);
 
   const hex = colorHex(habit.color);
+  const lifeGoal = (await getGoalChipsForHabits([habit.id])).get(habit.id) ?? null;
+  const selectableGoals = readOnly ? [] : await loadSelectableGoals();
   const category = categories.find((c) => c.id === habit.categoryId);
 
   const tabs = [
@@ -92,6 +96,11 @@ export default async function HabitDetailPage({
             {targetLabel(habit) && <span>{targetLabel(habit)} / day</span>}
             {category && <span>{category.name}</span>}
             {habit.priority > 0 && <span className="font-bold">Priority {habit.priority}</span>}
+            {lifeGoal && (
+              <Link href={`/goals/${lifeGoal.goalId}`} className="font-bold text-h-brand hover:underline">
+                Contributes to: {lifeGoal.title}
+              </Link>
+            )}
             <span>{owner?.name}</span>
             {habit.archivedAt && <span className="font-bold text-h-bad">Archived</span>}
           </p>
@@ -103,8 +112,9 @@ export default async function HabitDetailPage({
         <HabitDetailActions
           archived={habit.archivedAt !== null}
           categories={categories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon }))}
-          habit={{ ...habitToFormValues(habit), id: habit.id }}
+          habit={{ ...habitToFormValues(habit, lifeGoal?.goalId ?? null), id: habit.id }}
           circleSize={household.length}
+          goals={selectableGoals}
         />
       )}
 

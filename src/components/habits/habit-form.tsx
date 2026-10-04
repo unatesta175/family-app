@@ -12,6 +12,7 @@ import { EvaluationFields } from "@/components/habits/eval-fields";
 import { FrequencyFields } from "@/components/habits/frequency-fields";
 import { Caption, FormSection, NumberInput, ToggleRow } from "@/components/habits/form-fields";
 import { Switch } from "@/components/habits/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/habits/ui/select";
 import {
   ColorPicker,
   Field,
@@ -31,6 +32,7 @@ export function HabitFormSheet({
   initial,
   categories: initialCategories,
   circleSize = 1,
+  goals = [],
 }: {
   open: boolean;
   onClose: () => void;
@@ -38,6 +40,8 @@ export function HabitFormSheet({
   categories: CategoryOption[];
   /** Number of people in the family circle, including the user. The share option shows when above 1. */
   circleSize?: number;
+  /** Life goals the habit can contribute to (Goals module). The field shows when there are any. */
+  goals?: { id: number; title: string }[];
 }) {
   const editing = initial.id !== undefined;
   const [v, setV] = useState<HabitFormValues>(initial);
@@ -102,6 +106,7 @@ export function HabitFormSheet({
       endDate: v.endDate,
       priority: v.priority,
       forEveryone,
+      goalId: v.goalId,
     };
     startTransition(async () => {
       const res = editing ? await updateHabitAction(initial.id!, payload) : await createHabitAction(payload);
@@ -195,6 +200,24 @@ export function HabitFormSheet({
               fallbackColor={v.color}
             />
           </Field>
+
+          {goals.length > 0 && (
+            <Field label="Life goal (optional)" hint="Shows this habit on the goal and counts its check-ins towards it.">
+              <Select value={v.goalId === null ? "none" : String(v.goalId)} onValueChange={(g) => set("goalId", g === "none" ? null : Number(g))}>
+                <SelectTrigger aria-label="Life goal">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No goal</SelectItem>
+                  {goals.map((g) => (
+                    <SelectItem key={g.id} value={String(g.id)}>
+                      {g.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+          )}
 
           <Field label="Colour">
             <ColorPicker value={v.color} onChange={(c) => set("color", c)} />

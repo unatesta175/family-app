@@ -1,5 +1,7 @@
 import { loadHabitData } from "@/lib/habit-data";
 import { requireAuth } from "@/lib/auth";
+import { loadSelectableGoals } from "@/lib/goal-data";
+import { getGoalChipsForHabits } from "@/lib/db/repo-goals";
 import { getProfilesInHousehold } from "@/lib/db/repo";
 import { getHabits } from "@/lib/db/repo-habits";
 import { computeStreak, scheduleLabel, targetLabel } from "@/lib/habits";
@@ -13,11 +15,13 @@ export default async function HabitsManagePage() {
   const all = await getHabits(profileId, { includeArchived: true });
   const session = await requireAuth();
   const circleSize = (await getProfilesInHousehold(session.householdId)).length;
+  const goals = readOnly ? [] : await loadSelectableGoals();
+  const goalChips = await getGoalChipsForHabits(all.map((h) => h.id));
 
   const habits: ManageHabit[] = all.map((h) => {
     const streak = computeStreak(h, logsByHabit[h.id] ?? {}, today);
     return {
-      ...habitToFormValues(h),
+      ...habitToFormValues(h, goalChips.get(h.id)?.goalId ?? null),
       id: h.id,
       scheduleLabel: scheduleLabel(h),
       targetLabel: targetLabel(h),
@@ -39,6 +43,7 @@ export default async function HabitsManagePage() {
         categories={categories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon }))}
         readOnly={readOnly}
         circleSize={circleSize}
+        goals={goals}
       />
     </div>
   );

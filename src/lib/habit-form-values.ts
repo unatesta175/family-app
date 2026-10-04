@@ -44,6 +44,8 @@ export type HabitFormValues = {
   endDate: string | null;
   /** 1 is the highest priority; 0 means none. */
   priority: number;
+  /** The life goal (Goals module) this habit contributes to, if any. */
+  goalId: number | null;
 };
 
 export function emptyHabit(): HabitFormValues {
@@ -72,6 +74,7 @@ export function emptyHabit(): HabitFormValues {
     startDate: todayIso(),
     endDate: null,
     priority: 0,
+    goalId: null,
   };
 }
 
@@ -104,7 +107,7 @@ export type HabitFormSource = {
   priority: number;
 };
 
-export function habitToFormValues(h: HabitFormSource): HabitFormValues {
+export function habitToFormValues(h: HabitFormSource, goalId: number | null = null): HabitFormValues {
   return {
     id: h.id,
     name: h.name,
@@ -131,5 +134,6 @@ export function habitToFormValues(h: HabitFormSource): HabitFormValues {
     startDate: h.startDate,
     endDate: h.endDate,
     priority: h.priority,
+    goalId,
   };
 }
