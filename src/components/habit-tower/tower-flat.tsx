@@ -1,16 +1,16 @@
 import { SLOTS_PER_FLOOR, SLOT_LABEL, slotDateLabel, type SlotKind, type TowerData } from "@/lib/habit-tower";
 import { colorHex, tint } from "@/lib/habits";
 
-function cellStyle(kind: SlotKind, hex: string): React.CSSProperties {
+function cellStyle(kind: SlotKind, hex: string, streak: boolean): React.CSSProperties {
   switch (kind) {
     case "done":
-      return { background: hex };
+      return streak ? { background: "#ffb020", boxShadow: "0 0 6px #ffb020" } : { background: hex };
     case "partial":
       return { background: tint(hex, 0.45) };
     case "missed":
-      return { background: "color-mix(in srgb, var(--h-bad) 16%, transparent)", border: "1px dashed color-mix(in srgb, var(--h-bad) 45%, transparent)" };
+      return { background: "#ef4444" };
     case "skipped":
-      return { background: "var(--h-surface-2)", border: "1px solid var(--h-border)" };
+      return { background: "#7dd3fc99", border: "1px solid #7dd3fc" };
     case "pending":
       return { border: `2px solid ${hex}`, background: tint(hex, 0.1) };
     case "future":
@@ -36,7 +36,7 @@ export function TowerFlat({ data, color }: { data: TowerData; color: string }) {
             {Array.from({ length: SLOTS_PER_FLOOR }, (_, i) => {
               const slot = f.slots[i];
               if (!slot) return <span key={i} />;
-              return <span key={i} title={`${slotDateLabel(slot.date)} · ${SLOT_LABEL[slot.kind]}`} style={cellStyle(slot.kind, hex)} className="aspect-square rounded-[3px]" />;
+              return <span key={i} title={`${slotDateLabel(slot.date)} · ${SLOT_LABEL[slot.kind]}`} style={cellStyle(slot.kind, hex, slot.streak)} className="aspect-square rounded-[3px]" />;
             })}
           </div>
           <span className="w-9 shrink-0 text-[10px] font-extrabold tabular-nums text-h-muted">

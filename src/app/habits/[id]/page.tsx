@@ -140,7 +140,7 @@ export default async function HabitDetailPage({
       {tab === "stats" ? (
         <StatsTab habit={habit} logs={logs} today={today} />
       ) : tab === "tower" ? (
-        <HabitTowerPanel name={habit.name} color={habit.color} days={buildStatDays(habit, logs, today)} startDate={habit.startDate} today={today} />
+        <HabitTowerPanel name={habit.name} color={habit.color} days={buildStatDays(habit, logs, today)} startDate={habit.startDate} today={today} evalType={habit.evalType} unit={habit.unit} />
       ) : (
         <CalendarTab habit={habit} logs={logs} notes={notes} today={today} rawMonth={rawMonth} readOnly={readOnly} hex={hex} />
       )}
