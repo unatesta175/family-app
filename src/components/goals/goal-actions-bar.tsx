@@ -159,7 +159,7 @@ function Celebration({ onDone }: { onDone: () => void }) {
         duration: 2.2 + ((i * 29) % 14) / 10,
         dx: `${((i * 61) % 80) - 40}px`,
         size: 6 + ((i * 17) % 8),
-        color: ["#5b5bf0", "#10b981", "#f59e0b", "#f43f5e", "#0ea5e9", "#ec4899"][i % 6],
+        color: ["#d97706", "#10b981", "#f59e0b", "#f43f5e", "#0ea5e9", "#ec4899"][i % 6],
       })),
     []
   );

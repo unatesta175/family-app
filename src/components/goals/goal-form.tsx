@@ -43,7 +43,7 @@ export function emptyGoal(): GoalFormValues {
     why: "",
     area: "Personal",
     icon: "target",
-    color: "indigo",
+    color: "amber",
     priority: 0,
     startDate: todayIso(),
     targetDate: null,
@@ -89,8 +89,8 @@ export function GoalFormSheet({
       ...prev,
       area: name,
       // Nudge the colour/icon to the area while they're still the untouched defaults.
-      color: area && prev.color === "indigo" && prev.icon === "target" ? area.color : prev.color,
-      icon: area && prev.icon === "target" && prev.color === "indigo" ? area.icon : prev.icon,
+      color: area && prev.color === "amber" && prev.icon === "target" ? area.color : prev.color,
+      icon: area && prev.icon === "target" && prev.color === "amber" ? area.icon : prev.icon,
     }));
   }
 

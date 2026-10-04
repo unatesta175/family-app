@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#5b5bf0",
+  themeColor: "#d97706",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -21,7 +21,7 @@ export const viewport: Viewport = {
 export default async function GoalsLayout({ children }: { children: React.ReactNode }) {
   await requireAuth();
   return (
-    <div className="habits-theme habits-app flex min-h-dvh flex-1 flex-col bg-h-bg text-h-fg">
+    <div className="habits-theme goals-theme habits-app flex min-h-dvh flex-1 flex-col bg-h-bg text-h-fg">
       <div className="mx-auto flex w-full max-w-md flex-1 md:max-w-6xl md:flex-row">
         <GoalSidebar />
         <div className="flex min-w-0 flex-1 flex-col">

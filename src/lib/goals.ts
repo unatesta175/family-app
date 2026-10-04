@@ -21,7 +21,7 @@ export const GOAL_AREAS = [
 
 export const STATUS_META: Record<GoalStatus, { label: string; hint: string; tone: string }> = {
   idea: { label: "Idea", hint: "Something you might do one day", tone: "#64748b" },
-  active: { label: "Active", hint: "You're working on it", tone: "#5b5bf0" },
+  active: { label: "Active", hint: "You're working on it", tone: "#d97706" },
   paused: { label: "Paused", hint: "On hold for now", tone: "#f59e0b" },
   achieved: { label: "Achieved", hint: "Done. Well done!", tone: "#10b981" },
   dropped: { label: "Dropped", hint: "No longer pursuing it", tone: "#94a3b8" },

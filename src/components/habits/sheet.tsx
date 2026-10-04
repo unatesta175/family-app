@@ -4,6 +4,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useModuleTheme } from "@/lib/use-module-theme";
 
 /**
  * Bottom sheet on phones, centred dialog on larger screens. Portals to <body> (so no ancestor
@@ -26,6 +27,7 @@ export function Sheet({
   className?: string;
 }) {
   // false on the server / first render, true on the client — portals need document.body.
+  const theme = useModuleTheme();
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -49,7 +51,7 @@ export function Sheet({
   if (!open || !mounted) return null;
 
   return createPortal(
-    <div className="habits-theme fixed inset-0 z-[100] flex items-end justify-center sm:items-center">
+    <div className={cn(theme, "fixed inset-0 z-[100] flex items-end justify-center sm:items-center")}>
       <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         role="dialog"

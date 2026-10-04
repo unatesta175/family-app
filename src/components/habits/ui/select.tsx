@@ -4,6 +4,7 @@ import * as React from "react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useModuleTheme } from "@/lib/use-module-theme";
 
 /**
  * shadcn/ui Select, themed with the habit module's tokens. The dropdown portals to <body>, outside
@@ -36,6 +37,7 @@ function SelectContent({
   position = "popper",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const theme = useModuleTheme();
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Content
@@ -44,7 +46,8 @@ function SelectContent({
         sideOffset={6}
         collisionPadding={12}
         className={cn(
-          "habits-theme relative z-[300] max-h-[min(20rem,var(--radix-select-content-available-height))] min-w-[8rem] overflow-hidden rounded-xl border border-h-border bg-h-surface text-h-fg shadow-xl",
+          theme,
+          "relative z-[300] max-h-[min(20rem,var(--radix-select-content-available-height))] min-w-[8rem] overflow-hidden rounded-xl border border-h-border bg-h-surface text-h-fg shadow-xl",
           position === "popper" && "w-[var(--radix-select-trigger-width)]",
           className
         )}
