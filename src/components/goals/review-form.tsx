@@ -54,12 +54,12 @@ export function ReviewForm({ weekStart, initial, saved }: { weekStart: string; i
       {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
       <div className="flex items-center gap-3">
         <button type="button" onClick={save} disabled={pending} className="rounded-xl bg-h-brand px-5 py-2.5 text-sm font-extrabold text-h-brand-fg disabled:opacity-60">
-          {pending ? "Saving…" : saved || done ? "Update review" : "Save review"}
+          {pending ? "Saving…" : !v.moved.trim() && !v.stalled.trim() && !v.change.trim() ? (saved ? "Clear review" : "Save review") : saved || done ? "Update review" : "Save review"}
         </button>
         {done && (
           <span className="flex items-center gap-1 text-xs font-bold text-h-good">
             <Check className="h-4 w-4" />
-            Saved
+            {!v.moved.trim() && !v.stalled.trim() && !v.change.trim() ? "Cleared" : "Saved"}
           </span>
         )}
       </div>

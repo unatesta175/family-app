@@ -377,8 +377,13 @@ export async function saveReviewAction(input: { weekStart: string; moved: string
     const v = z
       .object({ weekStart: isoDate, moved: z.string().trim().max(1000), stalled: z.string().trim().max(1000), change: z.string().trim().max(1000) })
       .parse(input);
-    if (!v.moved && !v.stalled && !v.change) throw new Error("Write at least one answer.");
     const profileId = await requireOwnProfileId();
+    // Emptying every field clears the review for that week.
+    if (!v.moved && !v.stalled && !v.change) {
+      await deleteReview(profileId, v.weekStart);
+      refresh();
+      return { ok: true };
+    }
     await upsertReview(profileId, v.weekStart, { moved: v.moved || null, stalled: v.stalled || null, change: v.change || null });
     refresh();
     return { ok: true };
