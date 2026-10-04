@@ -294,7 +294,7 @@ export function TimePlanner({ data }: { data: PlannerData }) {
       </div>
 
       <TimeTotals summary={week} lifespanYears={data.lifespanYears} yearsLeft={left} />
-      <TimeSettings birthDate={data.birthDate} lifespanYears={data.lifespanYears} />
+      <TimeSettings birthDate={data.birthDate} birthSource={data.birthSource} profileBirthDate={data.profileBirthDate} lifespanYears={data.lifespanYears} />
 
       {sheet && routine && (
         <TimeBlockSheet

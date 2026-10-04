@@ -165,18 +165,31 @@ export function TimeTotals({
 }
 
 /** Birth date and the age to plan up to, which turn yearly totals into lifetime totals. */
-export function TimeSettings({ birthDate, lifespanYears }: { birthDate: string | null; lifespanYears: number }) {
+export function TimeSettings({
+  birthDate,
+  birthSource,
+  profileBirthDate,
+  lifespanYears,
+}: {
+  birthDate: string | null;
+  birthSource: "custom" | "profile" | "age" | null;
+  profileBirthDate: string | null;
+  lifespanYears: number;
+}) {
   const [birth, setBirth] = useState(birthDate ?? "");
   const [span, setSpan] = useState<number | null>(lifespanYears);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
+  const birthChanged = birth !== (birthDate ?? "");
 
   function save() {
     setError(null);
     setSaved(false);
     startTransition(async () => {
-      const res = await saveTimeSettingsAction({ birthDate: birth || null, lifespanYears: span ?? 80 });
+      // Leaving it equal to the prayer profile's date means "keep following the profile".
+      const own = birth && birth !== profileBirthDate ? birth : null;
+      const res = await saveTimeSettingsAction({ birthDate: own, lifespanYears: span ?? 80 });
       if (!res.ok) return setError(res.error);
       setSaved(true);
     });
@@ -187,6 +200,9 @@ export function TimeSettings({ birthDate, lifespanYears }: { birthDate: string |
       <div>
         <h2 className="text-sm font-extrabold tracking-tight">Lifetime settings</h2>
         <p className="text-xs text-h-muted">Used to turn your daily routine into lifetime totals and to show how much of it is still ahead of you.</p>
+        {birthSource === "profile" && !birthChanged && <p className="mt-1 text-[11px] font-semibold text-h-good">Taken from your prayer profile. Change it here to use a different date.</p>}
+        {birthSource === "age" && !birthChanged && <p className="mt-1 text-[11px] font-semibold text-h-good">Estimated from the age in your prayer profile. Enter your exact birth date for better totals.</p>}
+        {birthSource === null && <p className="mt-1 text-[11px] font-semibold text-h-muted">Add your date of birth or age in your prayer profile, or enter it here.</p>}
       </div>
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1.5">
