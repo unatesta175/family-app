@@ -121,10 +121,6 @@ export async function logHabitAction(input: z.input<typeof logSchema>) {
     await setHabitStartDate(habit.id, startDateFor(habit, parsed.date));
   }
 
-  if (parsed.status === "missed" && habit.kind === "break") {
-    throw new Error("Break habits are marked clean or slipped, not missed.");
-  }
-
   if (parsed.status === "clear") {
     await clearHabitLog(habit.id, parsed.date);
   } else if (parsed.status === "done") {
