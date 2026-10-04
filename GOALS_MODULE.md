@@ -80,3 +80,23 @@ milestones, a measurable target you log against, or the habit check-ins linked t
 - The new tables were checked against a throwaway SQLite database: private by default, one link per
   goal and habit, one review per week, deleting a goal removes its children, re-running is harmless.
 - Not yet clicked through in a browser: do a pass over the new pages after the first deploy.
+
+## Daily clock (Time page, `/goals/time`)
+- [x] **24-hour analog clock** of a day: an arc per activity (coloured by category), a live hand for the
+  current time, midnight at the top. Tap an arc to edit it.
+- [x] **Activities** with a start and end time (ends past midnight allowed, overlaps are refused):
+  sleep, pray, eat, bathe and hygiene, manage yourself (wash and fold clothes, chores), work, study,
+  commute, exercise, family, and free time.
+- [x] **Free time:** how many hours are free each day, the open windows, and what you do with them
+  (free-time activities such as reading or gaming).
+- [x] **Routines:** named kinds of day. Assign any weekday to any routine, so Tuesday to Thursday can
+  follow Monday, Sunday can follow Saturday, and Friday can have its own. Presets for "Weekdays +
+  weekend" and "Weekdays + Friday + weekend", copy a routine, rename, delete.
+- [x] **Totals** once the seven days are set: each activity per day, week, month, year and lifetime
+  (for example hours of sleep per week and per year), plus plain sentences for sleep, prayer, meals and
+  free time.
+- [x] **Lifetime settings:** birth date (optional) and the age to plan up to, so totals show a lifetime
+  figure and what is still ahead.
+- [x] Sample week to start from, all editable.
+- [x] Tables: `time_routines`, `time_blocks`, `time_day_map`, `time_settings`; logic in
+  `src/lib/time-planner.ts` with `scripts/time-check.ts`.

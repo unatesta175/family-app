@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Award, ImageIcon, NotebookPen, Target } from "lucide-react";
+import { Award, Clock, ImageIcon, NotebookPen, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/goals", label: "Goals", icon: Target },
+  { href: "/goals/time", label: "Time", icon: Clock },
   { href: "/goals/vision", label: "Vision", icon: ImageIcon },
   { href: "/goals/review", label: "Review", icon: NotebookPen },
   { href: "/goals/achieved", label: "Wall", icon: Award },

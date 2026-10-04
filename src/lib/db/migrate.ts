@@ -275,6 +275,50 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
     table: "goal_reviews_idx",
     ddl: `CREATE UNIQUE INDEX IF NOT EXISTS goal_reviews_profile_week_unique ON goal_reviews (profile_id, week_start)`,
   },
+  // --- Daily routine planner ---------------------------------------------------------------
+  {
+    table: "time_routines",
+    ddl: `CREATE TABLE IF NOT EXISTS time_routines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )`,
+  },
+  { table: "time_routines_idx", ddl: `CREATE INDEX IF NOT EXISTS time_routines_profile_idx ON time_routines (profile_id)` },
+  {
+    table: "time_blocks",
+    ddl: `CREATE TABLE IF NOT EXISTS time_blocks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      routine_id INTEGER NOT NULL REFERENCES time_routines(id) ON DELETE CASCADE,
+      start_min INTEGER NOT NULL,
+      end_min INTEGER NOT NULL,
+      category TEXT NOT NULL,
+      label TEXT
+    )`,
+  },
+  { table: "time_blocks_idx", ddl: `CREATE INDEX IF NOT EXISTS time_blocks_routine_idx ON time_blocks (routine_id)` },
+  {
+    table: "time_day_map",
+    ddl: `CREATE TABLE IF NOT EXISTS time_day_map (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      weekday INTEGER NOT NULL,
+      routine_id INTEGER REFERENCES time_routines(id) ON DELETE SET NULL
+    )`,
+  },
+  {
+    table: "time_day_map_idx",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS time_day_map_profile_weekday_unique ON time_day_map (profile_id, weekday)`,
+  },
+  {
+    table: "time_settings",
+    ddl: `CREATE TABLE IF NOT EXISTS time_settings (
+      profile_id INTEGER PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+      birth_date TEXT,
+      lifespan_years INTEGER NOT NULL DEFAULT 80
+    )`,
+  },
 ];
 
 /** Runs once at server startup (see src/instrumentation.ts) to self-heal schema drift. */

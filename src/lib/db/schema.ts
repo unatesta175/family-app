@@ -465,3 +465,53 @@ export const goalReviews = sqliteTable(
   },
   (table) => [uniqueIndex("goal_reviews_profile_week_unique").on(table.profileId, table.weekStart)]
 );
+
+// ---------------------------------------------------------------------------------------------
+// Daily routine planner ("Time" in the Goals module). A routine is a named day (for example
+// "Weekday"); blocks are its activities on a 24-hour clock; the day map says which routine each
+// weekday follows, so several days can share one routine. Personal to each profile.
+// ---------------------------------------------------------------------------------------------
+
+export const TIME_CATEGORIES = ["sleep", "pray", "eat", "hygiene", "chores", "work", "study", "commute", "exercise", "family", "free"] as const;
+export type TimeCategoryKey = (typeof TIME_CATEGORIES)[number];
+
+export const timeRoutines = sqliteTable("time_routines", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const timeBlocks = sqliteTable("time_blocks", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  routineId: integer("routine_id")
+    .notNull()
+    .references(() => timeRoutines.id, { onDelete: "cascade" }),
+  startMin: integer("start_min").notNull(), // 0-1439
+  endMin: integer("end_min").notNull(), // 1-1440; at or before start = runs past midnight
+  category: text("category", { enum: TIME_CATEGORIES }).notNull(),
+  label: text("label"),
+});
+
+export const timeDayMap = sqliteTable(
+  "time_day_map",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    weekday: integer("weekday").notNull(), // 0 = Sunday
+    routineId: integer("routine_id").references(() => timeRoutines.id, { onDelete: "set null" }),
+  },
+  (table) => [uniqueIndex("time_day_map_profile_weekday_unique").on(table.profileId, table.weekday)]
+);
+
+export const timeSettings = sqliteTable("time_settings", {
+  profileId: integer("profile_id")
+    .primaryKey()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  birthDate: text("birth_date"),
+  lifespanYears: integer("lifespan_years").notNull().default(80),
+});
