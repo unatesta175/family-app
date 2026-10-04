@@ -21,6 +21,7 @@ import {
   PartyPopper,
   AlarmClock,
   CornerDownRight,
+  Layers,
 } from "lucide-react";
 import { logHabitAction, toggleTaskAction } from "@/lib/habit-actions";
 import {
@@ -147,6 +148,8 @@ export function TodayBoard({
   const [, startTransition] = useTransition();
   const [filter, setFilter] = useState<Filter>("all");
   const [category, setCategory] = useState<string | null>(null); // null = every category
+  // "All categories" can show the list grouped under category headings; tapping it again flattens it.
+  const [grouped, setGrouped] = useState(false);
 
   const logHabit: LogFn = (id, status, value, checked) => {
     startTransition(async () => {
@@ -197,6 +200,16 @@ export function TodayBoard({
     tasks: state.tasks.length,
   };
 
+  const useGroups = grouped && category === null && !future && !compact && categoryChips.named.length > 0;
+  const groups = useGroups
+    ? [...categoryChips.named.map(([name]) => name), ""].map((name) => {
+        const match = (c: string | null) => (c ?? "") === name;
+        const pending = [...pendingHabits.filter((h) => match(h.categoryName)).map((h) => ({ kind: "h" as const, h })), ...pendingTasks.filter((t) => match(t.categoryName)).map((t) => ({ kind: "t" as const, t }))];
+        const done = [...doneHabits.filter((h) => match(h.categoryName)).map((h) => ({ kind: "h" as const, h })), ...doneTasks.filter((t) => match(t.categoryName)).map((t) => ({ kind: "t" as const, t }))];
+        return { name: name || "No category", pending, done };
+      }).filter((g) => g.pending.length + g.done.length > 0)
+    : [];
+
   const pendingCount = pendingHabits.length + pendingTasks.length;
   const doneCount = doneHabits.length + doneTasks.length;
   const everythingDone = !future && pendingCount === 0 && doneCount > 0 && filter === "all";
@@ -245,8 +258,17 @@ export function TodayBoard({
             <button
               key={c.key ?? "all"}
               type="button"
-              onClick={() => setCategory(c.key)}
+              onClick={() => {
+                if (c.key === null) {
+                  if (category === null) setGrouped((g) => !g);
+                  else {
+                    setCategory(null);
+                    setGrouped(true);
+                  }
+                } else setCategory(c.key);
+              }}
               aria-pressed={category === c.key}
+              title={c.key === null ? (category === null && grouped ? "Grouped by category — tap to ungroup" : "Tap to group by category") : undefined}
               className={cn(
                 "shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-colors",
                 category === c.key
@@ -254,6 +276,7 @@ export function TodayBoard({
                   : "border-h-border bg-h-surface text-h-muted hover:text-h-fg"
               )}
             >
+              {c.key === null && category === null && grouped && <Layers className="mr-1 inline h-3 w-3 align-[-1px]" />}
               {c.label}
               {c.n !== null && <span className="ml-1 opacity-60">{c.n}</span>}
             </button>
@@ -281,7 +304,20 @@ export function TodayBoard({
         </Section>
       )}
 
-      {(pendingHabits.length > 0 || pendingTasks.length > 0) && (
+      {useGroups &&
+        groups.map((g) => (
+          <Section key={g.name} title={g.name} count={g.pending.length + g.done.length}>
+            {[...g.pending, ...g.done].map((it) =>
+              it.kind === "h" ? (
+                <HabitRow key={`h${it.h.id}`} habit={it.h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
+              ) : (
+                <TaskRow key={`t${it.t.id}`} task={it.t} canEdit={canEdit} onToggle={toggleTask} />
+              )
+            )}
+          </Section>
+        ))}
+
+      {!useGroups && (pendingHabits.length > 0 || pendingTasks.length > 0) && (
         <Section title={date === today ? "To do" : "Not logged"} count={pendingCount}>
           {pendingHabits.map((h) => (
             <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
@@ -300,7 +336,7 @@ export function TodayBoard({
         </Section>
       )}
 
-      {doneCount > 0 && !future && (
+      {!useGroups && doneCount > 0 && !future && (
         <Section title="Completed" count={doneCount} muted>
           {doneHabits.map((h) => (
             <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
