@@ -30,7 +30,7 @@ const MODULES = [
     hint: "Life goals, milestones & vision",
     href: "/goals",
     icon: Target,
-    tile: "bg-sky-100 text-sky-600",
+    tile: "bg-amber-100 text-amber-600",
   },
 ] as const;
 
