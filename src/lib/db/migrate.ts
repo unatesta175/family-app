@@ -179,6 +179,102 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
     table: "habit_task_completions_idx",
     ddl: `CREATE UNIQUE INDEX IF NOT EXISTS habit_task_completions_unique ON habit_task_completions (task_id, date)`,
   },
+  // --- Goals module -------------------------------------------------------------------------
+  {
+    table: "goals",
+    ddl: `CREATE TABLE IF NOT EXISTS goals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      why TEXT,
+      area TEXT NOT NULL DEFAULT 'Personal',
+      icon TEXT NOT NULL DEFAULT 'target',
+      color TEXT NOT NULL DEFAULT 'indigo',
+      status TEXT NOT NULL DEFAULT 'active',
+      priority INTEGER NOT NULL DEFAULT 0,
+      pinned INTEGER NOT NULL DEFAULT 0,
+      start_date TEXT NOT NULL,
+      target_date TEXT,
+      visibility TEXT NOT NULL DEFAULT 'private',
+      tracking TEXT NOT NULL DEFAULT 'milestones',
+      target_value REAL,
+      target_unit TEXT,
+      start_value REAL NOT NULL DEFAULT 0,
+      habit_kind TEXT NOT NULL DEFAULT 'checkins',
+      habit_target INTEGER,
+      quote TEXT,
+      image_data TEXT,
+      achieved_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp),
+      updated_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "goals_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS goals_profile_idx ON goals (profile_id)` },
+  {
+    table: "goal_milestones",
+    ddl: `CREATE TABLE IF NOT EXISTS goal_milestones (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      goal_id INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      due_date TEXT,
+      done_at TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    )`,
+  },
+  { table: "goal_milestones_idx", ddl: `CREATE INDEX IF NOT EXISTS goal_milestones_goal_idx ON goal_milestones (goal_id)` },
+  {
+    table: "goal_progress",
+    ddl: `CREATE TABLE IF NOT EXISTS goal_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      goal_id INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      value REAL NOT NULL,
+      note TEXT,
+      date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "goal_progress_idx", ddl: `CREATE INDEX IF NOT EXISTS goal_progress_goal_idx ON goal_progress (goal_id)` },
+  {
+    table: "goal_habits",
+    ddl: `CREATE TABLE IF NOT EXISTS goal_habits (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      goal_id INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+      habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE
+    )`,
+  },
+  {
+    table: "goal_habits_idx",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS goal_habits_unique ON goal_habits (goal_id, habit_id)`,
+  },
+  {
+    table: "goal_notes",
+    ddl: `CREATE TABLE IF NOT EXISTS goal_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      goal_id INTEGER NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      body TEXT NOT NULL,
+      mood INTEGER,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "goal_notes_idx", ddl: `CREATE INDEX IF NOT EXISTS goal_notes_goal_idx ON goal_notes (goal_id)` },
+  {
+    table: "goal_reviews",
+    ddl: `CREATE TABLE IF NOT EXISTS goal_reviews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      week_start TEXT NOT NULL,
+      moved TEXT,
+      stalled TEXT,
+      change TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "goal_reviews_idx",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS goal_reviews_profile_week_unique ON goal_reviews (profile_id, week_start)`,
+  },
 ];
 
 /** Runs once at server startup (see src/instrumentation.ts) to self-heal schema drift. */

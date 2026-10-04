@@ -1,0 +1,42 @@
+import type { Metadata, Viewport } from "next";
+import { ModuleSwitcher } from "@/components/module-switcher";
+import { GoalBottomNav, GoalSidebar } from "@/components/goals/goal-nav";
+import { GoalFab } from "@/components/goals/goal-fab";
+import { HabitLogout, HabitThemeToggle } from "@/components/habits/habit-header-controls";
+import { requireAuth } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: { default: "Goals · Istiqamahly", template: "%s · Goals" },
+  description: "Set the goals you want in life and track them with milestones, numbers and habits.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#5b5bf0",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
+/** Goals module shell. Shares the Habits theme tokens (`.habits-theme`) so the two feel like one product. */
+export default async function GoalsLayout({ children }: { children: React.ReactNode }) {
+  await requireAuth();
+  return (
+    <div className="habits-theme habits-app flex min-h-dvh flex-1 flex-col bg-h-bg text-h-fg">
+      <div className="mx-auto flex w-full max-w-md flex-1 md:max-w-6xl md:flex-row">
+        <GoalSidebar />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-h-bg/90 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:px-8">
+            <ModuleSwitcher current="goals" tone="habits" />
+            <div className="flex items-center gap-2">
+              <HabitThemeToggle />
+              <HabitLogout />
+            </div>
+          </header>
+          <main className="flex-1 px-4 pb-28 pt-2 md:px-8 md:pb-12">{children}</main>
+          <GoalFab />
+          <GoalBottomNav />
+        </div>
+      </div>
+    </div>
+  );
+}

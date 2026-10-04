@@ -337,3 +337,131 @@ export const habitTaskCompletions = sqliteTable(
   },
   (table) => [uniqueIndex("habit_task_completions_unique").on(table.taskId, table.date)]
 );
+
+// ---------------------------------------------------------------------------------------------
+// Goals module. Goals belong to a profile and are private until the owner shares them with their
+// household. Habits and tasks are the daily steps that move a goal forward.
+// ---------------------------------------------------------------------------------------------
+
+export const GOAL_STATUSES = ["idea", "active", "paused", "achieved", "dropped"] as const;
+export type GoalStatus = (typeof GOAL_STATUSES)[number];
+
+/** How a goal's progress is measured. */
+export const GOAL_TRACKING = ["milestones", "measure", "habits"] as const;
+export type GoalTracking = (typeof GOAL_TRACKING)[number];
+
+export const GOAL_VISIBILITY = ["private", "shared"] as const;
+export type GoalVisibility = (typeof GOAL_VISIBILITY)[number];
+
+/** For habit-tracked goals: count check-ins, or reach a streak. */
+export const GOAL_HABIT_KINDS = ["checkins", "streak"] as const;
+export type GoalHabitKind = (typeof GOAL_HABIT_KINDS)[number];
+
+export const goals = sqliteTable("goals", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  why: text("why"),
+  area: text("area").notNull().default("Personal"),
+  icon: text("icon").notNull().default("target"),
+  color: text("color").notNull().default("indigo"),
+  status: text("status", { enum: GOAL_STATUSES }).notNull().default("active"),
+  priority: integer("priority").notNull().default(0), // 1 = highest, 0 = none
+  pinned: integer("pinned", { mode: "boolean" }).notNull().default(false),
+  startDate: text("start_date").notNull(),
+  targetDate: text("target_date"),
+  visibility: text("visibility", { enum: GOAL_VISIBILITY }).notNull().default("private"),
+  tracking: text("tracking", { enum: GOAL_TRACKING }).notNull().default("milestones"),
+  targetValue: real("target_value"), // tracking = measure
+  targetUnit: text("target_unit"),
+  startValue: real("start_value").notNull().default(0),
+  habitKind: text("habit_kind", { enum: GOAL_HABIT_KINDS }).notNull().default("checkins"), // tracking = habits
+  habitTarget: integer("habit_target"), // check-ins or streak days to reach
+  quote: text("quote"), // vision board
+  imageData: text("image_data"), // vision board: a small data: URL
+  achievedAt: text("achieved_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const goalMilestones = sqliteTable("goal_milestones", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  goalId: integer("goal_id")
+    .notNull()
+    .references(() => goals.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  dueDate: text("due_date"),
+  doneAt: text("done_at"), // yyyy-mm-dd it was completed
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+/** An amount logged against a measurable goal (or a note-worthy bit of progress). */
+export const goalProgress = sqliteTable("goal_progress", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  goalId: integer("goal_id")
+    .notNull()
+    .references(() => goals.id, { onDelete: "cascade" }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }), // who contributed it
+  value: real("value").notNull(),
+  note: text("note"),
+  date: text("date").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const goalHabits = sqliteTable(
+  "goal_habits",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    goalId: integer("goal_id")
+      .notNull()
+      .references(() => goals.id, { onDelete: "cascade" }),
+    habitId: integer("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+  },
+  (table) => [uniqueIndex("goal_habits_unique").on(table.goalId, table.habitId)]
+);
+
+/** Reflection journal entries. */
+export const goalNotes = sqliteTable("goal_notes", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  goalId: integer("goal_id")
+    .notNull()
+    .references(() => goals.id, { onDelete: "cascade" }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  body: text("body").notNull(),
+  mood: integer("mood"), // 1 (low) to 5 (great)
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const goalReviews = sqliteTable(
+  "goal_reviews",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    weekStart: text("week_start").notNull(), // the Sunday of the week reviewed
+    moved: text("moved"),
+    stalled: text("stalled"),
+    change: text("change"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("goal_reviews_profile_week_unique").on(table.profileId, table.weekStart)]
+);

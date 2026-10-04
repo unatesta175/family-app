@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronDown, Check, ListChecks, MoonStar, Wallet, Sparkles, HeartHandshake } from "lucide-react";
+import { ChevronDown, Check, ListChecks, MoonStar, Target, Wallet, Sparkles, HeartHandshake } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ModuleKey = "prayer" | "habits";
+export type ModuleKey = "prayer" | "habits" | "goals";
 
 const MODULES = [
   {
@@ -23,6 +23,14 @@ const MODULES = [
     href: "/habits",
     icon: ListChecks,
     tile: "bg-indigo-100 text-indigo-600",
+  },
+  {
+    key: "goals",
+    label: "Goals",
+    hint: "Life goals, milestones & vision",
+    href: "/goals",
+    icon: Target,
+    tile: "bg-sky-100 text-sky-600",
   },
 ] as const;
 

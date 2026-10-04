@@ -599,3 +599,31 @@ html:has(.habits-app) {
 .dark .prayer-theme .text-\[\#8a7420\] { color: #e3cc6a; }
 .dark .prayer-theme .text-\[\#8a5a20\] { color: #e9b06a; }
 .dark .prayer-theme .text-\[\#c2410c\] { color: #fb923c; }
+
+/* Goals module: confetti for the "goal achieved" celebration, and print styles for the printable page. */
+@keyframes goal-confetti {
+  0% {
+    transform: translate3d(0, -10vh, 0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--dx, 0), 105vh, 0) rotate(720deg);
+    opacity: 0.9;
+  }
+}
+
+@media print {
+  .habits-app aside,
+  .habits-app header,
+  .habits-app nav,
+  .no-print {
+    display: none !important;
+  }
+  .habits-app main {
+    padding: 0 !important;
+  }
+  .habits-theme {
+    --h-bg: #ffffff;
+    --h-surface: #ffffff;
+  }
+}
