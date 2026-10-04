@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, Check, Minus, Plus, RotateCcw } from "lucide-react";
+import { Ban, Check, Minus, Plus, RotateCcw, SkipForward } from "lucide-react";
 import { colorHex, targetLabel, targetMet, tint } from "@/lib/habits";
 import type { HabitEvalType, TargetOp } from "@/lib/db/schema";
 import { Sheet } from "@/components/habits/sheet";
@@ -32,6 +32,7 @@ export function ProgressDialog({
   onClose,
   onSave,
   onMissed,
+  onSkip,
   onReset,
 }: {
   name: string;
@@ -44,6 +45,7 @@ export function ProgressDialog({
   /** `value` for numeric/timer habits, `checked` ids for checklists. */
   onSave: (entry: { value?: number; checked?: string[] }) => void;
   onMissed: () => void;
+  onSkip: () => void;
   onReset: () => void;
 }) {
   const hex = colorHex(color);
@@ -90,7 +92,7 @@ export function ProgressDialog({
               <Check className="h-4 w-4" strokeWidth={3} />
               {complete ? "Save & mark done" : empty ? "Save" : "Save progress"}
             </button>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -100,7 +102,18 @@ export function ProgressDialog({
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-h-border py-2.5 text-xs font-bold text-h-bad hover:bg-h-bad/10"
               >
                 <Ban className="h-3.5 w-3.5" />
-                Mark missed
+                Missed
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onSkip();
+                  onClose();
+                }}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-h-border py-2.5 text-xs font-bold text-h-muted hover:text-h-fg"
+              >
+                <SkipForward className="h-3.5 w-3.5" />
+                Skip
               </button>
               <button
                 type="button"
@@ -108,7 +121,7 @@ export function ProgressDialog({
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-h-border py-2.5 text-xs font-bold text-h-muted hover:text-h-fg"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
-                Reset progress
+                Reset
               </button>
             </div>
           </div>

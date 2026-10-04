@@ -885,6 +885,10 @@ function HabitRow({
             stopTimer(h.id, date);
             onLog(h.id, "missed");
           }}
+          onSkip={() => {
+            stopTimer(h.id, date);
+            onLog(h.id, "skipped");
+          }}
           onReset={resetProgress}
         />
       )}

@@ -1,8 +1,8 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
-import { Check, ChevronRight, Minus, MoreHorizontal, RotateCcw, X } from "lucide-react";
+import { Check, ChevronRight, Layers, Minus, MoreHorizontal, RotateCcw, X } from "lucide-react";
 import { logHabitAction, resetHabitProgressAction } from "@/lib/habit-actions";
 import { colorHex, formatNumber, targetMet, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
 import type { HabitEvalType, PeriodUnit, TargetOp } from "@/lib/db/schema";
@@ -21,6 +21,7 @@ export type WeekRow = {
   kind: "build" | "break";
   color: string;
   icon: string;
+  categoryName: string | null;
   evalType: HabitEvalType;
   targetOp: TargetOp;
   dailyTarget: number;
@@ -122,6 +123,9 @@ export function WeekGrid({
   const [adjusting, setAdjusting] = useState<{ rowId: number; date: string } | null>(null);
   const [optionsFor, setOptionsFor] = useState<number | null>(null);
   const [confirmWeekFor, setConfirmWeekFor] = useState<number | null>(null);
+  // Category filter, same as the Today page: "All categories" can group rows under headings.
+  const [category, setCategory] = useState<string | null>(null);
+  const [grouped, setGrouped] = useState(false);
 
   function send(row: WeekRow, date: string, status: Next["status"], state: DayState, value: number, checked?: string[]) {
     startTransition(async () => {
@@ -152,6 +156,27 @@ export function WeekGrid({
     });
   }
 
+  const chips = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of optimistic) counts.set(r.categoryName ?? "", (counts.get(r.categoryName ?? "") ?? 0) + 1);
+    return {
+      named: [...counts.entries()].filter(([n]) => n !== "").sort((a, b) => a[0].localeCompare(b[0])),
+      none: counts.get("") ?? 0,
+    };
+  }, [optimistic]);
+  const visible = optimistic.filter((r) => category === null || (r.categoryName ?? "") === category);
+  const useGroups = grouped && category === null && chips.named.length > 0;
+  // A flat list of rows, with a heading entry before each category when grouped.
+  type Entry = { type: "head"; name: string; count: number } | { type: "row"; row: WeekRow };
+  const entries: Entry[] = useGroups
+    ? [...chips.named.map(([n]) => n), ""].flatMap((n) => {
+        const rows = visible.filter((r) => (r.categoryName ?? "") === n);
+        return rows.length
+          ? [{ type: "head" as const, name: n || "No category", count: rows.length }, ...rows.map((row) => ({ type: "row" as const, row }))]
+          : [];
+      })
+    : visible.map((row) => ({ type: "row" as const, row }));
+
   const adjustRow = adjusting ? optimistic.find((r) => r.id === adjusting.rowId) : undefined;
   const adjustCell = adjustRow?.cells.find((c) => c.date === adjusting?.date);
   const optionsRow = optionsFor !== null ? optimistic.find((r) => r.id === optionsFor) : undefined;
@@ -161,7 +186,7 @@ export function WeekGrid({
   const totals = dates.map((d) => {
     let done = 0;
     let due = 0;
-    for (const r of optimistic) {
+    for (const r of visible) {
       const cell = r.cells.find((c) => c.date === d)!;
       if (cell.state === "off" || cell.state === "upcoming" || cell.state === "skipped" || cell.state === "prestart") continue;
       if (cell.state === "flex") continue;
@@ -173,6 +198,39 @@ export function WeekGrid({
 
   return (
     <>
+    {chips.named.length > 0 && (
+      <div className="scrollbar-hide -mx-4 mb-3 flex items-center gap-1.5 overflow-x-auto px-4 md:mx-0 md:px-0" aria-label="Filter by category">
+        {[
+          { key: null as string | null, label: "All categories", n: null as number | null },
+          ...chips.named.map(([name, n]) => ({ key: name as string | null, label: name, n })),
+          ...(chips.none > 0 ? [{ key: "" as string | null, label: "No category", n: chips.none }] : []),
+        ].map((c) => (
+          <button
+            key={c.key ?? "all"}
+            type="button"
+            aria-pressed={category === c.key}
+            title={c.key === null ? (category === null && grouped ? "Grouped by category — tap to ungroup" : "Tap to group by category") : undefined}
+            onClick={() => {
+              if (c.key === null) {
+                if (category === null) setGrouped((g) => !g);
+                else {
+                  setCategory(null);
+                  setGrouped(true);
+                }
+              } else setCategory(c.key);
+            }}
+            className={cn(
+              "shrink-0 rounded-lg border px-2.5 py-1 text-[11px] font-bold transition-colors",
+              category === c.key ? "border-h-fg bg-h-fg text-h-bg" : "border-h-border bg-h-surface text-h-muted hover:text-h-fg"
+            )}
+          >
+            {c.key === null && category === null && grouped && <Layers className="mr-1 inline h-3 w-3 align-[-1px]" />}
+            {c.label}
+            {c.n !== null && <span className="ml-1 opacity-60">{c.n}</span>}
+          </button>
+        ))}
+      </div>
+    )}
     <div className="h-card hidden overflow-hidden md:block">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[420px] border-collapse">
@@ -206,7 +264,17 @@ export function WeekGrid({
             </tr>
           </thead>
           <tbody>
-            {optimistic.map((row) => {
+            {entries.map((entry) => {
+              if (entry.type === "head") {
+                return (
+                  <tr key={`h-${entry.name}`} className="border-b border-h-border bg-h-surface2/60">
+                    <td colSpan={9} className="sticky left-0 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-h-muted">
+                      {entry.name} <span className="opacity-60">· {entry.count}</span>
+                    </td>
+                  </tr>
+                );
+              }
+              const row = entry.row;
               const hex = colorHex(row.color);
               const Icon = habitIcon(row.icon);
               const doneCount = row.cells.filter((c) => c.state === "done").length;
@@ -296,7 +364,16 @@ export function WeekGrid({
 
     {/* Phones: one card per habit with its seven days in an even strip (the table needs sideways scrolling). */}
     <div className="flex flex-col gap-2.5 md:hidden">
-      {optimistic.map((row) => {
+      {entries.map((entry) => {
+        if (entry.type === "head") {
+          return (
+            <h3 key={`h-${entry.name}`} className="mt-1 flex items-center gap-2 px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">
+              {entry.name}
+              <span className="rounded-full bg-h-surface2 px-2 py-0.5 text-[10px]">{entry.count}</span>
+            </h3>
+          );
+        }
+        const row = entry.row;
         const hex = colorHex(row.color);
         const Icon = habitIcon(row.icon);
         const doneCount = row.cells.filter((c) => c.state === "done").length;
@@ -415,6 +492,7 @@ export function WeekGrid({
           send(adjustRow, adjustCell.date, "done", state, entry.value ?? entry.checked?.length ?? 0, entry.checked);
         }}
         onMissed={() => send(adjustRow, adjustCell.date, "missed", "missed", 0)}
+        onSkip={() => send(adjustRow, adjustCell.date, "skipped", "skipped", 0)}
         onReset={() => send(adjustRow, adjustCell.date, "clear", emptyState(adjustRow, adjustCell.date, today), 0)}
       />
     )}

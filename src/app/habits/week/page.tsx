@@ -33,7 +33,8 @@ export default async function HabitsWeekPage({
   const dates = weekDates(anchor);
   const isCurrentWeek = dates.includes(today);
 
-  const { profile, readOnly, habits, logsByHabit } = await loadHabitData();
+  const { profile, readOnly, habits, logsByHabit, categories } = await loadHabitData();
+  const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
   const rows: WeekRow[] = habits.map((h) => {
     const logs = logsByHabit[h.id] ?? {};
@@ -43,6 +44,7 @@ export default async function HabitsWeekPage({
       kind: h.kind,
       color: h.color,
       icon: h.icon,
+      categoryName: h.categoryId ? (categoryName.get(h.categoryId) ?? null) : null,
       evalType: h.evalType,
       targetOp: h.targetOp,
       dailyTarget: h.dailyTarget,
