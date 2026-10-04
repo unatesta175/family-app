@@ -554,15 +554,11 @@ function HabitRow({
   function primaryTap() {
     if (!canEdit) return;
     if (adjustable) return setDialog(true);
-    if (isBreak) {
-      // Break habits: tap to cycle clean -> slipped -> pending.
-      if (done) onLog(h.id, "slipped");
-      else if (slipped || skipped) onLog(h.id, "clear");
-      else onLog(h.id, "done");
-      return;
-    }
-    if (done) onLog(h.id, "missed");
-    else if (missed) onLog(h.id, h.logged ? "clear" : "done");
+    // Tap cycles: empty -> done -> slipped -> missed -> skipped -> empty. A day that only looks missed
+    // (nothing logged) has no entry yet, so its next step is done.
+    if (done) onLog(h.id, "slipped");
+    else if (slipped) onLog(h.id, "missed");
+    else if (missed) onLog(h.id, h.logged ? "skipped" : "done");
     else if (skipped) onLog(h.id, "clear");
     else onLog(h.id, "done");
   }
@@ -590,11 +586,9 @@ function HabitRow({
           aria-label={
             adjustable
               ? `Log progress for ${h.name}`
-              : done
-                ? `Mark ${h.name} missed`
-                : missed
-                  ? `Reset ${h.name}`
-                  : `Mark ${h.name} done`
+              : logged
+                ? `Change status of ${h.name}`
+                : `Mark ${h.name} done`
           }
           style={circleStyle}
           className={cn(

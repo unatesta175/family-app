@@ -156,7 +156,7 @@ export default async function HabitsWeekPage({
                 {l.label}
               </span>
             ))}
-            {!readOnly && <span>· Tap a day to cycle done → missed → pending. Numbers, timers and checklists open a dialog. Break habits cycle clean → slipped → cleared.</span>}
+            {!readOnly && <span>· Tap a day to cycle done → slipped → missed → skipped → pending. Numbers, timers and checklists open a dialog.</span>}
           </div>
         </>
       )}

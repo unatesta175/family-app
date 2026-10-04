@@ -55,28 +55,26 @@ type Change = { habitId: number; date: string; state: DayState; value: number; c
 type Next = { status: "done" | "slipped" | "missed" | "clear"; state: DayState; value: number; checked?: string[] };
 
 /**
- * One tap on a day cell. Break habits go none -> clean -> slipped -> none. Plain build habits go
- * pending -> done -> missed -> pending. (Numeric, timer and checklist habits open the progress dialog
- * instead, see onCell.)
+ * One tap on a day cell cycles: empty -> done -> slipped -> missed -> skipped -> empty. (Numeric, timer
+ * and checklist habits open the progress dialog instead, see onCell.) A day that only *looks* missed
+ * because nothing was logged has no entry yet, so its next step is done.
  */
 function nextForClick(row: WeekRow, cell: WeekCell): Next {
-  if (row.kind === "break") {
-    if (cell.state === "done") return { status: "slipped", state: "slipped", value: 0 };
-    if (cell.state === "slipped") return { status: "clear", state: "flex", value: 0 };
-    return { status: "done", state: "done", ...doneEntry(row) };
+  switch (cell.state) {
+    case "done":
+      return { status: "slipped", state: "slipped", value: 0 };
+    case "slipped":
+      return { status: "missed", state: "missed", value: 0 };
+    case "missed":
+      return cell.logged
+        ? { status: "skipped", state: "skipped", value: 0 }
+        : { status: "done", state: "done", ...doneEntry(row) };
+    case "skipped":
+    case "partial":
+      return { status: "clear", state: "flex", value: 0 };
+    default:
+      return { status: "done", state: "done", ...doneEntry(row) };
   }
-  if (cell.state === "done") return { status: "missed", state: "missed", value: 0 };
-  if (cell.state === "missed") {
-    // An explicit "missed" is cleared back to pending (an empty day). A day that only *looks* missed
-    // because nothing was logged has nothing to clear, so it becomes done.
-    return cell.logged
-      ? { status: "clear", state: "flex", value: 0 }
-      : { status: "done", state: "done", ...doneEntry(row) };
-  }
-  if (cell.state === "slipped" || cell.state === "skipped" || cell.state === "partial") {
-    return { status: "clear", state: "flex", value: 0 };
-  }
-  return { status: "done", state: "done", ...doneEntry(row) };
 }
 
 /** The state a cell shows once its entry is cleared (or if it was never logged). */
