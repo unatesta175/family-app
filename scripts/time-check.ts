@@ -5,6 +5,7 @@ import {
   findOverlap,
   formatDuration,
   formatHours,
+  lifeFraction,
   parseClock,
   starterBlocks,
   summarizeDay,
@@ -82,6 +83,16 @@ for (const kind of ["weekday", "friday", "weekend"] as const) {
   eq(`starter ${kind}: no overlaps`, clash, false);
   eq(`starter ${kind}: whole day accounted for`, sum.busy + sum.byCategory.free + sum.unplanned, 1440);
 }
+
+// Fractions of life.
+eq("fraction: 8h of 24 is 1/3", lifeFraction(8 / 24), "1/3");
+eq("fraction: 9.6h of 24 is 2/5", lifeFraction(9.6 / 24), "2/5");
+eq("fraction: a quarter", lifeFraction(0.25), "1/4");
+eq("fraction: 20 minutes a day", lifeFraction(20 / 1440), "1/72");
+eq("fraction: small share is 1/N", lifeFraction(0.01), "1/100");
+eq("fraction: nothing", lifeFraction(0), "0");
+eq("fraction: whole day", lifeFraction(1), "all");
+eq("fraction: 6/12 reduces", lifeFraction(0.5), "1/2");
 
 console.log(failed === 0 ? "\nAll checks passed" : `\n${failed} check(s) FAILED`);
 process.exit(failed === 0 ? 0 : 1);

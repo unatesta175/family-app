@@ -8,14 +8,17 @@ import {
   TIME_CATEGORIES,
   formatHours,
   formatYears,
+  lifeFraction,
   totalsFromWeek,
   type TimeCategory,
   type WeekSummary,
 } from "@/lib/time-planner";
-import { Caption, NumberInput } from "@/components/habits/form-fields";
+import { Caption } from "@/components/habits/form-fields";
 import { HabitIcon } from "@/components/habits/habit-icon";
 import { inputClass } from "@/components/habits/form-bits";
 import { cn } from "@/lib/utils";
+
+const WEEK_MIN = 24 * 60 * 7;
 
 type Row = { key: string; label: string; color: string; icon: string; perWeek: number; indent?: boolean };
 
@@ -50,7 +53,7 @@ export function TimeTotals({
         <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full" style={{ background: CATEGORY_BY_KEY[key].color }} />
         <span className="leading-snug">
           You {verb} <strong>{formatHours(t.perWeek)}</strong> a week, <strong>{formatHours(t.perYear)}</strong> a year, and about{" "}
-          <strong>{formatYears(t.lifetime / 60)}</strong> of your life.
+          <strong>{formatYears(t.lifetime / 60)}</strong> of your life, which is <strong>{lifeFraction(perWeek / WEEK_MIN)}</strong> of all your time.
         </span>
       </li>
     );
@@ -80,7 +83,7 @@ export function TimeTotals({
       </ul>
 
       <div className="-mx-1 overflow-x-auto px-1">
-        <table className="w-full min-w-[34rem] border-collapse text-sm">
+        <table className="w-full min-w-[40rem] border-collapse text-sm">
           <thead>
             <tr className="text-[10px] font-extrabold uppercase tracking-wider text-h-muted">
               <th className="py-2 pr-2 text-left">Activity</th>
@@ -88,7 +91,8 @@ export function TimeTotals({
               <th className="px-2 py-2 text-right">Per week</th>
               <th className="px-2 py-2 text-right">Per month</th>
               <th className="px-2 py-2 text-right">Per year</th>
-              <th className="py-2 pl-2 text-right">Lifetime</th>
+              <th className="px-2 py-2 text-right">Lifetime</th>
+              <th className="py-2 pl-2 text-right">Of your life</th>
             </tr>
           </thead>
           <tbody>
@@ -98,7 +102,7 @@ export function TimeTotals({
             {activities.length > 0 && (
               <>
                 <tr>
-                  <td colSpan={6} className="pb-1 pt-3 text-[10px] font-extrabold uppercase tracking-wider text-h-muted">
+                  <td colSpan={7} className="pb-1 pt-3 text-[10px] font-extrabold uppercase tracking-wider text-h-muted">
                     What you do with free time
                   </td>
                 </tr>
@@ -154,10 +158,14 @@ export function TimeTotals({
         <td className="px-2 py-2 text-right font-bold tabular-nums">{formatHours(t.perWeek)}</td>
         <td className="px-2 py-2 text-right tabular-nums">{formatHours(t.perMonth)}</td>
         <td className="px-2 py-2 text-right tabular-nums">{formatHours(t.perYear)}</td>
-        <td className="py-2 pl-2 text-right tabular-nums">
+        <td className="px-2 py-2 text-right tabular-nums">
           <span className="font-bold">{formatHours(t.lifetime)}</span>
           <span className="block text-[10px] font-medium text-h-muted">{formatYears(t.lifetime / 60)}</span>
           {t.remaining !== null && <span className="block text-[10px] font-medium text-h-muted">({formatHours(t.remaining)} left)</span>}
+        </td>
+        <td className="py-2 pl-2 text-right tabular-nums">
+          <span className="font-extrabold">{lifeFraction(share)}</span>
+          <span className="block text-[10px] font-medium text-h-muted">{share >= 0.1 ? Math.round(share * 100) : Math.round(share * 1000) / 10}%</span>
         </td>
       </tr>
     );
@@ -177,7 +185,7 @@ export function TimeSettings({
   lifespanYears: number;
 }) {
   const [birth, setBirth] = useState(birthDate ?? "");
-  const [span, setSpan] = useState<number | null>(lifespanYears);
+  const [spanText, setSpanText] = useState(String(lifespanYears)); // free text, so you can type any number
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -189,7 +197,9 @@ export function TimeSettings({
     startTransition(async () => {
       // Leaving it equal to the prayer profile's date means "keep following the profile".
       const own = birth && birth !== profileBirthDate ? birth : null;
-      const res = await saveTimeSettingsAction({ birthDate: own, lifespanYears: span ?? 80 });
+      const years = Number.parseInt(spanText, 10);
+      if (!Number.isInteger(years) || years < 10 || years > 120) return setError("Enter an age between 10 and 120.");
+      const res = await saveTimeSettingsAction({ birthDate: own, lifespanYears: years });
       if (!res.ok) return setError(res.error);
       setSaved(true);
     });
@@ -211,7 +221,23 @@ export function TimeSettings({
         </label>
         <label className="flex flex-col gap-1.5">
           <Caption>Plan up to age</Caption>
-          <NumberInput integer min={10} max={120} value={span} onChange={(n) => { setSpan(n); setSaved(false); }} aria-label="Lifespan in years" />
+          <input
+            value={spanText}
+            inputMode="numeric"
+            maxLength={3}
+            aria-label="Lifespan in years"
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => {
+              setSpanText(e.target.value.replace(/\D/g, ""));
+              setSaved(false);
+            }}
+            onBlur={() => {
+              // Tidy up when you leave the field: keep it between 10 and 120.
+              const n = Number.parseInt(spanText, 10);
+              setSpanText(String(Number.isFinite(n) ? Math.min(120, Math.max(10, n)) : lifespanYears));
+            }}
+            className={inputClass}
+          />
         </label>
       </div>
       {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}

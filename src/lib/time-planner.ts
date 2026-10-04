@@ -88,6 +88,26 @@ export function formatHours(minutes: number): string {
   return `${text} h`;
 }
 
+/**
+ * A share of life as a simple fraction: 0.333 -> "1/3", 0.4 -> "2/5". Small shares read as "1/N"
+ * (20 minutes a day is "1/72"). Denominators up to 12 are tried so the fraction stays easy to picture.
+ */
+export function lifeFraction(share: number): string {
+  if (share <= 0) return "0";
+  if (share >= 0.97) return "all";
+  if (share < 1 / 12) return `1/${Math.max(13, Math.round(1 / share))}`;
+  let best = { p: 1, q: 2, err: Infinity };
+  for (let q = 2; q <= 12; q++) {
+    for (let p = 1; p < q; p++) {
+      const err = Math.abs(p / q - share);
+      if (err < best.err - 1e-9) best = { p, q, err };
+    }
+  }
+  const g = (a: number, b: number): number => (b === 0 ? a : g(b, a % b));
+  const d = g(best.p, best.q);
+  return `${best.p / d}/${best.q / d}`;
+}
+
 export function formatYears(hours: number): string {
   const years = hours / (24 * DAYS_PER_YEAR);
   return years >= 1 ? `${(Math.round(years * 10) / 10).toLocaleString("en-US")} years` : `${Math.round(years * DAYS_PER_YEAR)} days`;
