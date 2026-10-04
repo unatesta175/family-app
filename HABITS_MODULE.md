@@ -132,3 +132,15 @@ On server start, `seedStarterHabitsOnce()` gives the profiles named **Ilyas** an
 
 ## 7. Possible next steps
 Reminders/notifications, habit reordering (drag), habit templates library, sharing a habit ("we both do this"), CSV export, per-habit notes timeline.
+
+## Habit towers (3D)
+Every habit can be seen as a tower (the **Tower** tab on its page, and **/habits/towers** for all habits
+side by side).
+- One identical block per completed date, one floor per month, one ring of 31 date slots per floor, so a
+  date always sits in the same column. Missed days are dark empty slots, skipped days are frosted, the
+  current streak glows brighter, today pulses, and a beacon on top grows with everything built.
+- Built entirely from your existing check-in history, so past months fill in by themselves.
+- Drag to orbit, scroll to zoom, hover or tap a block for its date and status, tap a month to focus its floor.
+- Drawn with instanced meshes (a few draw calls for years of history), loaded on demand, respects
+  reduced motion, and falls back to a flat stack of month rows when WebGL isn't available.
+- Logic in `src/lib/habit-tower.ts` (checks: `scripts/tower-check.ts`), scene in `src/components/habit-tower/`.
