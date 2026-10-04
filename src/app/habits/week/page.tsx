@@ -57,6 +57,7 @@ export default async function HabitsWeekPage({
         state: dayState(h, logs, d, today),
         value: logs[d]?.status === "done" ? logs[d].value : 0,
         checked: logs[d]?.status === "done" ? (logs[d].checked ?? []) : [],
+        logged: !!logs[d],
       })),
     };
   });

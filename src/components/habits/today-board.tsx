@@ -106,6 +106,7 @@ function reduce(date: string, today: string) {
           checklist,
           periodDone,
           periodMet: isPeriod && periodDone >= h.periodTarget,
+          logged: action.status !== "clear",
           streak: Math.max(0, h.streak + delta),
         };
       }),
@@ -480,7 +481,7 @@ function HabitRow({
       return;
     }
     if (done) onLog(h.id, "missed");
-    else if (missed) onLog(h.id, date === today ? "clear" : "done");
+    else if (missed) onLog(h.id, h.logged ? "clear" : "done");
     else if (skipped) onLog(h.id, "clear");
     else onLog(h.id, "done");
   }

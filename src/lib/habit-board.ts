@@ -53,6 +53,8 @@ export type BoardHabit = {
   flexible: boolean;
   /** A flexible habit that's still open from an earlier day: the day it was scheduled. */
   carriedFrom: string | null;
+  /** An entry exists for this day (a past day with none just looks "missed"). */
+  logged: boolean;
 };
 
 export type BoardGoal = {
@@ -134,6 +136,7 @@ export function buildBoardHabits(
       priority: h.priority,
       startDate: h.startDate,
       flexible: h.flexible,
+      logged: !!log,
       carriedFrom: state === "pending" || state === "flex" ? carriedFromDate(h, date) : null,
     });
   }

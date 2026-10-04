@@ -13,7 +13,8 @@ import { ProgressDialog } from "@/components/habits/progress-dialog";
 import { cn } from "@/lib/utils";
 import { parseIso } from "@/lib/date";
 
-export type WeekCell = { date: string; state: DayState; value: number; checked: string[] };
+/** `logged` = an entry exists for the day (as opposed to a day that is just empty). */
+export type WeekCell = { date: string; state: DayState; value: number; checked: string[]; logged: boolean };
 export type WeekRow = {
   id: number;
   name: string;
@@ -49,7 +50,7 @@ function partialText(row: WeekRow, value: number): string {
   return formatNumber(value);
 }
 
-type Change = { habitId: number; date: string; state: DayState; value: number; checked: string[] };
+type Change = { habitId: number; date: string; state: DayState; value: number; checked: string[]; logged: boolean };
 
 type Next = { status: "done" | "slipped" | "missed" | "clear"; state: DayState; value: number; checked?: string[] };
 
@@ -58,7 +59,7 @@ type Next = { status: "done" | "slipped" | "missed" | "clear"; state: DayState; 
  * pending -> done -> missed -> pending. (Numeric, timer and checklist habits open the progress dialog
  * instead, see onCell.)
  */
-function nextForClick(row: WeekRow, cell: WeekCell, today: string): Next {
+function nextForClick(row: WeekRow, cell: WeekCell): Next {
   if (row.kind === "break") {
     if (cell.state === "done") return { status: "slipped", state: "slipped", value: 0 };
     if (cell.state === "slipped") return { status: "clear", state: "flex", value: 0 };
@@ -66,8 +67,9 @@ function nextForClick(row: WeekRow, cell: WeekCell, today: string): Next {
   }
   if (cell.state === "done") return { status: "missed", state: "missed", value: 0 };
   if (cell.state === "missed") {
-    // Today (or a period habit) goes back to pending; a past day has no pending, so it flips to done.
-    return cell.date === today || row.isPeriod
+    // An explicit "missed" is cleared back to pending (an empty day). A day that only *looks* missed
+    // because nothing was logged has nothing to clear, so it becomes done.
+    return cell.logged
       ? { status: "clear", state: "flex", value: 0 }
       : { status: "done", state: "done", ...doneEntry(row) };
   }
@@ -112,7 +114,7 @@ export function WeekGrid({
         : {
             ...r,
             cells: r.cells.map((cell) =>
-              cell.date === c.date ? { ...cell, state: c.state, value: c.value, checked: c.checked } : cell
+              cell.date === c.date ? { ...cell, state: c.state, value: c.value, checked: c.checked, logged: c.logged } : cell
             ),
           }
     )
@@ -125,7 +127,7 @@ export function WeekGrid({
 
   function send(row: WeekRow, date: string, status: Next["status"], state: DayState, value: number, checked?: string[]) {
     startTransition(async () => {
-      applyChange({ habitId: row.id, date, state, value, checked: checked ?? [] });
+      applyChange({ habitId: row.id, date, state, value, checked: checked ?? [], logged: status !== "clear" });
       await logHabitAction({ habitId: row.id, date, status, value, checked });
     });
   }
@@ -137,7 +139,7 @@ export function WeekGrid({
       setAdjusting({ rowId: row.id, date: cell.date });
       return;
     }
-    const next = nextForClick(row, cell, today);
+    const next = nextForClick(row, cell);
     // "Cleared" lands back on the natural empty state for that day, matching the server.
     const state = next.status === "clear" ? emptyState(row, cell.date, today) : next.state;
     send(row, cell.date, next.status, state, next.value, next.checked);
@@ -146,7 +148,7 @@ export function WeekGrid({
   function resetWeek(row: WeekRow) {
     startTransition(async () => {
       for (const cell of row.cells) {
-        applyChange({ habitId: row.id, date: cell.date, state: emptyState(row, cell.date, today), value: 0, checked: [] });
+        applyChange({ habitId: row.id, date: cell.date, state: emptyState(row, cell.date, today), value: 0, checked: [], logged: false });
       }
       await resetHabitProgressAction({ habitId: row.id, from: dates[0], to: dates[dates.length - 1] });
     });
@@ -498,7 +500,8 @@ function CellButton({
       break;
     case "missed":
       style = { background: "color-mix(in srgb, var(--h-bad) 10%, transparent)", color: "var(--h-bad)" };
-      extra = "border border-dashed border-h-bad/30";
+      // A deliberate "missed" gets a solid outline; an empty past day keeps the dashed one.
+      extra = cell.logged ? "border-2 border-h-bad/60" : "border border-dashed border-h-bad/30";
       content = <X className="h-3.5 w-3.5 opacity-60" strokeWidth={2.5} />;
       break;
     case "pending":
