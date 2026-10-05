@@ -54,7 +54,7 @@ export default async function HabitsLayout({ children }: { children: React.React
 
   return (
     <div className="habits-theme habits-app flex min-h-dvh flex-1 flex-col bg-h-bg text-h-fg">
-      <div className="mx-auto flex w-full max-w-md flex-1 md:max-w-6xl md:flex-row">
+      <div className="mx-auto flex w-full max-w-md flex-1 md:max-w-[100rem] md:flex-row">
         <HabitSidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <OfflineBadge />

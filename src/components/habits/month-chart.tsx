@@ -6,7 +6,7 @@ import { STATUS_COLOR } from "@/lib/habits";
 /** The share of habits completed on each day of the month. Days not reached yet are left out. */
 export function MonthChart({ points }: { points: { day: number; pct: number | null }[] }) {
   return (
-    <div className="h-52 w-full">
+    <div className="h-full min-h-28 w-full">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={points} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
           <defs>

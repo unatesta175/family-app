@@ -117,11 +117,29 @@ export default async function HabitsWeekPage({
   const fmt = (iso: string) => parseIso(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return (
-    <div className={cn("flex flex-col gap-5 md:mx-auto", monthView ? "md:max-w-none" : "md:max-w-3xl")}>
+    <div className={cn("flex flex-col gap-5 md:mx-auto", monthView ? "md:max-w-none lg:h-[calc(100dvh-8.5rem)] lg:gap-3" : "md:max-w-3xl")}>
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{profile?.name}</p>
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-extrabold tracking-tight">Progress</h1>
+          {monthView && (
+            <div className="flex items-center gap-1 rounded-full border border-h-border bg-h-surface p-0.5 shadow-sm">
+              <Link href={`/habits/week?view=month&month=${addMonths(monthFirst, -1).slice(0, 7)}`} aria-label="Previous month" className="flex h-8 w-8 items-center justify-center rounded-full text-h-muted hover:bg-h-surface2">
+                <ChevronLeft className="h-4 w-4" />
+              </Link>
+              <div className="min-w-32 text-center leading-tight">
+                <p className="text-sm font-extrabold">{monthLabel}</p>
+                {monthKey !== today.slice(0, 7) && (
+                  <Link href="/habits/week?view=month" className="text-[10px] font-bold text-h-brand">
+                    Jump to this month
+                  </Link>
+                )}
+              </div>
+              <Link href={`/habits/week?view=month&month=${addMonths(monthFirst, 1).slice(0, 7)}`} aria-label="Next month" className="flex h-8 w-8 items-center justify-center rounded-full text-h-muted hover:bg-h-surface2">
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </div>
+          )}
           <div role="tablist" aria-label="Display" className="flex rounded-full border border-h-border bg-h-surface p-0.5 shadow-sm">
             {(
               [
@@ -180,27 +198,6 @@ export default async function HabitsWeekPage({
           <ChevronRight className="h-5 w-5" />
         </Link>
       </div>
-      )}
-
-      {monthView && (
-        <div className="h-card flex items-center justify-between gap-2 p-2 md:max-w-md">
-          <Link href={`/habits/week?view=month&month=${addMonths(monthFirst, -1).slice(0, 7)}`} aria-label="Previous month" className="flex h-9 w-9 items-center justify-center rounded-xl text-h-muted hover:bg-h-surface2">
-            <ChevronLeft className="h-5 w-5" />
-          </Link>
-          <div className="text-center">
-            <p className="text-sm font-extrabold">{monthLabel}</p>
-            {monthKey === today.slice(0, 7) ? (
-              <p className="text-[11px] font-bold text-h-brand">This month</p>
-            ) : (
-              <Link href="/habits/week?view=month" className="text-[11px] font-bold text-h-brand">
-                Jump to this month
-              </Link>
-            )}
-          </div>
-          <Link href={`/habits/week?view=month&month=${addMonths(monthFirst, 1).slice(0, 7)}`} aria-label="Next month" className="flex h-9 w-9 items-center justify-center rounded-xl text-h-muted hover:bg-h-surface2">
-            <ChevronRight className="h-5 w-5" />
-          </Link>
-        </div>
       )}
 
       {rows.length === 0 ? (

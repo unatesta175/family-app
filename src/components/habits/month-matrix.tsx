@@ -20,46 +20,50 @@ export type MatrixRow = {
 
 const COUNTED: DayState[] = ["done", "partial", "missed", "slipped", "pending"];
 
-function Cell({ state }: { state: DayState }) {
-  const base = "mx-auto flex h-6 w-6 items-center justify-center rounded-md";
+/** A square that grows and shrinks with its grid cell (never past 1.75rem), so any month fits any screen. */
+const SQUARE: React.CSSProperties = { width: "min(100cqw, 100cqh, 1.75rem)", height: "min(100cqw, 100cqh, 1.75rem)" };
+const GLYPH = "h-[62%] w-[62%]";
+
+function Square({ state }: { state: DayState }) {
+  const base = "flex items-center justify-center rounded-[22%]";
   switch (state) {
     case "done":
       return (
-        <span className={base} style={{ background: STATUS_COLOR.done, color: "#fff" }}>
-          <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
+        <span className={base} style={{ ...SQUARE, background: STATUS_COLOR.done, color: "#fff" }}>
+          <Check className={GLYPH} strokeWidth={3.5} />
         </span>
       );
     case "partial":
       return (
-        <span className={base} style={{ background: STATUS_COLOR.partial, color: "#fff" }}>
-          <Minus className="h-3.5 w-3.5" strokeWidth={3.5} />
+        <span className={base} style={{ ...SQUARE, background: STATUS_COLOR.partial, color: "#fff" }}>
+          <Minus className={GLYPH} strokeWidth={3.5} />
         </span>
       );
     case "slipped":
       return (
-        <span className={base} style={{ background: STATUS_COLOR.slipped, color: "#fff" }}>
-          <X className="h-3.5 w-3.5" strokeWidth={3.5} />
+        <span className={base} style={{ ...SQUARE, background: STATUS_COLOR.slipped, color: "#fff" }}>
+          <X className={GLYPH} strokeWidth={3.5} />
         </span>
       );
     case "missed":
       return (
-        <span className={base} style={{ background: tint(STATUS_COLOR.missed, 0.2), color: STATUS_COLOR.missed }}>
-          <X className="h-3.5 w-3.5" strokeWidth={3} />
+        <span className={base} style={{ ...SQUARE, background: tint(STATUS_COLOR.missed, 0.2), color: STATUS_COLOR.missed }}>
+          <X className={GLYPH} strokeWidth={3} />
         </span>
       );
     case "skipped":
       return (
-        <span className={base} style={{ background: tint(STATUS_COLOR.skipped, 0.25), color: STATUS_COLOR.skipped }}>
-          <Minus className="h-3.5 w-3.5" strokeWidth={3} />
+        <span className={base} style={{ ...SQUARE, background: tint(STATUS_COLOR.skipped, 0.25), color: STATUS_COLOR.skipped }}>
+          <Minus className={GLYPH} strokeWidth={3} />
         </span>
       );
     case "pending":
     case "flex":
-      return <span className={base} style={{ boxShadow: `inset 0 0 0 2px ${STATUS_COLOR.pending}`, background: tint(STATUS_COLOR.pending, 0.08) }} />;
+      return <span className={base} style={{ ...SQUARE, boxShadow: `inset 0 0 0 2px ${STATUS_COLOR.pending}`, background: tint(STATUS_COLOR.pending, 0.08) }} />;
     case "upcoming":
-      return <span className={base} style={{ boxShadow: "inset 0 0 0 1px var(--h-border)" }} />;
+      return <span className={base} style={{ ...SQUARE, boxShadow: "inset 0 0 0 1px var(--h-border)" }} />;
     default:
-      return <span className={base} />;
+      return <span style={SQUARE} />;
   }
 }
 
@@ -71,10 +75,22 @@ function pctStyle(pct: number): React.CSSProperties {
   return { background: "var(--h-surface-2)", color: "var(--h-muted)" };
 }
 
+/** One grid cell that centres its content and lets squares size themselves from the cell. */
+function Cell({ children, className, style }: { children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+  return (
+    <div className={cn("flex min-h-0 min-w-0 items-center justify-center", className)} style={{ containerType: "size", ...style }}>
+      {children}
+    </div>
+  );
+}
+
+const label = "text-[10px] font-bold uppercase tracking-wide text-h-muted";
+
 /**
- * The whole month on one screen: a row per habit, a column per day, with each habit's total, goal and
- * progress, then a summary underneath with how many habits got done each day. Cells open that day on
- * the Today page. Pure markup except for the chart.
+ * The whole month on one screen. On a laptop (lg and up) it fills the space under the header: habits
+ * as rows, days as columns, and the daily chart underneath, all sized to fit so nothing scrolls. On
+ * smaller screens the table keeps a readable minimum width and scrolls sideways. Squares open that day
+ * on the Today page.
  */
 export function MonthMatrix({
   month,
@@ -102,111 +118,109 @@ export function MonthMatrix({
       if (COUNTED.includes(s)) counted += 1;
     }
     const reached = dateOf(d) <= today;
-    return { d, completed, notCompleted: counted - completed, pct: reached && counted > 0 ? Math.round((completed / counted) * 100) : null };
+    return { d, reached, completed, notCompleted: counted - completed, pct: reached && counted > 0 ? Math.round((completed / counted) * 100) : null };
   });
   const total = rows.reduce((n, r) => n + r.done, 0);
 
-  const th = "px-0 pb-2 text-center text-[11px] font-bold tabular-nums text-h-muted";
+  const columns = `minmax(7.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
+  const rowTemplate = `1.75rem repeat(${rows.length}, minmax(1.5rem,1fr)) 1.5rem 1.5rem 1.75rem`;
+  const summaryRow = rows.length + 3; // the header is row 1, habits follow, then the three summary rows
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="h-card overflow-x-auto">
-        <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
-          <thead>
-            <tr>
-              <th className="sticky left-0 z-10 min-w-44 bg-h-surface px-4 pb-2 pt-3 text-left text-[11px] font-bold uppercase tracking-wide text-h-muted">Habit</th>
-              {dayNumbers.map((d) => (
-                <th key={d} className={cn(th, "min-w-8 pt-3", dateOf(d) === today && "text-h-brand")}>
-                  {d}
-                </th>
-              ))}
-              <th className={cn(th, "min-w-12 pt-3")}>Sum</th>
-              <th className={cn(th, "min-w-12 pt-3")}>Goal</th>
-              <th className={cn(th, "min-w-40 px-3 pt-3 text-left")}>Progress</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const hex = colorHex(r.color);
-              const pct = r.goal > 0 ? Math.min(100, Math.round((r.done / r.goal) * 100)) : 0;
-              return (
-                <tr key={r.id} className="group">
-                  <td className="sticky left-0 z-10 border-t border-h-border bg-h-surface px-4 py-1.5 group-hover:bg-h-surface2">
-                    <Link href={`/habits/${r.id}`} className="flex items-center gap-2.5">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg" style={{ background: tint(hex, 0.15), color: hex }}>
-                        <HabitIcon name={r.icon} className="h-4 w-4" />
-                      </span>
-                      <span className="max-w-40 truncate text-[13px] font-bold">{r.name}</span>
-                    </Link>
-                  </td>
-                  {r.states.map((s, i) => (
-                    <td key={i} className="border-t border-h-border py-1.5 group-hover:bg-h-surface2">
-                      {s === "off" || s === "prestart" ? (
-                        <Cell state={s} />
-                      ) : (
-                        <Link href={`/habits?date=${dateOf(i + 1)}`} aria-label={`${r.name}, ${dateOf(i + 1)}: ${s}`} title={`${dateOf(i + 1)} · ${s}`}>
-                          <Cell state={s} />
-                        </Link>
-                      )}
-                    </td>
-                  ))}
-                  <td className="border-t border-h-border py-1.5 text-center text-[13px] font-extrabold tabular-nums group-hover:bg-h-surface2">{r.done}</td>
-                  <td className="border-t border-h-border py-1.5 text-center text-[13px] font-semibold tabular-nums text-h-muted group-hover:bg-h-surface2">{r.goal}</td>
-                  <td className="border-t border-h-border px-3 py-1.5 group-hover:bg-h-surface2">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 min-w-20 flex-1 overflow-hidden rounded-full bg-h-surface2">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? STATUS_COLOR.done : hex }} />
-                      </div>
-                      <span className="w-9 text-right text-[11px] font-extrabold tabular-nums text-h-muted">{pct}%</span>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
+      <div className="h-card min-h-0 flex-1 overflow-x-auto p-3 lg:overflow-visible">
+        <div className="grid h-full min-h-[22rem] min-w-[58rem] gap-y-px lg:min-w-0" style={{ gridTemplateColumns: columns, gridTemplateRows: rowTemplate }}>
+          {/* Header */}
+          <Cell className={cn(label, "justify-start px-1")}>Habit</Cell>
+          {dayNumbers.map((d) => (
+            <Cell key={d} className={cn("text-[11px] font-bold tabular-nums", dateOf(d) === today ? "text-h-brand" : "text-h-muted")}>
+              <span className={cn("flex items-center justify-center rounded-md px-1", dateOf(d) === today && "bg-h-brand-soft")}>{d}</span>
+            </Cell>
+          ))}
+          <Cell className={label}>Sum</Cell>
+          <Cell className={label}>Goal</Cell>
+          <Cell className={cn(label, "justify-start px-3")}>Progress</Cell>
 
-            {/* Summary */}
-            <tr>
-              <td className="sticky left-0 z-10 border-t-2 border-h-border bg-h-surface px-4 pb-1 pt-2.5 text-[11px] font-bold uppercase tracking-wide text-h-muted">Completed</td>
-              {perDay.map((p) => (
-                <td key={p.d} className="border-t-2 border-h-border pb-1 pt-2.5 text-center text-xs font-bold tabular-nums">
-                  {dateOf(p.d) <= today ? p.completed : <span className="text-h-border">·</span>}
-                </td>
-              ))}
-              <td colSpan={3} rowSpan={3} className="border-t-2 border-h-border px-3 text-center align-middle">
-                <p className="text-[11px] font-bold uppercase tracking-wide text-h-muted">Total this month</p>
-                <p className="text-3xl font-extrabold tabular-nums">{total}</p>
-              </td>
-            </tr>
-            <tr>
-              <td className="sticky left-0 z-10 bg-h-surface px-4 py-1 text-[11px] font-bold uppercase tracking-wide text-h-muted">Not completed</td>
-              {perDay.map((p) => (
-                <td key={p.d} className="py-1 text-center text-xs font-semibold tabular-nums text-h-muted">
-                  {dateOf(p.d) <= today ? p.notCompleted : ""}
-                </td>
-              ))}
-            </tr>
-            <tr>
-              <td className="sticky left-0 z-10 bg-h-surface px-4 pb-3 pt-1 text-[11px] font-bold uppercase tracking-wide text-h-muted">Productivity</td>
-              {perDay.map((p) => (
-                <td key={p.d} className="pb-3 pt-1 text-center">
-                  {p.pct === null ? (
-                    <span className="text-h-border">·</span>
-                  ) : (
-                    <span className="inline-block rounded-md px-1 py-0.5 text-[10px] font-extrabold tabular-nums" style={pctStyle(p.pct)}>
-                      {p.pct}
+          {/* Habit rows */}
+          {rows.map((r) => {
+            const hex = colorHex(r.color);
+            const pct = r.goal > 0 ? Math.min(100, Math.round((r.done / r.goal) * 100)) : 0;
+            const edge = "border-t border-h-border";
+            return (
+              <div key={r.id} className="contents">
+                <Cell className={cn(edge, "justify-start px-1")}>
+                  <Link href={`/habits/${r.id}`} className="flex min-w-0 items-center gap-2" title={r.name}>
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg" style={{ background: tint(hex, 0.15), color: hex }}>
+                      <HabitIcon name={r.icon} className="h-3.5 w-3.5" />
                     </span>
-                  )}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+                    <span className="truncate text-[13px] font-bold">{r.name}</span>
+                  </Link>
+                </Cell>
+                {r.states.map((s, i) => (
+                  <Cell key={i} className={edge}>
+                    {s === "off" || s === "prestart" ? (
+                      <Square state={s} />
+                    ) : (
+                      <Link href={`/habits?date=${dateOf(i + 1)}`} aria-label={`${r.name}, ${dateOf(i + 1)}: ${s}`} title={`${dateOf(i + 1)} · ${s}`} className="flex items-center justify-center">
+                        <Square state={s} />
+                      </Link>
+                    )}
+                  </Cell>
+                ))}
+                <Cell className={cn(edge, "text-[13px] font-extrabold tabular-nums")}>{r.done}</Cell>
+                <Cell className={cn(edge, "text-[13px] font-semibold tabular-nums text-h-muted")}>{r.goal}</Cell>
+                <Cell className={cn(edge, "justify-start px-3")}>
+                  <div className="flex w-full items-center gap-2">
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-h-surface2">
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? STATUS_COLOR.done : hex }} />
+                    </div>
+                    <span className="w-8 text-right text-[11px] font-extrabold tabular-nums text-h-muted">{pct}%</span>
+                  </div>
+                </Cell>
+              </div>
+            );
+          })}
+
+          {/* Summary */}
+          <Cell className={cn(label, "justify-start border-t-2 border-h-border px-1")}>Completed</Cell>
+          {perDay.map((p) => (
+            <Cell key={p.d} className="border-t-2 border-h-border text-xs font-bold tabular-nums">
+              {p.reached ? p.completed : <span className="text-h-border">·</span>}
+            </Cell>
+          ))}
+          <Cell className="flex-col border-t-2 border-h-border" style={{ gridRow: `${summaryRow} / span 3`, gridColumn: `${days + 2} / ${days + 5}` }}>
+            <span className={label}>Total this month</span>
+            <span className="text-2xl font-extrabold leading-none tabular-nums">{total}</span>
+          </Cell>
+          <Cell className={cn(label, "justify-start px-1")}>Not completed</Cell>
+          {perDay.map((p) => (
+            <Cell key={p.d} className="text-xs font-semibold tabular-nums text-h-muted">
+              {p.reached ? p.notCompleted : ""}
+            </Cell>
+          ))}
+          <Cell className={cn(label, "justify-start px-1")}>Productivity</Cell>
+          {perDay.map((p) => (
+            <Cell key={p.d}>
+              {p.pct === null ? (
+                <span className="text-h-border">·</span>
+              ) : (
+                <span className="rounded-md px-1 py-0.5 text-[9px] font-extrabold tabular-nums leading-none xl:text-[10px]" style={pctStyle(p.pct)}>
+                  {p.pct}
+                </span>
+              )}
+            </Cell>
+          ))}
+        </div>
       </div>
 
-      <section className="h-card p-4">
-        <h2 className="mb-1 text-sm font-extrabold">Daily completion</h2>
-        <p className="mb-2 text-[11px] text-h-muted">Share of your scheduled habits done each day.</p>
-        <MonthChart points={perDay.map((p) => ({ day: p.d, pct: p.pct }))} />
+      <section className="h-card flex min-h-44 flex-col p-3 lg:h-[30%] lg:min-h-36 lg:shrink-0">
+        <div className="flex items-baseline justify-between gap-2 px-1">
+          <h2 className="text-sm font-extrabold">Daily completion</h2>
+          <p className="text-[11px] text-h-muted">Share of your scheduled habits done each day</p>
+        </div>
+        <div className="min-h-0 flex-1">
+          <MonthChart points={perDay.map((p) => ({ day: p.d, pct: p.pct }))} />
+        </div>
       </section>
     </div>
   );
