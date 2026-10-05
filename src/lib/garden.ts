@@ -1,6 +1,20 @@
 import { PRAYER_ORDER, STATUS_QUALITY, isPerformed } from "@/lib/prayers";
 import type { DayLogMap } from "@/lib/streaks";
 
+/** How the tree shines: classic gold, or the amethyst-and-gold look reserved for women. */
+export type GardenTheme = "gold" | "amethyst";
+
+/**
+ * Women pray at home, so jamaah doesn't apply to them: for a woman a prayer on time counts as on
+ * time and jamaah when the tree is scored. Everyone else's log is used as it is.
+ */
+export function gardenDayFor(day: DayLogMap, gender: "male" | "female" | null | undefined): DayLogMap {
+  if (gender !== "female") return day;
+  const out: DayLogMap = { ...day };
+  for (const p of PRAYER_ORDER) if (out[p] === "on_time") out[p] = "on_time_jamaah";
+  return out;
+}
+
 export type GardenStage = "empty" | "seed" | "sprout" | "sapling" | "tree" | "flowering";
 
 /**
@@ -48,6 +62,14 @@ export function gardenGoldenFraction(day: DayLogMap): number {
 export function gardenMissedCount(day: DayLogMap): number {
   return PRAYER_ORDER.filter((p) => day[p] === "missed").length;
 }
+
+/** The amethyst-and-gold palette women's trees blend toward, in place of plain gold. */
+export const AMETHYST_PALETTE = {
+  canopyA: "#5b21b6",
+  canopyB: "#8b5cf6",
+  canopyC: "#f0d9ff",
+  trunk: "#d4a93a",
+};
 
 export type GardenCondition = "golden" | "thriving" | "healthy" | "stressed" | "wilting";
 

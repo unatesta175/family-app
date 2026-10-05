@@ -28,6 +28,7 @@ import {
   GARDEN_STAGE_META,
   GARDEN_TIER_META,
   GARDEN_CONDITION_META,
+  type GardenTheme,
   type GardenStage,
   type GardenTier,
   type GardenCondition,
@@ -47,6 +48,7 @@ type Cell = {
   tier: GardenTier;
   goldenFraction: number;
   missedCount: number;
+  theme: GardenTheme;
 };
 type DayDetail = {
   pct: number;
@@ -108,7 +110,9 @@ export function GardenClient({
   grown,
   currentStreak,
   bestStreak,
+  theme = "gold",
 }: {
+  theme?: GardenTheme;
   cells: Cell[];
   todayDate: string;
   dayDetails: Record<string, DayDetail>;
@@ -318,12 +322,16 @@ export function GardenClient({
                   className={cn(
                     "mt-1.5 inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide",
                     selectedDetail.plotState === "growing"
-                      ? CONDITION_BADGE[selectedDetail.condition]
+                      ? theme === "amethyst" && selectedDetail.condition === "golden"
+                        ? "bg-violet-500/15 text-violet-700"
+                        : CONDITION_BADGE[selectedDetail.condition]
                       : PLOT_STATE_BADGE[selectedDetail.plotState]
                   )}
                 >
                   {selectedDetail.plotState === "growing"
-                    ? GARDEN_CONDITION_META[selectedDetail.condition].label
+                    ? theme === "amethyst" && selectedDetail.condition === "golden"
+                      ? "Amethyst"
+                      : GARDEN_CONDITION_META[selectedDetail.condition].label
                     : PLOT_STATE_META[selectedDetail.plotState].label}
                 </span>
               </div>
@@ -359,7 +367,7 @@ export function GardenClient({
         )}
       </div>
 
-      <GardenGuide />
+      <GardenGuide theme={theme} />
     </div>
   );
 }
@@ -410,20 +418,22 @@ function GuideRow({
  * stacked legend cards with one compact card plus a standalone "best score" tip, so the golden
  * path (the whole point of the mechanic) is the first thing read, not buried in row four of four.
  */
-function GardenGuide() {
+function GardenGuide({ theme }: { theme: GardenTheme }) {
+  const amethyst = theme === "amethyst";
   const [tab, setTab] = useState<GuideTab>("growth");
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-start gap-3 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 p-4 text-white shadow-sm shadow-amber-900/10">
+      <div className={cn("flex items-start gap-3 rounded-2xl bg-gradient-to-br p-4 text-white shadow-sm", amethyst ? "from-violet-500 via-purple-600 to-amber-400 shadow-violet-900/20" : "from-amber-400 via-amber-500 to-yellow-600 shadow-amber-900/10")}>
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
           <Crown className="h-4.5 w-4.5" strokeWidth={2.2} />
         </div>
         <div>
           <p className="text-xs font-bold uppercase tracking-wide text-white/90">For the best score</p>
           <p className="mt-0.5 text-[12px] leading-relaxed text-white/90">
-            Pray every prayer on time and in jamaah, don&apos;t let a single one go marked missed,
-            and keep the streak running &mdash; that&apos;s a golden tree, every day.
+            {amethyst
+              ? "For you, praying on time already counts as on time and jamaah. Every prayer on time lights the tree a deeper amethyst-gold: one is a soft lilac glow, four is a royal purple blaze. Keep the streak running and never let one go missed."
+              : "Pray every prayer on time and in jamaah, don't let a single one go marked missed, and keep the streak running, that's a golden tree, every day."}
           </p>
         </div>
       </div>
@@ -479,7 +489,7 @@ function GardenGuide() {
             </p>
             <div className="flex flex-col divide-y divide-neutral-50">
               {CONDITION_ROWS.map((condition) => {
-                const meta = GARDEN_CONDITION_META[condition];
+                const meta = amethyst && condition === "golden" ? { label: "Amethyst", hint: "All on time (counts as jamaah)", swatch: "bg-[#8b5cf6]" } : GARDEN_CONDITION_META[condition];
                 return (
                   <GuideRow key={condition} swatch={meta.swatch} icon={Leaf} label={meta.label} value={meta.hint} />
                 );

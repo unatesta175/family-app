@@ -1,5 +1,5 @@
 import { getActiveProfileId } from "@/lib/session";
-import { getAllLogsByDate } from "@/lib/db/repo";
+import { getAllLogsByDate, getProfile } from "@/lib/db/repo";
 import { todayIso } from "@/lib/date";
 import { dayCompletionPct, currentStreak, bestStreak, streakLengthEndingOn } from "@/lib/streaks";
 import {
@@ -10,6 +10,8 @@ import {
   gardenPlotState,
   gardenGoldenFraction,
   gardenMissedCount,
+  gardenDayFor,
+  type GardenTheme,
   type GardenStage,
   type GardenTier,
   type GardenCondition,
@@ -31,6 +33,10 @@ export default async function GardenPage({
   const targetMonth = month ? month : `${ty}-${String(tm).padStart(2, "0")}`;
   const [year, monthNum] = targetMonth.split("-").map(Number);
 
+  const profile = await getProfile(profileId);
+  // Women's trees score on time as on time + jamaah and shine amethyst-and-gold instead of plain gold.
+  const gender = profile?.gender ?? null;
+  const theme: GardenTheme = gender === "female" ? "amethyst" : "gold";
   const logsByDate = await getAllLogsByDate(profileId);
   const daysInMonth = new Date(year, monthNum, 0).getDate();
   const firstWeekday = new Date(year, monthNum - 1, 1).getDay();
@@ -57,6 +63,7 @@ export default async function GardenPage({
     tier: GardenTier;
     goldenFraction: number;
     missedCount: number;
+    theme: GardenTheme;
   }[] = [];
   const dayDetails: Record<
     string,
@@ -81,23 +88,25 @@ export default async function GardenPage({
       tier: "none",
       goldenFraction: 0,
       missedCount: 0,
+      theme,
     });
 
   for (let d = 1; d <= daysInMonth; d++) {
     const date = `${year}-${String(monthNum).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
     const day = logsByDate[date] ?? {};
+    const scored = gardenDayFor(day, gender);
     const pct = date <= today ? dayCompletionPct(day) : 0;
     const hasJamaah = Object.values(day).some((s) => s === "jamaah" || s === "on_time_jamaah");
     const stage = date <= today ? gardenStage(pct) : "empty";
-    const quality = date <= today ? gardenQuality(day) : 0;
-    const condition = gardenCondition(quality, day);
+    const quality = date <= today ? gardenQuality(scored) : 0;
+    const condition = gardenCondition(quality, scored);
     const plotState = date <= today ? gardenPlotState(day) : "empty";
-    const goldenFraction = date <= today ? gardenGoldenFraction(day) : 0;
+    const goldenFraction = date <= today ? gardenGoldenFraction(scored) : 0;
     const missedCount = date <= today ? gardenMissedCount(day) : 0;
     // Streak/jamaah flourishes only apply to a plot that's actually growing a tree.
     const tier = plotState === "growing" && stage === "flowering" ? gardenTier(streakLengthEndingOn(logsByDate, date)) : "none";
-    const bonus = plotState === "growing" && pct === 100 && hasJamaah;
-    cells.push({ date, stage, pct, quality, condition, plotState, bonus, tier, goldenFraction, missedCount });
+    const bonus = plotState === "growing" && pct === 100 && (hasJamaah || gender === "female");
+    cells.push({ date, stage, pct, quality, condition, plotState, bonus, tier, goldenFraction, missedCount, theme });
     if (date <= today) dayDetails[date] = { pct, quality, condition, plotState, prayers: day };
   }
 
@@ -114,6 +123,7 @@ export default async function GardenPage({
       nextParam={nextParam}
       canGoNext={canGoNext}
       grown={grown}
+      theme={theme}
       currentStreak={currentStreak(logsByDate, today)}
       bestStreak={bestStreak(logsByDate)}
     />
