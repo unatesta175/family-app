@@ -78,7 +78,7 @@ function pctStyle(pct: number): React.CSSProperties {
 /** One grid cell that centres its content and lets squares size themselves from the cell. */
 function Cell({ children, className, style }: { children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={cn("flex min-h-0 min-w-0 items-center justify-center", className)} style={{ containerType: "size", ...style }}>
+    <div className={cn("flex min-h-0 min-w-0 items-center justify-center", className)} style={{ containerType: "size", fontSize: "clamp(8px, 58cqh, 13px)", ...style }}>
       {children}
     </div>
   );
@@ -123,13 +123,14 @@ export function MonthMatrix({
   const total = rows.reduce((n, r) => n + r.done, 0);
 
   const columns = `minmax(7.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
-  const rowTemplate = `1.75rem repeat(${rows.length}, minmax(1.5rem,1fr)) 1.5rem 1.5rem 1.75rem`;
+  // Habit rows share whatever height is left (down to nothing), and text and squares scale with the row.
+  const rowTemplate = `1.5rem repeat(${rows.length}, minmax(0,1fr)) 1.25rem 1.25rem 1.5rem`;
   const summaryRow = rows.length + 3; // the header is row 1, habits follow, then the three summary rows
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="h-card min-h-0 flex-1 overflow-x-auto p-3 lg:overflow-visible">
-        <div className="grid h-full min-h-[22rem] min-w-[58rem] gap-y-px lg:min-w-0" style={{ gridTemplateColumns: columns, gridTemplateRows: rowTemplate }}>
+      <div className="h-card min-h-0 flex-1 overflow-x-auto p-3 lg:overflow-hidden">
+        <div className="grid h-full min-h-[22rem] min-w-[58rem] gap-y-px lg:min-h-0 lg:min-w-0" style={{ gridTemplateColumns: columns, gridTemplateRows: rowTemplate }}>
           {/* Header */}
           <Cell className={cn(label, "justify-start px-1")}>Habit</Cell>
           {dayNumbers.map((d) => (
@@ -149,11 +150,11 @@ export function MonthMatrix({
             return (
               <div key={r.id} className="contents">
                 <Cell className={cn(edge, "justify-start px-1")}>
-                  <Link href={`/habits/${r.id}`} className="flex min-w-0 items-center gap-2" title={r.name}>
-                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg" style={{ background: tint(hex, 0.15), color: hex }}>
+                  <Link href={`/habits/${r.id}`} className="flex h-full min-w-0 items-center gap-2" title={r.name}>
+                    <span className="flex aspect-square h-[88%] max-h-6 shrink-0 items-center justify-center rounded-lg" style={{ background: tint(hex, 0.15), color: hex }}>
                       <HabitIcon name={r.icon} className="h-3.5 w-3.5" />
                     </span>
-                    <span className="truncate text-[13px] font-bold">{r.name}</span>
+                    <span className="truncate font-bold">{r.name}</span>
                   </Link>
                 </Cell>
                 {r.states.map((s, i) => (
@@ -167,14 +168,14 @@ export function MonthMatrix({
                     )}
                   </Cell>
                 ))}
-                <Cell className={cn(edge, "text-[13px] font-extrabold tabular-nums")}>{r.done}</Cell>
-                <Cell className={cn(edge, "text-[13px] font-semibold tabular-nums text-h-muted")}>{r.goal}</Cell>
+                <Cell className={cn(edge, "font-extrabold tabular-nums")}>{r.done}</Cell>
+                <Cell className={cn(edge, "font-semibold tabular-nums text-h-muted")}>{r.goal}</Cell>
                 <Cell className={cn(edge, "justify-start px-3")}>
                   <div className="flex w-full items-center gap-2">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-h-surface2">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? STATUS_COLOR.done : hex }} />
                     </div>
-                    <span className="w-8 text-right text-[11px] font-extrabold tabular-nums text-h-muted">{pct}%</span>
+                    <span className="w-9 text-right text-[0.85em] font-extrabold tabular-nums text-h-muted">{pct}%</span>
                   </div>
                 </Cell>
               </div>
@@ -213,7 +214,7 @@ export function MonthMatrix({
         </div>
       </div>
 
-      <section className="h-card flex min-h-44 flex-col p-3 lg:h-[30%] lg:min-h-36 lg:shrink-0">
+      <section className="h-card flex min-h-44 flex-col p-3 lg:h-[24%] lg:min-h-28 lg:shrink-0">
         <div className="flex items-baseline justify-between gap-2 px-1">
           <h2 className="text-sm font-extrabold">Daily completion</h2>
           <p className="text-[11px] text-h-muted">Share of your scheduled habits done each day</p>
