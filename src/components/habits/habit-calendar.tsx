@@ -16,7 +16,7 @@ import {
 import type { HabitEvalType, TargetOp } from "@/lib/db/schema";
 import { Sheet } from "@/components/habits/sheet";
 import { inputClass } from "@/components/habits/form-bits";
-import { DurationInput, NumberInput } from "@/components/habits/form-fields";
+import { DurationInput, NumberInput, TimeOfDayInput } from "@/components/habits/form-fields";
 import { Checkbox } from "@/components/habits/ui/checkbox";
 import { parseIso } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -244,8 +244,8 @@ function DayEditor({
 }) {
   const hex = colorHex(color);
   const { evalType, dailyTarget, checklist } = spec;
-  const measured = kind === "build" && (evalType === "numeric" || evalType === "timer");
-  const isChecklist = kind === "build" && evalType === "checklist";
+  const measured = evalType === "numeric" || evalType === "timer" || evalType === "time_of_day";
+  const isChecklist = evalType === "checklist";
   const logged0 = day.state === "done" || day.state === "partial";
   // A sensible starting point: what was logged, or the full goal.
   const [value, setValue] = useState<number>(logged0 ? day.value : dailyTarget > 0 ? dailyTarget : 1);
@@ -295,11 +295,13 @@ function DayEditor({
         {measured && (
           <div className="flex flex-col gap-2 rounded-xl bg-h-surface2 p-3">
             <div className="flex items-baseline justify-between gap-2">
-              <span className="text-sm font-semibold">{evalType === "timer" ? "Time spent" : "Amount"}</span>
+              <span className="text-sm font-semibold">{evalType === "timer" ? "Time spent" : evalType === "time_of_day" ? "What time was it?" : "Amount"}</span>
               <span className="text-[11px] font-bold text-h-muted">Goal {targetLabel(spec)}</span>
             </div>
             {evalType === "timer" ? (
               <DurationInput seconds={value} onChange={setValue} />
+            ) : evalType === "time_of_day" ? (
+              <TimeOfDayInput minutes={value} onChange={setValue} aria-label="Time" className="max-w-40" />
             ) : (
               <div className="flex items-center gap-2">
                 <NumberInput value={value} min={0} onChange={(n) => setValue(n ?? 0)} className="max-w-32" />
@@ -336,7 +338,7 @@ function DayEditor({
             onClick={() => save("done")}
             disabled={pending}
             icon={Check}
-            label={kind === "break" ? "Stayed clean" : saveLabel}
+            label={kind === "break" && complete ? "Stayed clean" : saveLabel}
             style={{ background: hex, color: "#fff" }}
           />
           {kind === "break" ? (

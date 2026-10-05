@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import { Ban, Check, Minus, Plus, RotateCcw, SkipForward } from "lucide-react";
-import { colorHex, targetLabel, targetMet, tint } from "@/lib/habits";
+import { colorHex, formatDuration, formatTimeOfDay, targetLabel, targetMet, timeOffGoal, tint } from "@/lib/habits";
 import type { HabitEvalType, TargetOp } from "@/lib/db/schema";
 import { Sheet } from "@/components/habits/sheet";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
-import { DurationInput, NumberInput } from "@/components/habits/form-fields";
+import { DurationInput, NumberInput, TimeOfDayInput } from "@/components/habits/form-fields";
 import { Checkbox } from "@/components/habits/ui/checkbox";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,7 @@ export function ProgressDialog({
   onMissed,
   onSkip,
   onReset,
+  breakHabit = false,
 }: {
   name: string;
   dateLabel: string;
@@ -47,23 +48,31 @@ export function ProgressDialog({
   onMissed: () => void;
   onSkip: () => void;
   onReset: () => void;
+  /** A break habit: the "Missed" button reads "Slipped" (the caller logs it as slipped). */
+  breakHabit?: boolean;
 }) {
   const hex = colorHex(color);
   const { evalType, checklist } = spec;
-  const [value, setValue] = useState(initialValue);
+  const isTime = evalType === "time_of_day";
+  // Nothing logged yet: start the clock at the goal time so a small change reaches the real one.
+  const [value, setValue] = useState(isTime && initialValue === 0 ? spec.dailyTarget : initialValue);
   const [checked, setChecked] = useState<string[]>(initialChecked);
   const [confirmReset, setConfirmReset] = useState(false);
 
   const isChecklist = evalType === "checklist";
   const progress = isChecklist ? checked.length : value;
   const complete = isChecklist ? checklist.length > 0 && checked.length >= checklist.length : targetMet(spec, value);
-  const empty = isChecklist ? checked.length === 0 : value === 0 && spec.targetOp !== "at_most";
+  const empty = isChecklist ? checked.length === 0 : !isTime && value === 0 && spec.targetOp !== "at_most";
+  const off = isTime ? timeOffGoal(spec, value) : null;
   const atMost = spec.targetOp === "at_most" && !isChecklist;
 
   let status: string;
   if (complete) status = "Goal met — this day will be marked done.";
   else if (empty) status = "Nothing logged — saving will leave this day empty.";
-  else if (atMost) status = "Over the limit — saved as progress, not marked done.";
+  else if (off) {
+    const gap = formatDuration(off.minutes * 60);
+    status = `${off.kind === "late" ? `Late by ${gap}` : off.kind === "early" ? `${gap} too early` : `${gap} off the goal time`} — saved as progress, not marked done.`;
+  } else if (atMost) status = "Over the limit — saved as progress, not marked done.";
   else if (isChecklist) status = `${checklist.length - checked.length} item${checklist.length - checked.length === 1 ? "" : "s"} left — saved as progress until every item is ticked.`;
   else status = `Below the goal (${targetLabel(spec)}) — saved as progress, not marked done.`;
 
@@ -102,7 +111,7 @@ export function ProgressDialog({
                 className="flex items-center justify-center gap-1.5 rounded-xl border border-h-border py-2.5 text-xs font-bold text-h-bad hover:bg-h-bad/10"
               >
                 <Ban className="h-3.5 w-3.5" />
-                Missed
+                {breakHabit ? "Slipped" : "Missed"}
               </button>
               <button
                 type="button"
@@ -172,6 +181,14 @@ export function ProgressDialog({
             </div>
           )}
 
+          {isTime && (
+            <div className="flex flex-col items-center gap-2 rounded-2xl bg-h-surface2 p-4">
+              <p className="text-xs font-semibold text-h-muted">What time was it?</p>
+              <TimeOfDayInput minutes={value} onChange={setValue} aria-label="Time" className="w-40 text-center text-lg font-extrabold" />
+              <p className="text-[11px] font-medium text-h-muted">{formatTimeOfDay(value)}</p>
+            </div>
+          )}
+
           {evalType === "timer" && (
             <div className="rounded-2xl bg-h-surface2 p-4">
               <DurationInput seconds={value} onChange={setValue} />
@@ -203,7 +220,7 @@ export function ProgressDialog({
           <p
             className={cn(
               "rounded-xl px-3 py-2 text-xs font-semibold leading-snug",
-              complete ? "bg-h-good/15 text-h-good" : progress > 0 && atMost ? "bg-h-bad/10 text-h-bad" : "bg-h-surface2 text-h-muted"
+              complete ? "bg-h-good/15 text-h-good" : off || (progress > 0 && atMost) ? "bg-h-bad/10 text-h-bad" : "bg-h-surface2 text-h-muted"
             )}
           >
             {status}

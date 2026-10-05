@@ -27,6 +27,24 @@ export function FormSection({
   );
 }
 
+/** A time of day, as minutes since midnight. The browser shows its own 12 or 24 hour picker. */
+export function TimeOfDayInput({ minutes, onChange, className, ...rest }: { minutes: number; onChange: (minutes: number) => void; className?: string } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "type">) {
+  const m = Math.min(1439, Math.max(0, Math.round(minutes)));
+  const value = `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  return (
+    <input
+      {...rest}
+      type="time"
+      value={value}
+      onChange={(e) => {
+        const [h, min] = e.target.value.split(":").map(Number);
+        if (Number.isFinite(h) && Number.isFinite(min)) onChange(h * 60 + min);
+      }}
+      className={cn(inputClass, className)}
+    />
+  );
+}
+
 /** A small caption above a control. */
 export function Caption({ children }: { children: React.ReactNode }) {
   return <span className="text-[11px] font-bold uppercase tracking-wide text-h-muted">{children}</span>;

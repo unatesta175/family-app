@@ -8,7 +8,10 @@ import {
   scheduleLabel,
   scheduledOn,
   startDateFor,
+  formatTimeOfDay,
+  targetLabel,
   targetMet,
+  timeOffGoal,
   type HabitLite,
   type HabitLogMap,
 } from "../src/lib/habits";
@@ -186,6 +189,20 @@ eq("startDateFor keeps a later date", startDateFor(base, "2026-09-10"), "2026-09
 const rep3: HabitLite = { ...base, schedule: "repeat", repeatEvery: 3 };
 eq("startDateFor keeps the repeat rhythm", startDateFor(rep3, "2026-08-28"), "2026-08-26");
 eq("repeat rhythm holds before the start", scheduledOn(rep3, "2026-08-29"), true);
+
+// Time of day (e.g. wake no later than 9:00 am): 9:00 is on time, 9:10 is late.
+const wake: HabitLite = { ...base, kind: "break", evalType: "time_of_day", targetOp: "at_most", dailyTarget: 540 };
+eq("time of day: 9:00 meets no-later-than 9:00", targetMet(wake, 540), true);
+eq("time of day: 8:30 is on time", targetMet(wake, 510), true);
+eq("time of day: 9:10 is late", targetMet(wake, 550), false);
+eq("time of day: late by 10 minutes", timeOffGoal(wake, 550), { kind: "late", minutes: 10 });
+eq("time of day: midnight counts as a real time", targetMet({ ...wake, targetOp: "at_most" }, 0), true);
+const notBefore: HabitLite = { ...wake, targetOp: "at_least", dailyTarget: 360 };
+eq("time of day: not before 6:00, 5:45 is early", [targetMet(notBefore, 345), timeOffGoal(notBefore, 345)], [false, { kind: "early", minutes: 15 }]);
+eq("time of day: format", [formatTimeOfDay(540), formatTimeOfDay(0), formatTimeOfDay(785)], ["9:00 AM", "12:00 AM", "1:05 PM"]);
+eq("time of day: label", targetLabel(wake), "No later than 9:00 AM");
+const wakeLogs: HabitLogMap = { "2026-09-10": { status: "done", value: 550 }, "2026-09-11": { status: "done", value: 530 } };
+eq("time of day: late day is partial, on-time day is done", [dayState(wake, wakeLogs, "2026-09-10", "2026-09-12"), dayState(wake, wakeLogs, "2026-09-11", "2026-09-12")], ["partial", "done"]);
 
 console.log(failed === 0 ? "\nAll checks passed" : `\n${failed} check(s) FAILED`);
 process.exit(failed === 0 ? 0 : 1);

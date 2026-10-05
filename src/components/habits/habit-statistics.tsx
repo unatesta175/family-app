@@ -430,7 +430,7 @@ function TimesChart({
 }) {
   const curYear = Number(today.slice(0, 4));
   const startYear = Number(startDate.slice(0, 4));
-  const measured = kind === "build" && (evalType === "numeric" || evalType === "timer");
+  const measured = evalType === "numeric" || evalType === "timer";
 
   const [range, setRange] = useState<Range>("month");
   const [metric, setMetric] = useState<"count" | "total">("count");

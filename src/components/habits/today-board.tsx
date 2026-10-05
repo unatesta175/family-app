@@ -30,9 +30,12 @@ import {
   WEEKDAY_SHORT,
   colorHex,
   formatClock,
+  formatDuration,
   formatNumber,
+  formatTimeOfDay,
   PRIORITY_META,
   targetMet,
+  timeOffGoal,
   tint,
   type DayState,
 } from "@/lib/habits";
@@ -82,7 +85,7 @@ function reduce(date: string, today: string) {
         let checklist = h.checklist.map((i) => ({ ...i, checked: false }));
 
         if (action.status === "done") {
-          if (h.kind === "break" || h.evalType === "yes_no") {
+          if (h.evalType === "yes_no") {
             value = 1;
             nextState = "done";
           } else if (h.evalType === "checklist") {
@@ -92,7 +95,7 @@ function reduce(date: string, today: string) {
             nextState = value === 0 ? empty : value >= h.dailyTarget ? "done" : "partial";
           } else {
             value = action.value ?? h.dailyTarget;
-            nextState = value === 0 && h.targetOp !== "at_most" ? empty : targetMet(h, value) ? "done" : "partial";
+            nextState = value === 0 && h.targetOp !== "at_most" && h.evalType !== "time_of_day" ? empty : targetMet(h, value) ? "done" : "partial";
           }
         } else if (action.status === "slipped") nextState = "slipped";
         else if (action.status === "skipped") nextState = "skipped";
@@ -502,9 +505,10 @@ function HabitRow({
   const timer = useHabitTimer(h.id, date);
 
   const isBreak = h.kind === "break";
-  const numeric = !isBreak && h.evalType === "numeric";
-  const isTimer = !isBreak && h.evalType === "timer";
-  const checklist = !isBreak && h.evalType === "checklist";
+  const numeric = h.evalType === "numeric";
+  const isTimer = h.evalType === "timer";
+  const checklist = h.evalType === "checklist";
+  const timeOfDay = h.evalType === "time_of_day";
   const measured = numeric || isTimer;
   const atMost = h.targetOp === "at_most";
   const anyAmount = h.targetOp === "any";
@@ -516,8 +520,9 @@ function HabitRow({
   const missed = h.state === "missed";
   const logged = done || slipped || skipped || partial || missed;
   // Numeric, timer and checklist habits are adjusted in a dialog instead of a one-tap toggle.
-  const adjustable = measured || checklist;
+  const adjustable = measured || checklist || timeOfDay;
   const over = partial && atMost && measured;
+  const lateBy = timeOfDay && partial ? timeOffGoal(h, h.value) : null;
 
   // A running timer adds its live seconds on top of what's already logged.
   const liveValue = isTimer && timer.running ? h.value + timer.elapsed : h.value;
@@ -678,7 +683,25 @@ function HabitRow({
             )}
             {h.state === "missed" && <span className="font-bold text-h-bad">Missed</span>}
             {over && <span className="font-bold text-h-bad">Over limit</span>}
+            {lateBy && (
+              <span className="font-bold text-h-bad">
+                {lateBy.kind === "late" ? `Late by ${formatDuration(lateBy.minutes * 60)}` : lateBy.kind === "early" ? `${formatDuration(lateBy.minutes * 60)} too early` : "Off the goal time"}
+              </span>
+            )}
           </div>
+
+          {timeOfDay && !upcoming && (
+            <button
+              type="button"
+              disabled={!canEdit}
+              onClick={() => setDialog(true)}
+              title="Tap to log the time"
+              className={cn("mt-2 whitespace-nowrap text-[11px] font-bold tabular-nums", lateBy ? "text-h-bad" : "text-h-muted", canEdit && "rounded-md hover:text-h-fg")}
+            >
+              {logged && (done || partial) ? formatTimeOfDay(h.value) : "Not logged"}
+              {h.targetLabel && <span className="font-medium"> / {h.targetLabel}</span>}
+            </button>
+          )}
 
           {measured && !upcoming && (
             <div className="mt-2 flex items-center gap-2">
@@ -893,9 +916,10 @@ function HabitRow({
             stopTimer(h.id, date); // the entered time replaces a running timer
             onLog(h.id, "done", value, checked);
           }}
+          breakHabit={isBreak}
           onMissed={() => {
             stopTimer(h.id, date);
-            onLog(h.id, "missed");
+            onLog(h.id, isBreak ? "slipped" : "missed");
           }}
           onSkip={() => {
             stopTimer(h.id, date);

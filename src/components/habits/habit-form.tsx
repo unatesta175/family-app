@@ -72,9 +72,6 @@ export function HabitFormSheet({
           : prev.icon === "ban" && kind === "build"
             ? "target"
             : prev.icon,
-      // Break habits are a plain clean / slipped check-in.
-      evalType: kind === "break" ? "yes_no" : prev.evalType,
-      goals: kind === "break" ? [] : prev.goals,
     }));
   }
 
@@ -227,11 +224,12 @@ export function HabitFormSheet({
           </Field>
         </FormSection>
 
-        {v.kind === "build" && (
-          <FormSection title="How do you evaluate it?" description="Choose how a day counts as done.">
-            <EvaluationFields v={v} set={set} hex={hex} />
-          </FormSection>
-        )}
+        <FormSection
+          title="How do you evaluate it?"
+          description={v.kind === "break" ? "Choose how a day counts as clean." : "Choose how a day counts as done."}
+        >
+          <EvaluationFields v={v} set={set} hex={hex} />
+        </FormSection>
 
         <FormSection title="Frequency" description="How often does this come up?">
           <FrequencyFields v={v} set={set} hex={hex} />

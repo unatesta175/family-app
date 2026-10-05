@@ -125,13 +125,17 @@ export async function logHabitAction(input: z.input<typeof logSchema>) {
   if (parsed.status === "clear") {
     await clearHabitLog(habit.id, parsed.date);
   } else if (parsed.status === "done") {
-    if (habit.kind === "break" || habit.evalType === "yes_no") {
+    if (habit.evalType === "yes_no") {
       await upsertHabitLog(habit.id, parsed.date, "done", 1);
     } else if (habit.evalType === "checklist") {
       const valid = new Set(parseChecklist(habit.checklist).map((i) => i.id));
       const checked = [...new Set(parsed.checked ?? [])].filter((id) => valid.has(id));
       if (checked.length === 0) await clearHabitLog(habit.id, parsed.date);
       else await upsertHabitLog(habit.id, parsed.date, "done", checked.length, undefined, checked);
+    } else if (habit.evalType === "time_of_day") {
+      // Minutes since midnight. Midnight itself is a real answer, so 0 is never "nothing logged".
+      const minutes = Math.min(1439, Math.max(0, Math.round(parsed.value ?? habit.dailyTarget)));
+      await upsertHabitLog(habit.id, parsed.date, "done", minutes);
     } else {
       const raw = parsed.value ?? habit.dailyTarget;
       const value = habit.evalType === "timer" ? Math.round(raw) : Math.round(raw * 100) / 100;
@@ -231,10 +235,11 @@ const habitSchema = z
       issue(`There aren't ${v.weeklyTarget} days in a ${v.periodUnit}.`, "weeklyTarget");
     }
     if (v.endDate && v.endDate < v.startDate) issue("The end date can't be before the start date.", "endDate");
-    if (v.kind === "build" && (v.evalType === "numeric" || v.evalType === "timer")) {
+    if (v.evalType === "numeric" || v.evalType === "timer") {
       if (v.targetOp !== "any" && v.dailyTarget <= 0) issue("Set a goal above zero.", "dailyTarget");
     }
-    if (v.kind === "build" && v.evalType === "checklist" && v.checklist.length === 0) {
+    if (v.evalType === "time_of_day" && (v.dailyTarget < 0 || v.dailyTarget > 1439)) issue("Pick a time of day.", "dailyTarget");
+    if (v.evalType === "checklist" && v.checklist.length === 0) {
       issue("Add at least one checklist item.", "checklist");
     }
     if (new Set(v.goals.map((g) => g.period)).size !== v.goals.length) issue("Each extra goal can only be added once.", "goals");
@@ -249,15 +254,18 @@ async function habitInput(raw: HabitFormInput, profileId: number) {
     if (!cat || cat.profileId !== profileId) throw new Error("Unknown category.");
   }
 
-  // Break habits are always a plain clean/slipped check-in.
-  const evalType = v.kind === "break" ? "yes_no" : v.evalType;
+  const evalType = v.evalType;
+  const timeOfDay = evalType === "time_of_day";
   const measured = evalType === "numeric" || evalType === "timer";
   const checklist = evalType === "checklist" ? v.checklist.map((i) => ({ id: i.id, title: i.title })) : [];
-  const targetOp = measured ? v.targetOp : "at_least";
+  // A time of day needs a real condition ("no later than"...), so "any" falls back to that.
+  const targetOp = timeOfDay ? (v.targetOp === "any" ? "at_most" : v.targetOp) : measured ? v.targetOp : "at_least";
   const dailyTarget =
     evalType === "checklist"
       ? checklist.length
-      : measured
+      : timeOfDay
+        ? Math.min(1439, Math.max(0, Math.round(v.dailyTarget)))
+        : measured
         ? evalType === "timer"
           ? Math.round(v.dailyTarget)
           : Math.round(v.dailyTarget * 100) / 100

@@ -224,6 +224,37 @@ export const OP_LABEL: Record<TargetOp, string> = {
   exactly: "Exactly",
   any: "Any value",
 };
+
+/** The same conditions worded for a time of day ("by 9:00 am", "not before 6:00 am"). */
+export const TIME_OP_LABEL: Record<TargetOp, string> = {
+  at_least: "Not before",
+  at_most: "No later than",
+  exactly: "Exactly at",
+  any: "Any time",
+};
+
+/** 540 -> "9:00 AM", 0 -> "12:00 AM", 785 -> "1:05 PM". */
+export function formatTimeOfDay(minutes: number): string {
+  const m = ((Math.round(minutes) % 1440) + 1440) % 1440;
+  const h24 = Math.floor(m / 60);
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m % 60).padStart(2, "0")} ${h24 < 12 ? "AM" : "PM"}`;
+}
+
+/**
+ * How far a logged time of day is from the goal, or null when it meets it: "late" (after a no-later-than
+ * time), "early" (before a not-before time) or "off" (not the exact time).
+ */
+export function timeOffGoal(
+  h: Pick<HabitLite, "targetOp" | "dailyTarget">,
+  value: number
+): { kind: "late" | "early" | "off"; minutes: number } | null {
+  const diff = Math.round(value - h.dailyTarget);
+  if (h.targetOp === "at_most" && diff > 0) return { kind: "late", minutes: diff };
+  if (h.targetOp === "at_least" && diff < 0) return { kind: "early", minutes: -diff };
+  if (h.targetOp === "exactly" && diff !== 0) return { kind: "off", minutes: Math.abs(diff) };
+  return null;
+}
 const OP_SYMBOL: Record<TargetOp, string> = { at_least: "≥", at_most: "≤", exactly: "=", any: "" };
 
 export const GOAL_PERIOD_LABEL: Record<GoalPeriod, string> = {
@@ -241,6 +272,7 @@ export function targetMet(
 ): boolean {
   if (h.evalType === "yes_no") return true;
   if (h.evalType === "checklist") return h.dailyTarget > 0 && value >= h.dailyTarget;
+  if (h.evalType === "time_of_day") return h.targetOp === "any" || timeOffGoal(h, value) === null;
   switch (h.targetOp) {
     case "at_least":
       return value >= h.dailyTarget;
@@ -284,6 +316,7 @@ export function formatAmount(
   value: number
 ): string {
   if (h.evalType === "timer") return formatDuration(value);
+  if (h.evalType === "time_of_day") return formatTimeOfDay(value);
   return `${formatNumber(value)}${h.unit ? ` ${h.unit}` : ""}`;
 }
 
@@ -293,6 +326,7 @@ export function targetLabel(
 ): string | null {
   if (h.evalType === "yes_no") return null;
   if (h.evalType === "checklist") return `${formatNumber(h.dailyTarget)} items`;
+  if (h.evalType === "time_of_day") return h.targetOp === "any" ? "Any time" : `${TIME_OP_LABEL[h.targetOp]} ${formatTimeOfDay(h.dailyTarget)}`;
   if (h.targetOp === "any") return "Any amount";
   return `${OP_SYMBOL[h.targetOp]} ${formatAmount(h, h.dailyTarget)}`;
 }

@@ -4,7 +4,7 @@ import { useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, ChevronRight, Layers, Minus, MoreHorizontal, RotateCcw, X } from "lucide-react";
 import { logHabitAction, resetHabitProgressAction } from "@/lib/habit-actions";
-import { colorHex, formatNumber, targetMet, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
+import { colorHex, formatNumber, formatTimeOfDay, targetMet, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
 import type { HabitEvalType, PeriodUnit, TargetOp } from "@/lib/db/schema";
 import { habitIcon } from "@/lib/habit-icons";
 import { Sheet } from "@/components/habits/sheet";
@@ -46,6 +46,7 @@ function doneEntry(row: WeekRow): { value: number; checked?: string[] } {
 }
 
 function partialText(row: WeekRow, value: number): string {
+  if (row.evalType === "time_of_day") return formatTimeOfDay(value).replace(" ", "").toLowerCase();
   if (row.evalType === "timer") return `${Math.max(1, Math.round(value / 60))}m`;
   if (row.evalType === "checklist") return `${value}/${row.checklist.length}`;
   return formatNumber(value);
@@ -91,7 +92,7 @@ function entryState(row: WeekRow, date: string, today: string, entry: { value?: 
     return n >= row.checklist.length ? "done" : "partial";
   }
   const value = entry.value ?? 0;
-  if (value === 0 && row.targetOp !== "at_most") return emptyState(row, date, today);
+  if (value === 0 && row.targetOp !== "at_most" && row.evalType !== "time_of_day") return emptyState(row, date, today);
   return targetMet(row, value) ? "done" : "partial";
 }
 
@@ -137,7 +138,7 @@ export function WeekGrid({
   function onCell(row: WeekRow, cell: WeekCell) {
     if (readOnly || cell.date > today) return;
     // Numeric, timer and checklist habits: adjust the amount in a dialog.
-    if (row.kind === "build" && row.evalType !== "yes_no") {
+    if (row.evalType !== "yes_no") {
       setAdjusting({ rowId: row.id, date: cell.date });
       return;
     }
@@ -491,7 +492,8 @@ export function WeekGrid({
           const state = entryState(adjustRow, adjustCell.date, today, entry);
           send(adjustRow, adjustCell.date, "done", state, entry.value ?? entry.checked?.length ?? 0, entry.checked);
         }}
-        onMissed={() => send(adjustRow, adjustCell.date, "missed", "missed", 0)}
+        breakHabit={adjustRow.kind === "break"}
+        onMissed={() => (adjustRow.kind === "break" ? send(adjustRow, adjustCell.date, "slipped", "slipped", 0) : send(adjustRow, adjustCell.date, "missed", "missed", 0))}
         onSkip={() => send(adjustRow, adjustCell.date, "skipped", "skipped", 0)}
         onReset={() => send(adjustRow, adjustCell.date, "clear", emptyState(adjustRow, adjustCell.date, today), 0)}
       />

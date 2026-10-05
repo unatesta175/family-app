@@ -206,8 +206,11 @@ export type HabitSchedule = (typeof HABIT_SCHEDULES)[number];
 export const PERIOD_UNITS = ["week", "month", "year"] as const;
 export type PeriodUnit = (typeof PERIOD_UNITS)[number];
 
-/** How a day's result is judged: a yes/no tick, a number, time on a timer, or a set of sub-items. */
-export const HABIT_EVAL_TYPES = ["yes_no", "numeric", "timer", "checklist"] as const;
+/**
+ * How a day's result is judged: a yes/no tick, a number, time on a timer, a set of sub-items, or the
+ * time of day something happened (stored as minutes since midnight, e.g. "wake by 9:00 am").
+ */
+export const HABIT_EVAL_TYPES = ["yes_no", "numeric", "timer", "checklist", "time_of_day"] as const;
 export type HabitEvalType = (typeof HABIT_EVAL_TYPES)[number];
 
 export const TARGET_OPS = ["at_least", "at_most", "exactly", "any"] as const;

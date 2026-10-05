@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Blocks, CheckCircle2, ChevronLeft, ChevronRight, Flame, Move3d, PartyPopper, Pause, Play, RotateCcw, Sprout, Trophy } from "lucide-react";
 import { SLOT_LABEL, buildTower, motivationFor, nextStreakStep, slotDateLabel, towerLevel, type Motivation, type SlotKind, type TowerData, type TowerLevel } from "@/lib/habit-tower";
-import { colorHex, formatDuration, formatNumber, tint } from "@/lib/habits";
+import { colorHex, formatDuration, formatNumber, formatTimeOfDay, tint } from "@/lib/habits";
 import type { HabitEvalType } from "@/lib/db/schema";
 import type { StatDay } from "@/lib/habit-insights";
 import { useDarkMode } from "@/lib/use-dark-mode";
@@ -144,7 +144,7 @@ export function HabitTowerPanel({
   const level = towerLevel(data.totalDone);
   const motivation = motivationFor(data, today);
   // Amounts only mean something for numeric and timer habits; a plain tick would just say "1".
-  const formatValue = (v: number) => (v <= 0 ? "" : evalType === "timer" ? formatDuration(v) : evalType === "numeric" ? `${formatNumber(v)}${unit ? ` ${unit}` : ""}` : "");
+  const formatValue = (v: number) => (evalType === "time_of_day" ? formatTimeOfDay(v) : v <= 0 ? "" : evalType === "timer" ? formatDuration(v) : evalType === "numeric" ? `${formatNumber(v)}${unit ? ` ${unit}` : ""}` : "");
   const webgl = useWebGL();
   const [focus, setFocus] = useState<string | null>(null);
   const [selected, setSelected] = useState<HoverInfo | null>(null);
