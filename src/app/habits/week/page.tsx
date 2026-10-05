@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Grid3x3 } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import {
   PERIOD_DAYS,
@@ -15,6 +15,11 @@ import {
 import { addDays, parseIso, todayIso } from "@/lib/date";
 import { WeekGrid, type WeekRow } from "@/components/habits/week-grid";
 import { Ring } from "@/components/habits/ring";
+import { HabitHeatCard } from "@/components/habits/habit-heat-card";
+import { heatmapWeeks } from "@/lib/habit-stats";
+import { cn } from "@/lib/utils";
+
+const HEAT_WEEKS = 26;
 
 const LEGEND = [
   { label: "Done", color: STATUS_COLOR.done },
@@ -27,9 +32,10 @@ const LEGEND = [
 export default async function HabitsWeekPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string }>;
+  searchParams: Promise<{ date?: string; view?: string }>;
 }) {
-  const { date: rawDate } = await searchParams;
+  const { date: rawDate, view: rawView } = await searchParams;
+  const heat = rawView === "heatmap";
   const today = todayIso();
   const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
   const dates = weekDates(anchor);
@@ -95,9 +101,37 @@ export default async function HabitsWeekPage({
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{profile?.name}</p>
-        <h1 className="text-2xl font-extrabold tracking-tight">Weekly view</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold tracking-tight">{heat ? "Heatmap view" : "Weekly view"}</h1>
+          <div role="tablist" aria-label="Display" className="flex rounded-full border border-h-border bg-h-surface p-0.5 shadow-sm">
+            {(
+              [
+                { key: "week", label: "Week", icon: CalendarDays, href: "/habits/week" },
+                { key: "heatmap", label: "Heatmap", icon: Grid3x3, href: "/habits/week?view=heatmap" },
+              ] as const
+            ).map((v) => {
+              const active = (v.key === "heatmap") === heat;
+              return (
+                <Link
+                  key={v.key}
+                  role="tab"
+                  aria-selected={active}
+                  href={v.href}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
+                    active ? "bg-h-brand text-h-brand-fg shadow-sm" : "text-h-muted hover:text-h-fg"
+                  )}
+                >
+                  <v.icon className="h-3.5 w-3.5" />
+                  {v.label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
+      {!heat && (
       <div className="h-card flex items-center justify-between gap-2 p-2">
         <Link
           href={`/habits/week?date=${addDays(dates[0], -7)}`}
@@ -126,11 +160,42 @@ export default async function HabitsWeekPage({
           <ChevronRight className="h-5 w-5" />
         </Link>
       </div>
+      )}
 
       {rows.length === 0 ? (
         <p className="h-card p-6 text-center text-sm text-h-muted">
           No habits yet. Add some from the Today tab to see them here.
         </p>
+      ) : heat ? (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {habits.map((h) => {
+              const logs = logsByHabit[h.id] ?? {};
+              return (
+                <HabitHeatCard
+                  key={h.id}
+                  id={h.id}
+                  name={h.name}
+                  icon={h.icon}
+                  color={h.color}
+                  kind={h.kind}
+                  weeks={heatmapWeeks(h, logs, HEAT_WEEKS, today)}
+                  streak={computeStreak(h, logs, today)}
+                  today={today}
+                />
+              );
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[11px] font-medium text-h-muted">
+            {LEGEND.map((l) => (
+              <span key={l.label} className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded" style={{ background: l.color }} />
+                {l.label}
+              </span>
+            ))}
+            <span>· Last {HEAT_WEEKS} weeks, newest on the right. Tap a card for its details.</span>
+          </div>
+        </>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2">
