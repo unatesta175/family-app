@@ -4,7 +4,7 @@ import { GoalBottomNav, GoalSidebar } from "@/components/goals/goal-nav";
 import { GoalFab } from "@/components/goals/goal-fab";
 import { HabitLogout, HabitThemeToggle } from "@/components/habits/habit-header-controls";
 import { Suspense } from "react";
-import { FamilyBar } from "@/components/goals/family-bar";
+import { FamilyBar, ViewingBanner } from "@/components/goals/family-bar";
 import { requireAuth } from "@/lib/auth";
 import { listCircleMembers } from "@/lib/goal-member";
 
@@ -33,14 +33,17 @@ export default async function GoalsLayout({ children }: { children: React.ReactN
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-h-bg/90 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:px-8">
             <ModuleSwitcher current="goals" tone="habits" />
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Suspense>
+                <FamilyBar members={members} />
+              </Suspense>
               <HabitThemeToggle />
               <HabitLogout />
             </div>
           </header>
           <main className="flex-1 px-4 pb-28 pt-2 md:px-8 md:pb-12">
             <Suspense>
-              <FamilyBar members={members} />
+              <ViewingBanner members={members} />
             </Suspense>
             {children}
           </main>
