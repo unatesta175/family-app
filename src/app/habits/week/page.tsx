@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, ChevronLeft, ChevronRight, Grid3x3 } from "lucide-react";
+import { CalendarDays, CalendarRange, ChevronLeft, ChevronRight, Grid3x3 } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import {
   PERIOD_DAYS,
@@ -12,9 +12,10 @@ import {
   weekDoneCount,
   STATUS_COLOR,
 } from "@/lib/habits";
-import { addDays, parseIso, todayIso } from "@/lib/date";
+import { addDays, addMonths, parseIso, todayIso } from "@/lib/date";
 import { WeekGrid, type WeekRow } from "@/components/habits/week-grid";
 import { Ring } from "@/components/habits/ring";
+import { MonthMatrix, type MatrixRow } from "@/components/habits/month-matrix";
 import { HabitHeatCard } from "@/components/habits/habit-heat-card";
 import { heatmapWeeks } from "@/lib/habit-stats";
 import { cn } from "@/lib/utils";
@@ -33,10 +34,12 @@ const LEGEND = [
 export default async function HabitsWeekPage({
   searchParams,
 }: {
-  searchParams: Promise<{ date?: string; view?: string }>;
+  searchParams: Promise<{ date?: string; view?: string; month?: string }>;
 }) {
-  const { date: rawDate, view: rawView } = await searchParams;
-  const heat = rawView === "heatmap";
+  const { date: rawDate, view: rawView, month: rawMonth } = await searchParams;
+  const view: "week" | "month" | "heatmap" = rawView === "heatmap" ? "heatmap" : rawView === "month" ? "month" : "week";
+  const heat = view === "heatmap";
+  const monthView = view === "month";
   const today = todayIso();
   const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
   const dates = weekDates(anchor);
@@ -96,22 +99,38 @@ export default async function HabitsWeekPage({
   const weekPct = expected === 0 ? 0 : Math.round((achieved / expected) * 100);
 
   const bestStreak = habits.reduce((max, h) => Math.max(max, computeStreak(h, logsByHabit[h.id] ?? {}, today).current), 0);
+  // Month view: one row per habit, one column per day.
+  const monthKey = rawMonth && /^d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) ? rawMonth : today.slice(0, 7);
+  const monthFirst = `${monthKey}-01`;
+  const monthDays = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5)), 0).getDate();
+  const matrixRows: MatrixRow[] = monthView
+    ? habits.map((h) => {
+        const logs = logsByHabit[h.id] ?? {};
+        const states = Array.from({ length: monthDays }, (_, i) => dayState(h, logs, `${monthKey}-${String(i + 1).padStart(2, "0")}`, today));
+        const goal = isPeriodHabit(h)
+          ? Math.max(1, Math.round((h.weeklyTarget * monthDays) / PERIOD_DAYS[h.periodUnit]))
+          : states.filter((s) => s !== "off" && s !== "prestart" && s !== "skipped").length;
+        return { id: h.id, name: h.name, icon: h.icon, color: h.color, kind: h.kind, states, done: states.filter((s) => s === "done").length, goal };
+      })
+    : [];
+  const monthLabel = parseIso(monthFirst).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const fmt = (iso: string) => parseIso(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return (
-    <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
+    <div className={cn("flex flex-col gap-5 md:mx-auto", monthView ? "md:max-w-none" : "md:max-w-3xl")}>
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{profile?.name}</p>
         <div className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-extrabold tracking-tight">{heat ? "Heatmap view" : "Weekly view"}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Progress</h1>
           <div role="tablist" aria-label="Display" className="flex rounded-full border border-h-border bg-h-surface p-0.5 shadow-sm">
             {(
               [
                 { key: "week", label: "Week", icon: CalendarDays, href: "/habits/week" },
+                { key: "month", label: "Month", icon: CalendarRange, href: "/habits/week?view=month" },
                 { key: "heatmap", label: "Heatmap", icon: Grid3x3, href: "/habits/week?view=heatmap" },
               ] as const
             ).map((v) => {
-              const active = (v.key === "heatmap") === heat;
+              const active = v.key === view;
               return (
                 <Link
                   key={v.key}
@@ -132,7 +151,7 @@ export default async function HabitsWeekPage({
         </div>
       </div>
 
-      {!heat && (
+      {view === "week" && (
       <div className="h-card flex items-center justify-between gap-2 p-2">
         <Link
           href={`/habits/week?date=${addDays(dates[0], -7)}`}
@@ -163,10 +182,44 @@ export default async function HabitsWeekPage({
       </div>
       )}
 
+      {monthView && (
+        <div className="h-card flex items-center justify-between gap-2 p-2 md:max-w-md">
+          <Link href={`/habits/week?view=month&month=${addMonths(monthFirst, -1).slice(0, 7)}`} aria-label="Previous month" className="flex h-9 w-9 items-center justify-center rounded-xl text-h-muted hover:bg-h-surface2">
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+          <div className="text-center">
+            <p className="text-sm font-extrabold">{monthLabel}</p>
+            {monthKey === today.slice(0, 7) ? (
+              <p className="text-[11px] font-bold text-h-brand">This month</p>
+            ) : (
+              <Link href="/habits/week?view=month" className="text-[11px] font-bold text-h-brand">
+                Jump to this month
+              </Link>
+            )}
+          </div>
+          <Link href={`/habits/week?view=month&month=${addMonths(monthFirst, 1).slice(0, 7)}`} aria-label="Next month" className="flex h-9 w-9 items-center justify-center rounded-xl text-h-muted hover:bg-h-surface2">
+            <ChevronRight className="h-5 w-5" />
+          </Link>
+        </div>
+      )}
+
       {rows.length === 0 ? (
         <p className="h-card p-6 text-center text-sm text-h-muted">
           No habits yet. Add some from the Today tab to see them here.
         </p>
+      ) : monthView ? (
+        <>
+          <MonthMatrix month={monthKey} days={monthDays} today={today} rows={matrixRows} />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[11px] font-medium text-h-muted">
+            {LEGEND.map((l) => (
+              <span key={l.label} className="flex items-center gap-1.5">
+                <span className="h-3 w-3 rounded" style={{ background: l.color }} />
+                {l.label}
+              </span>
+            ))}
+            <span>· Tap a square to open that day. Scroll sideways on a small screen.</span>
+          </div>
+        </>
       ) : heat ? (
         <>
           <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 
 const ITEMS = [
   { href: "/habits", label: "Today", icon: LayoutDashboard },
-  { href: "/habits/week", label: "Week", icon: CalendarDays },
+  { href: "/habits/week", label: "Progress", icon: CalendarDays },
   { href: "/habits/tasks", label: "Tasks", icon: ListTodo },
   { href: "/habits/stats", label: "Stats", icon: BarChart3 },
   { href: "/habits/manage", label: "Habits", icon: Layers },
