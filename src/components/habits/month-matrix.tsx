@@ -76,9 +76,9 @@ function pctStyle(pct: number): React.CSSProperties {
 }
 
 /** One grid cell that centres its content and lets squares size themselves from the cell. */
-function Cell({ children, className, style }: { children?: React.ReactNode; className?: string; style?: React.CSSProperties }) {
+function Cell({ children, className, style, row }: { children?: React.ReactNode; className?: string; style?: React.CSSProperties; row: number }) {
   return (
-    <div className={cn("flex min-h-0 min-w-0 items-center justify-center", className)} style={{ containerType: "size", fontSize: "clamp(8px, 58cqh, 13px)", ...style }}>
+    <div className={cn("flex min-h-0 min-w-0 items-center justify-center", className)} style={{ containerType: "size", fontSize: "clamp(8px, 58cqh, 13px)", gridRow: row, ...style }}>
       {children}
     </div>
   );
@@ -124,32 +124,32 @@ export function MonthMatrix({
 
   const columns = `minmax(7.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
   // Habit rows share whatever height is left (down to nothing), and text and squares scale with the row.
-  const rowTemplate = `1.5rem repeat(${rows.length}, minmax(0,1fr)) 1.25rem 1.25rem 1.5rem`;
+  const rowTemplate = `1.5rem repeat(${rows.length}, minmax(0.9rem,1fr)) 1.25rem 1.25rem 1.5rem`;
   const summaryRow = rows.length + 3; // the header is row 1, habits follow, then the three summary rows
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="h-card min-h-0 flex-1 overflow-x-auto p-3 lg:overflow-hidden">
-        <div className="grid h-full min-h-[22rem] min-w-[58rem] gap-y-px lg:min-h-0 lg:min-w-0" style={{ gridTemplateColumns: columns, gridTemplateRows: rowTemplate }}>
+      <div className="h-card min-h-0 flex-1 overflow-x-auto p-3 lg:overflow-y-auto">
+        <div className="grid h-full min-h-[22rem] min-w-[58rem] gap-y-px lg:min-w-0" style={{ gridTemplateColumns: columns, gridTemplateRows: rowTemplate }}>
           {/* Header */}
-          <Cell className={cn(label, "justify-start px-1")}>Habit</Cell>
+          <Cell row={1} className={cn(label, "justify-start px-1")}>Habit</Cell>
           {dayNumbers.map((d) => (
-            <Cell key={d} className={cn("text-[11px] font-bold tabular-nums", dateOf(d) === today ? "text-h-brand" : "text-h-muted")}>
+            <Cell key={d} row={1} className={cn("text-[11px] font-bold tabular-nums", dateOf(d) === today ? "text-h-brand" : "text-h-muted")}>
               <span className={cn("flex items-center justify-center rounded-md px-1", dateOf(d) === today && "bg-h-brand-soft")}>{d}</span>
             </Cell>
           ))}
-          <Cell className={label}>Sum</Cell>
-          <Cell className={label}>Goal</Cell>
-          <Cell className={cn(label, "justify-start px-3")}>Progress</Cell>
+          <Cell row={1} className={label}>Sum</Cell>
+          <Cell row={1} className={label}>Goal</Cell>
+          <Cell row={1} className={cn(label, "justify-start px-3")}>Progress</Cell>
 
           {/* Habit rows */}
-          {rows.map((r) => {
+          {rows.map((r, ri) => {
             const hex = colorHex(r.color);
             const pct = r.goal > 0 ? Math.min(100, Math.round((r.done / r.goal) * 100)) : 0;
             const edge = "border-t border-h-border";
             return (
               <div key={r.id} className="contents">
-                <Cell className={cn(edge, "justify-start px-1")}>
+                <Cell row={ri + 2} className={cn(edge, "justify-start px-1")}>
                   <Link href={`/habits/${r.id}`} className="flex h-full min-w-0 items-center gap-2" title={r.name}>
                     <span className="flex aspect-square h-[88%] max-h-6 shrink-0 items-center justify-center rounded-lg" style={{ background: tint(hex, 0.15), color: hex }}>
                       <HabitIcon name={r.icon} className="h-3.5 w-3.5" />
@@ -158,7 +158,7 @@ export function MonthMatrix({
                   </Link>
                 </Cell>
                 {r.states.map((s, i) => (
-                  <Cell key={i} className={edge}>
+                  <Cell key={i} row={ri + 2} className={edge}>
                     {s === "off" || s === "prestart" ? (
                       <Square state={s} />
                     ) : (
@@ -168,9 +168,9 @@ export function MonthMatrix({
                     )}
                   </Cell>
                 ))}
-                <Cell className={cn(edge, "font-extrabold tabular-nums")}>{r.done}</Cell>
-                <Cell className={cn(edge, "font-semibold tabular-nums text-h-muted")}>{r.goal}</Cell>
-                <Cell className={cn(edge, "justify-start px-3")}>
+                <Cell row={ri + 2} className={cn(edge, "font-extrabold tabular-nums")}>{r.done}</Cell>
+                <Cell row={ri + 2} className={cn(edge, "font-semibold tabular-nums text-h-muted")}>{r.goal}</Cell>
+                <Cell row={ri + 2} className={cn(edge, "justify-start px-3")}>
                   <div className="flex w-full items-center gap-2">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-h-surface2">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: pct >= 100 ? STATUS_COLOR.done : hex }} />
@@ -183,25 +183,25 @@ export function MonthMatrix({
           })}
 
           {/* Summary */}
-          <Cell className={cn(label, "justify-start border-t-2 border-h-border px-1")}>Completed</Cell>
+          <Cell row={summaryRow} className={cn(label, "justify-start border-t-2 border-h-border px-1")}>Completed</Cell>
           {perDay.map((p) => (
-            <Cell key={p.d} className="border-t-2 border-h-border text-xs font-bold tabular-nums">
+            <Cell key={p.d} row={summaryRow} className="border-t-2 border-h-border font-bold tabular-nums">
               {p.reached ? p.completed : <span className="text-h-border">·</span>}
             </Cell>
           ))}
-          <Cell className="flex-col border-t-2 border-h-border" style={{ gridRow: `${summaryRow} / span 3`, gridColumn: `${days + 2} / ${days + 5}` }}>
+          <Cell row={summaryRow} className="flex-col border-t-2 border-h-border" style={{ gridRow: `${summaryRow} / span 3`, gridColumn: `${days + 2} / ${days + 5}` }}>
             <span className={label}>Total this month</span>
             <span className="text-2xl font-extrabold leading-none tabular-nums">{total}</span>
           </Cell>
-          <Cell className={cn(label, "justify-start px-1")}>Not completed</Cell>
+          <Cell row={summaryRow + 1} className={cn(label, "justify-start px-1")}>Not completed</Cell>
           {perDay.map((p) => (
-            <Cell key={p.d} className="text-xs font-semibold tabular-nums text-h-muted">
+            <Cell key={p.d} row={summaryRow + 1} className="font-semibold tabular-nums text-h-muted">
               {p.reached ? p.notCompleted : ""}
             </Cell>
           ))}
-          <Cell className={cn(label, "justify-start px-1")}>Productivity</Cell>
+          <Cell row={summaryRow + 2} className={cn(label, "justify-start px-1")}>Productivity</Cell>
           {perDay.map((p) => (
-            <Cell key={p.d}>
+            <Cell key={p.d} row={summaryRow + 2}>
               {p.pct === null ? (
                 <span className="text-h-border">·</span>
               ) : (
@@ -214,13 +214,22 @@ export function MonthMatrix({
         </div>
       </div>
 
-      <section className="h-card flex min-h-44 flex-col p-3 lg:h-[24%] lg:min-h-28 lg:shrink-0">
+      <section className="h-card flex min-h-44 flex-col p-3 lg:h-[27%] lg:min-h-40 lg:shrink-0">
         <div className="flex items-baseline justify-between gap-2 px-1">
           <h2 className="text-sm font-extrabold">Daily completion</h2>
-          <p className="text-[11px] text-h-muted">Share of your scheduled habits done each day</p>
+          <ul className="flex flex-wrap items-center justify-end gap-x-3 gap-y-0.5 text-[10px] font-semibold text-h-muted">
+            {(["done", "partial", "slipped", "missed", "skipped", "pending"] as const).map((k) => (
+              <li key={k} className="flex items-center gap-1 capitalize">
+                <span className="h-2 w-2 rounded-sm" style={{ background: STATUS_COLOR[k] }} />
+                {k}
+              </li>
+            ))}
+          </ul>
         </div>
-        <div className="min-h-0 flex-1">
-          <MonthChart points={perDay.map((p) => ({ day: p.d, pct: p.pct }))} />
+        <div className="relative min-h-0 flex-1">
+          <div className="absolute inset-0">
+            <MonthChart points={perDay.map((p) => ({ day: p.d, pct: p.pct }))} />
+          </div>
         </div>
       </section>
     </div>

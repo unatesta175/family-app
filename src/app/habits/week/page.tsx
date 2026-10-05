@@ -207,15 +207,6 @@ export default async function HabitsWeekPage({
       ) : monthView ? (
         <>
           <MonthMatrix month={monthKey} days={monthDays} today={today} rows={matrixRows} />
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[11px] font-medium text-h-muted">
-            {LEGEND.map((l) => (
-              <span key={l.label} className="flex items-center gap-1.5">
-                <span className="h-3 w-3 rounded" style={{ background: l.color }} />
-                {l.label}
-              </span>
-            ))}
-            <span>· Tap a square to open that day. Scroll sideways on a small screen.</span>
-          </div>
         </>
       ) : heat ? (
         <>
