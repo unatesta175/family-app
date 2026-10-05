@@ -26,8 +26,6 @@ import {
   type GardenTier,
   type GardenCondition,
   type PlotState,
-  AMETHYST_PALETTE,
-  type GardenTheme,
 } from "@/lib/garden";
 
 export type GardenCell = {
@@ -42,10 +40,6 @@ export type GardenCell = {
   /** 0-1: fraction of the day's 5 prayers that were on_time_jamaah. Blends the canopy toward gold
    *  and scales in butterflies/glow continuously, so even 1/5 already reads as a reward. */
   goldenFraction: number;
-  /** Plain gold, or the amethyst-and-gold look women's trees get. */
-  theme: GardenTheme;
-  /** A woman's five on time AND jamaah: the grand golden tree under a purple aura. */
-  grand: boolean;
   /** How many of the day's 5 prayers are actively marked missed (1-4 for a tombstoned plot). */
   missedCount: number;
   col: number;
@@ -441,43 +435,10 @@ function mixColor(a: string, b: string, t: number): string {
  * appearing once every one of the day's 5 prayers is on_time_jamaah. At fraction 0 this is just
  * the base palette; at 1 it's fully gold (metal canopy, shine, the works).
  */
-/**
- * The women's version: blends toward amethyst-and-gold instead of plain gold. Even one prayer on
- * time tints the tree a soft lilac (a 22% floor), and each further prayer deepens it toward a rich
- * royal purple, with more shine and metal than the plain-gold tree ever gets.
- */
-function blendAmethyst(condition: GardenCondition, goldenFraction: number, grand = false): (typeof CONDITION_PALETTE)[GardenCondition] {
-  // A "golden" day is all-on-time, which for the amethyst look starts from healthy green and goes purple.
-  const base = CONDITION_PALETTE[condition === "golden" ? "thriving" : condition];
-  const f = Math.max(0, Math.min(1, goldenFraction));
-  if (f <= 0) return base;
-  // Five on time AND jamaah is the grand tree: burnished gold armour with pearl-lilac highlights and a
-  // deep gloss (like a polished crest), under a purple aura (see TreeBlessing). Five on time alone tops
-  // out at the full royal purple below.
-  if (grand) {
-    return { canopyA: "#c98f14", canopyB: "#ffcb2f", canopyC: "#f6d9ff", trunk: "#f0c94a", droop: false, glow: true, emissiveIntensity: 0.62, metalness: 0.8 };
-  }
-  const t = 0.22 + 0.78 * f;
-  const am = AMETHYST_PALETTE;
-  return {
-    canopyA: mixColor(base.canopyA, am.canopyA, t),
-    canopyB: mixColor(base.canopyB, am.canopyB, t),
-    canopyC: mixColor(base.canopyC, am.canopyC, t),
-    trunk: mixColor(base.trunk, am.trunk, t),
-    droop: base.droop,
-    glow: true,
-    emissiveIntensity: (base.emissiveIntensity ?? 0.25) + t * 0.55,
-    metalness: t * 0.62,
-  };
-}
-
 function blendGolden(
   condition: GardenCondition,
-  goldenFraction: number,
-  theme: GardenTheme = "gold",
-  grand = false
+  goldenFraction: number
 ): (typeof CONDITION_PALETTE)[GardenCondition] {
-  if (theme === "amethyst") return blendAmethyst(condition, goldenFraction, grand);
   const base = CONDITION_PALETTE[condition];
   const t = Math.max(0, Math.min(1, goldenFraction));
   if (condition === "golden" || t <= 0) return base;
@@ -593,13 +554,11 @@ function BranchStub({
 export function SeedStage({
   condition = "healthy",
   goldenFraction = 0,
-  theme = "gold",
 }: {
   condition?: GardenCondition;
   goldenFraction?: number;
-  theme?: GardenTheme;
 }) {
-  const p = blendGolden(condition, goldenFraction, theme);
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.05}>
       <mesh position={[0, 0.11, 0]}>
@@ -624,13 +583,11 @@ export function SeedStage({
 export function SproutStage({
   condition = "healthy",
   goldenFraction = 0,
-  theme = "gold",
 }: {
   condition?: GardenCondition;
   goldenFraction?: number;
-  theme?: GardenTheme;
 }) {
-  const p = blendGolden(condition, goldenFraction, theme);
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.2}>
       <mesh position={[0, 0.14, 0]}>
@@ -657,13 +614,11 @@ export function SproutStage({
 export function SaplingStage({
   condition = "healthy",
   goldenFraction = 0,
-  theme = "gold",
 }: {
   condition?: GardenCondition;
   goldenFraction?: number;
-  theme?: GardenTheme;
 }) {
-  const p = blendGolden(condition, goldenFraction, theme);
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.3}>
       <mesh position={[0, 0.19, 0]}>
@@ -692,13 +647,11 @@ export function SaplingStage({
 export function TreeStage({
   condition = "healthy",
   goldenFraction = 0,
-  theme = "gold",
 }: {
   condition?: GardenCondition;
   goldenFraction?: number;
-  theme?: GardenTheme;
 }) {
-  const p = blendGolden(condition, goldenFraction, theme);
+  const p = blendGolden(condition, goldenFraction);
   return (
     <group scale={1.5}>
       <mesh position={[0, 0.24, 0]}>
@@ -820,8 +773,6 @@ const CONDITION_BLOOM_SECONDARY: Record<GardenCondition, string> = {
 };
 
 const BLESS_FAR_DISTANCE = 14;
-/** Wisps of violet mist rising off a grand amethyst tree. */
-const MIST_COUNT = 12;
 const PETAL_COUNT = 10;
 const FAR_PETAL_COUNT = 5;
 const BFLY_COUNT = 3;
@@ -831,7 +782,6 @@ const FAR_SPARK_COUNT = 4;
 
 const PETAL_GEO = new PlaneGeometry(1, 1);
 const PETAL_MAT_GOLD = new MeshBasicMaterial({ color: "#ffd23f", side: DoubleSide });
-const PETAL_MAT_AMETHYST = new MeshBasicMaterial({ color: "#c58bff", side: DoubleSide });
 
 /** A real butterfly silhouette (forewing + hindwing lobe in one shape) instead of a flat rectangle,
  *  hinged at the origin so it attaches to the body the same way the old plane did. */
@@ -922,13 +872,7 @@ function butterflyPath(tt: number, i: number, time: number, out: Vector3) {
  * The bird and ground flowers stay reserved for a fully golden day, so there's still something
  * exclusive to reach for. One useFrame for everything; far-away trees draw fewer particles.
  */
-function TreeBlessing({ seed, fraction, theme = "gold", grand = false }: { seed: number; fraction: number; theme?: GardenTheme; grand?: boolean }) {
-  const amethyst = theme === "amethyst";
-  const ringA = useRef<Mesh>(null);
-  const ringB = useRef<Mesh>(null);
-  const glow2 = useRef<Sprite>(null);
-  const aura = useRef<Sprite>(null);
-  const mist = useRef<(Sprite | null)[]>([]);
+function TreeBlessing({ seed, fraction }: { seed: number; fraction: number }) {
   const tex = getSoftTexture();
   const wingMats = getButterflyWingMats();
   const root = useRef<Group>(null);
@@ -941,7 +885,7 @@ function TreeBlessing({ seed, fraction, theme = "gold", grand = false }: { seed:
   const birdHead = useRef<Group>(null);
   const perfect = fraction >= 1;
   // Every blessed tree is a golden-condition tree now, so the flourish is always the shiny gold set.
-  const petalMat = PETAL_MAT_GOLD; // amethyst trees alternate this with violet petals, below
+  const petalMat = PETAL_MAT_GOLD;
   const petalTotal = PETAL_COUNT + 2;
   // Non-linear glow curve: 1/5 on_time_jamaah reads as a faint, just-noticeable glow, 3/5 is
   // clearly brighter, and only a perfect 5/5 day reaches the full current glow (fraction 1 →
@@ -955,38 +899,6 @@ function TreeBlessing({ seed, fraction, theme = "gold", grand = false }: { seed:
     if (root.current) {
       root.current.getWorldPosition(blessA);
       far = camera.position.distanceTo(blessA) > BLESS_FAR_DISTANCE;
-    }
-
-    // Amethyst: two slow gold rings turning against each other around the crown, and a second, gold halo.
-    if (ringA.current) ringA.current.rotation.z = time * 0.45 + seed;
-    if (ringB.current) ringB.current.rotation.z = -time * 0.3 + seed;
-    // The grand look (amethyst, 5/5): a purple aura breathing around the tree and wisps of violet
-    // mist rising off it, a few at a time on far-away trees.
-    const au = aura.current;
-    if (au) {
-      const fa = 0.9 + 0.1 * Math.sin(time * 0.8 + seed);
-      au.scale.setScalar(3.1 * fa);
-      au.material.opacity = 0.5 * fa;
-    }
-    const mistLimit = far ? MIST_COUNT / 3 : MIST_COUNT;
-    for (let i = 0; i < MIST_COUNT; i++) {
-      const m = mist.current[i];
-      if (!m) continue;
-      m.visible = i < mistLimit;
-      if (!m.visible) continue;
-      const ph = (seed * 0.013 + i * 0.382) % 1;
-      const t = (time * 0.12 + ph) % 1;
-      const r = 0.3 + 0.28 * Math.sin(ph * 17 + t * 2.5);
-      m.position.set(Math.cos(ph * 23 + t * 3) * r, 0.2 + t * 1.5, Math.sin(ph * 19 + t * 3) * r);
-      m.scale.setScalar(0.5 + 0.55 * t);
-      m.material.opacity = Math.sin(t * Math.PI) * 0.55;
-    }
-
-    const gl2 = glow2.current;
-    if (gl2) {
-      const f2 = 0.8 + 0.2 * Math.sin(time * 0.9 + seed * 0.5);
-      gl2.scale.setScalar((0.9 + 0.8 * brightness) * f2);
-      gl2.material.opacity = 0.3 * f2 * (0.25 + 0.75 * brightness);
     }
 
     const gl = glow.current;
@@ -1057,43 +969,15 @@ function TreeBlessing({ seed, fraction, theme = "gold", grand = false }: { seed:
     <group ref={root}>
       {/* warm golden halo behind the canopy, plus a real light so the shine hits the leaves */}
       <sprite ref={glow} position={[0, 0.95, 0]}>
-        <spriteMaterial map={tex} color={amethyst ? "#b57cff" : "#ffd23f"} blending={AdditiveBlending} transparent depthWrite={false} />
+        <spriteMaterial map={tex} color="#ffd23f" blending={AdditiveBlending} transparent depthWrite={false} />
       </sprite>
       <pointLight
         position={[0, 1.05, 0]}
-        color={amethyst ? "#b98cff" : "#ffcc4d"}
-        intensity={(amethyst ? 11 : 8) + (amethyst ? 24 : 17) * brightness}
-        distance={amethyst ? 3.4 : 3}
+        color="#ffcc4d"
+        intensity={8 + 17 * brightness}
+        distance={3}
         decay={2}
       />
-      {amethyst && grand && (
-        <>
-          <sprite ref={aura} position={[0, 0.95, 0]}>
-            <spriteMaterial map={tex} color="#8a4dff" transparent depthWrite={false} />
-          </sprite>
-          {Array.from({ length: MIST_COUNT }, (_, i) => (
-            <sprite key={i} ref={(el) => void (mist.current[i] = el)}>
-              <spriteMaterial map={tex} color={["#9a55ff", "#6f7dff", "#c77cff"][i % 3]} transparent depthWrite={false} />
-            </sprite>
-          ))}
-        </>
-      )}
-      {amethyst && (
-        <>
-          <sprite ref={glow2} position={[0, 1.1, 0]}>
-            <spriteMaterial map={tex} color="#ffd36b" blending={AdditiveBlending} transparent depthWrite={false} />
-          </sprite>
-          <pointLight position={[0, 1.3, 0]} color="#ffd36b" intensity={4 + 10 * brightness} distance={2.4} decay={2} />
-          <mesh ref={ringA} position={[0, 1.38, 0]} rotation={[Math.PI / 2.25, 0, 0]}>
-            <torusGeometry args={[0.52, 0.011, 8, 56]} />
-            <meshBasicMaterial color="#ffd36b" transparent opacity={0.25 + 0.6 * brightness} blending={AdditiveBlending} depthWrite={false} />
-          </mesh>
-          <mesh ref={ringB} position={[0, 1.38, 0]} rotation={[Math.PI / 1.8, 0.4, 0]}>
-            <torusGeometry args={[0.4, 0.008, 8, 48]} />
-            <meshBasicMaterial color="#d6b3ff" transparent opacity={0.2 + 0.55 * brightness} blending={AdditiveBlending} depthWrite={false} />
-          </mesh>
-        </>
-      )}
 
       {/* little flowers around the base — more of them the closer to a fully golden day */}
       {GROUND_FLOWERS.slice(0, Math.max(1, Math.round(GROUND_FLOWERS.length * fraction))).map(([x, y, z], i) => (
@@ -1112,7 +996,7 @@ function TreeBlessing({ seed, fraction, theme = "gold", grand = false }: { seed:
           key={i}
           ref={(el) => void (petals.current[i] = el)}
           geometry={PETAL_GEO}
-          material={amethyst && i % 2 === 0 ? PETAL_MAT_AMETHYST : petalMat}
+          material={petalMat}
           scale={[0.055, 0.04, 1]}
         />
       ))}
@@ -1162,7 +1046,7 @@ function TreeBlessing({ seed, fraction, theme = "gold", grand = false }: { seed:
       {/* twinkling sparkles */}
       {Array.from({ length: SPARK_COUNT }, (_, i) => (
         <sprite key={i} ref={(el) => void (sparks.current[i] = el)}>
-          <spriteMaterial map={tex} color={amethyst ? (i % 2 === 0 ? "#e3c6ff" : "#ffe08a") : "#fff2a8"} blending={AdditiveBlending} transparent depthWrite={false} />
+          <spriteMaterial map={tex} color="#fff2a8" blending={AdditiveBlending} transparent depthWrite={false} />
         </sprite>
       ))}
 
@@ -1211,20 +1095,16 @@ export function FloweringStage({
   condition = "healthy",
   goldenFraction = 0,
   seed = 0,
-  theme = "gold",
-  grand = false,
 }: {
   bonus?: boolean;
   tier?: GardenTier;
   condition?: GardenCondition;
   goldenFraction?: number;
   seed?: number;
-  theme?: GardenTheme;
-  grand?: boolean;
 }) {
   const scale = TIER_SCALE[tier];
   const ringColor = TIER_RING_COLOR[tier];
-  const p = blendGolden(condition, goldenFraction, theme, grand);
+  const p = blendGolden(condition, goldenFraction);
   const bloomCount = CONDITION_BLOOM_COUNT[condition];
   // Any on_time_jamaah prayer today (not just a perfect 5/5) earns a scaled-down blessing —
   // butterflies/glow/sparkles all grow with goldenFraction instead of being all-or-nothing.
@@ -1318,7 +1198,7 @@ export function FloweringStage({
         )}
       </group>
 
-      {blessFraction > 0 && <TreeBlessing seed={seed} fraction={blessFraction} theme={theme} grand={grand} />}
+      {blessFraction > 0 && <TreeBlessing seed={seed} fraction={blessFraction} />}
     </group>
   );
 }
@@ -1714,16 +1594,16 @@ export function StageLayer({ cells, cols, rows }: { cells: GardenCell[]; cols: n
   return (
     <>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="seed">
-        {(c) => <SeedStage condition={c.condition} goldenFraction={c.goldenFraction} theme={c.theme} />}
+        {(c) => <SeedStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="sprout">
-        {(c) => <SproutStage condition={c.condition} goldenFraction={c.goldenFraction} theme={c.theme} />}
+        {(c) => <SproutStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="sapling">
-        {(c) => <SaplingStage condition={c.condition} goldenFraction={c.goldenFraction} theme={c.theme} />}
+        {(c) => <SaplingStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="tree">
-        {(c) => <TreeStage condition={c.condition} goldenFraction={c.goldenFraction} theme={c.theme} />}
+        {(c) => <TreeStage condition={c.condition} goldenFraction={c.goldenFraction} />}
       </StageGroup>
       <StageGroup cells={growingCells} cols={cols} rows={rows} stage="flowering">
         {(c) => (
@@ -1732,8 +1612,6 @@ export function StageLayer({ cells, cols, rows }: { cells: GardenCell[]; cols: n
             tier={c.tier}
             condition={c.condition}
             goldenFraction={c.goldenFraction}
-            theme={c.theme}
-            grand={c.grand}
             seed={c.col * 131 + c.row * 977}
           />
         )}

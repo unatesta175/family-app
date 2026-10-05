@@ -18,8 +18,6 @@ export type Garden3DProps = {
     bonus: boolean;
     tier: GardenCell["tier"];
     goldenFraction: GardenCell["goldenFraction"];
-    theme: GardenCell["theme"];
-    grand: GardenCell["grand"];
     missedCount: GardenCell["missedCount"];
   }[];
   cols: number;
