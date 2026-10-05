@@ -337,6 +337,8 @@ export const habitTaskCompletions = sqliteTable(
       .notNull()
       .references(() => habitTasks.id, { onDelete: "cascade" }),
     date: text("date").notNull(),
+    // "done", or "skipped" when a recurring task is set aside for that one day.
+    status: text("status", { enum: ["done", "skipped"] }).notNull().default("done"),
   },
   (table) => [uniqueIndex("habit_task_completions_unique").on(table.taskId, table.date)]
 );

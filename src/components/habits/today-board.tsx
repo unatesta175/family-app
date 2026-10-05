@@ -17,6 +17,7 @@ import {
   Repeat,
   RotateCcw,
   SkipForward,
+  Undo2,
   X,
   PartyPopper,
   AlarmClock,
@@ -24,7 +25,7 @@ import {
   Layers,
   Target,
 } from "lucide-react";
-import { logHabitAction, toggleTaskAction } from "@/lib/habit-actions";
+import { logHabitAction, skipTaskAction, toggleTaskAction } from "@/lib/habit-actions";
 import {
   STATUS_COLOR,
   STREAK_UNIT_SHORT,
@@ -56,7 +57,8 @@ type HabitStatus = "done" | "slipped" | "skipped" | "missed" | "clear";
 
 type Action =
   | { type: "habit"; id: number; status: HabitStatus; value?: number; checked?: string[] }
-  | { type: "task"; id: number; done: boolean };
+  | { type: "task"; id: number; done: boolean }
+  | { type: "task_skip"; id: number; skipped: boolean };
 
 type State = { habits: BoardHabit[]; tasks: BoardTask[] };
 
@@ -71,7 +73,13 @@ function reduce(date: string, today: string) {
     if (action.type === "task") {
       return {
         ...state,
-        tasks: state.tasks.map((t) => (t.id === action.id ? { ...t, done: action.done } : t)),
+        tasks: state.tasks.map((t) => (t.id === action.id ? { ...t, done: action.done, skipped: action.done ? false : t.skipped } : t)),
+      };
+    }
+    if (action.type === "task_skip") {
+      return {
+        ...state,
+        tasks: state.tasks.map((t) => (t.id === action.id ? { ...t, skipped: action.skipped, done: action.skipped ? false : t.done } : t)),
       };
     }
     return {
@@ -171,6 +179,13 @@ export function TodayBoard({
     });
   }
 
+  function skipTask(id: number, skipped: boolean) {
+    startTransition(async () => {
+      apply({ type: "task_skip", id, skipped });
+      await skipTaskAction({ taskId: id, date, skipped });
+    });
+  }
+
   // Categories that actually appear on this day, with how many items each holds.
   const categoryChips = useMemo(() => {
     const counts = new Map<string, number>();
@@ -194,8 +209,8 @@ export function TodayBoard({
   const doneHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "done");
   const upcomingHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "upcoming");
   const notStartedHabits = shownHabits.filter((h) => habitSection(h, future, date === today) === "notstarted");
-  const pendingTasks = shownTasks.filter((t) => !t.done);
-  const doneTasks = shownTasks.filter((t) => t.done);
+  const pendingTasks = shownTasks.filter((t) => !t.done && !t.skipped);
+  const doneTasks = shownTasks.filter((t) => t.done || t.skipped);
 
   // Habits that haven't started yet on this date aren't part of the day's list, so they aren't counted.
   const started = state.habits.filter((h) => h.state !== "prestart");
@@ -317,7 +332,7 @@ export function TodayBoard({
               it.kind === "h" ? (
                 <HabitRow key={`h${it.h.id}`} habit={it.h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
               ) : (
-                <TaskRow key={`t${it.t.id}`} task={it.t} canEdit={canEdit} onToggle={toggleTask} />
+                <TaskRow key={`t${it.t.id}`} task={it.t} canEdit={canEdit} onToggle={toggleTask} onSkip={skipTask} />
               )
             )}
           </Section>
@@ -329,7 +344,7 @@ export function TodayBoard({
             <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
           ))}
           {pendingTasks.map((t) => (
-            <TaskRow key={`t${t.id}`} task={t} canEdit={canEdit} onToggle={toggleTask} />
+            <TaskRow key={`t${t.id}`} task={t} canEdit={canEdit} onToggle={toggleTask} onSkip={skipTask} />
           ))}
         </Section>
       )}
@@ -337,7 +352,7 @@ export function TodayBoard({
       {future && shownTasks.length > 0 && (
         <Section title="Tasks" count={shownTasks.length}>
           {shownTasks.map((t) => (
-            <TaskRow key={`t${t.id}`} task={t} canEdit={false} onToggle={toggleTask} />
+            <TaskRow key={`t${t.id}`} task={t} canEdit={false} onToggle={toggleTask} onSkip={skipTask} />
           ))}
         </Section>
       )}
@@ -348,7 +363,7 @@ export function TodayBoard({
             <HabitRow key={h.id} habit={h} date={date} today={today} canEdit={canEdit} onLog={logHabit} />
           ))}
           {doneTasks.map((t) => (
-            <TaskRow key={`t${t.id}`} task={t} canEdit={canEdit} onToggle={toggleTask} />
+            <TaskRow key={`t${t.id}`} task={t} canEdit={canEdit} onToggle={toggleTask} onSkip={skipTask} />
           ))}
         </Section>
       )}
@@ -434,7 +449,9 @@ function InlineValue({
   suffix,
   onCommit,
   onCancel,
+  allowNegative = false,
 }: {
+  allowNegative?: boolean;
   initial: number;
   suffix: string;
   onCommit: (n: number) => void;
@@ -443,7 +460,7 @@ function InlineValue({
   const [draft, setDraft] = useState(formatNumber(initial));
   function commit() {
     const n = Number(draft.replace(",", "."));
-    if (Number.isFinite(n) && n >= 0) onCommit(n);
+    if (Number.isFinite(n) && (allowNegative || n >= 0)) onCommit(n);
     else onCancel();
   }
   return (
@@ -719,6 +736,7 @@ function HabitRow({
                 <InlineValue
                   initial={isTimer ? Math.round(liveValue / 60) : liveValue}
                   suffix={isTimer ? "min" : (h.unit ?? "")}
+                  allowNegative={numeric}
                   onCancel={() => setEditing(false)}
                   onCommit={(n) => {
                     setEditing(false);
@@ -772,8 +790,7 @@ function HabitRow({
               <button
                 type="button"
                 aria-label="Decrease"
-                disabled={h.value <= 0}
-                onClick={() => onLog(h.id, "done", Math.max(0, Math.round((h.value - 1) * 100) / 100))}
+                onClick={() => onLog(h.id, "done", Math.round((h.value - 1) * 100) / 100)}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-h-surface2 text-h-muted disabled:opacity-40"
               >
                 <Minus className="h-4 w-4" />
@@ -978,10 +995,13 @@ export function TaskRow({
   task: t,
   canEdit,
   onToggle,
+  onSkip,
 }: {
   task: BoardTask;
   canEdit: boolean;
   onToggle: (id: number, done: boolean) => void;
+  /** Set a repeating task aside for this day (or bring it back). */
+  onSkip?: (id: number, skipped: boolean) => void;
 }) {
   const pr = PRIORITY_META[t.priority];
   return (
@@ -991,16 +1011,17 @@ export function TaskRow({
         disabled={!canEdit}
         onClick={() => onToggle(t.id, !t.done)}
         aria-label={t.done ? `Undo ${t.title}` : `Complete ${t.title}`}
-        style={t.done ? { background: "var(--h-brand)", borderColor: "var(--h-brand)" } : { borderColor: pr.color }}
+        style={t.done ? { background: "var(--h-brand)", borderColor: "var(--h-brand)" } : t.skipped ? statusStyle("skipped", false) : { borderColor: pr.color }}
         className={cn(
           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
           !canEdit && "cursor-default"
         )}
       >
         {t.done && <Check className="habit-pop h-3.5 w-3.5 text-h-brand-fg" strokeWidth={3.5} />}
+        {t.skipped && <SkipForward className="h-3 w-3" />}
       </button>
       <div className="min-w-0 flex-1">
-        <p className={cn("line-clamp-3 break-words text-sm font-bold leading-tight", t.done && "text-h-muted line-through")}>
+        <p className={cn("line-clamp-3 break-words text-sm font-bold leading-tight", t.done && "text-h-muted line-through", t.skipped && "text-h-muted")}>
           {t.title}
         </p>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] font-medium text-h-muted">
@@ -1012,6 +1033,12 @@ export function TaskRow({
             </span>
           )}
           {t.categoryName && <span>{t.categoryName}</span>}
+          {t.skipped && (
+            <span className="flex items-center gap-0.5 font-bold" style={{ color: STATUS_COLOR.skipped }}>
+              <SkipForward className="h-3 w-3" />
+              Skipped today
+            </span>
+          )}
           {t.overdue && (
             <span className="flex items-center gap-0.5 font-bold text-h-bad">
               <AlarmClock className="h-3 w-3" />
@@ -1024,6 +1051,18 @@ export function TaskRow({
           </span>
         </div>
       </div>
+      {t.recurring && onSkip && canEdit && !t.done && (
+        <button
+          type="button"
+          onClick={() => onSkip(t.id, !t.skipped)}
+          aria-label={t.skipped ? `Bring back ${t.title} today` : `Skip ${t.title} today`}
+          title={t.skipped ? "Bring it back for today" : "Skip for today"}
+          className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-h-surface2 px-2.5 text-[11px] font-bold text-h-muted hover:text-h-fg"
+        >
+          {t.skipped ? <Undo2 className="h-3.5 w-3.5" /> : <SkipForward className="h-3.5 w-3.5" />}
+          {t.skipped ? "Undo" : "Skip"}
+        </button>
+      )}
     </div>
   );
 }

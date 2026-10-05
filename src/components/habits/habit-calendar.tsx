@@ -305,7 +305,7 @@ function DayEditor({
               <TimeOfDayInput minutes={value} onChange={setValue} aria-label="Time" className="max-w-40" />
             ) : (
               <div className="flex items-center gap-2">
-                <NumberInput value={value} min={0} onChange={(n) => setValue(n ?? 0)} className="max-w-32" />
+                <NumberInput value={value} min={-1_000_000_000} onChange={(n) => setValue(n ?? 0)} className="max-w-32" />
                 {spec.unit && <span className="text-sm font-semibold text-h-muted">{spec.unit}</span>}
               </div>
             )}

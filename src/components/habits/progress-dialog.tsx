@@ -77,7 +77,11 @@ export function ProgressDialog({
   else status = `Below the goal (${targetLabel(spec)}) — saved as progress, not marked done.`;
 
   function step(delta: number) {
-    setValue((v) => Math.max(0, Math.round((v + delta) * 100) / 100));
+    // Numeric habits can go below zero; a timer can't run backwards.
+    setValue((v) => {
+      const next = Math.round((v + delta) * 100) / 100;
+      return evalType === "numeric" ? next : Math.max(0, next);
+    });
   }
 
   return (
@@ -162,7 +166,7 @@ export function ProgressDialog({
               <div className="flex items-center gap-2">
                 <NumberInput
                   value={value}
-                  min={0}
+                  min={-1_000_000_000}
                   onChange={(n) => setValue(n ?? 0)}
                   aria-label="Amount achieved"
                   className="w-24 text-center text-lg font-extrabold"

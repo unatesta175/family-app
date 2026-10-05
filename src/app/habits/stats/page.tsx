@@ -29,7 +29,7 @@ export default async function HabitsStatsPage({
   const today = todayIso();
   const from = addDays(today, -(range - 1));
 
-  const { profile, readOnly, habits, categories, logsByHabit, tasks, completions } = await loadHabitData();
+  const { profile, readOnly, habits, categories, logsByHabit, tasks, completions, skips } = await loadHabitData();
 
   const perHabit = habits.map((h) => {
     const logs = logsByHabit[h.id] ?? {};
@@ -77,7 +77,7 @@ export default async function HabitsStatsPage({
   const boardHabits = buildBoardHabits(habits, categories, logsByHabit, today, today).filter(
     (h) => h.state === "pending" || h.state === "partial" || (h.state === "flex" && !h.periodMet)
   );
-  const boardTasks = buildBoardTasks(tasks, categories, completions, today, today).filter((t) => !t.done);
+  const boardTasks = buildBoardTasks(tasks, categories, completions, today, today, skips).filter((t) => !t.done && !t.skipped);
 
   const ranked = perHabit.filter((p) => p.rate !== null).sort((a, b) => (b.rate ?? 0) - (a.rate ?? 0));
   const needsWork = [...ranked].reverse().filter((p) => (p.rate ?? 0) < 60).slice(0, 3);

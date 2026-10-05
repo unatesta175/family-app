@@ -45,6 +45,7 @@ import {
   setHabitArchived,
   setHabitStartDate,
   setRecurringTaskDone,
+  setRecurringTaskSkipped,
   setSingleTaskCompleted,
   updateCategory,
   updateHabit,
@@ -100,7 +101,7 @@ const logSchema = z.object({
   habitId: z.number().int().positive(),
   date: isoDateSchema,
   status: z.enum(["done", "slipped", "skipped", "missed", "clear"]),
-  value: z.number().min(0).max(1_000_000_000).optional(),
+  value: z.number().min(-1_000_000_000).max(1_000_000_000).optional(),
   checked: z.array(z.string().max(40)).max(50).optional(),
 });
 
@@ -196,7 +197,7 @@ const checklistItemSchema = z.object({
 
 const habitSchema = z
   .object({
-    name: z.string().trim().min(1, "Give the habit a name.").max(60),
+    name: z.string().trim().min(1, "Give the habit a name.").max(500),
     description: z.string().trim().max(200).optional().nullable(),
     categoryId: z.number().int().positive().nullable(),
     kind: z.enum(HABIT_KINDS),
@@ -206,7 +207,7 @@ const habitSchema = z
     weekdays: z.array(z.number().int().min(0).max(6)),
     weeklyTarget: z.number().int().min(1).max(366),
     // Amount (numeric), seconds (timer); ignored for yes/no and checklist habits.
-    dailyTarget: z.number().min(0).max(1_000_000_000),
+    dailyTarget: z.number().min(-1_000_000_000).max(1_000_000_000),
     unit: z.string().trim().max(20).optional().nullable(),
     startDate: isoDateSchema,
     endDate: isoDateSchema.nullable().optional(),
@@ -235,9 +236,8 @@ const habitSchema = z
       issue(`There aren't ${v.weeklyTarget} days in a ${v.periodUnit}.`, "weeklyTarget");
     }
     if (v.endDate && v.endDate < v.startDate) issue("The end date can't be before the start date.", "endDate");
-    if (v.evalType === "numeric" || v.evalType === "timer") {
-      if (v.targetOp !== "any" && v.dailyTarget <= 0) issue("Set a goal above zero.", "dailyTarget");
-    }
+    // A numeric goal can be any number, including zero or below ("at most -2"); a timer needs time.
+    if (v.evalType === "timer" && v.targetOp !== "any" && v.dailyTarget <= 0) issue("Set a goal above zero.", "dailyTarget");
     if (v.evalType === "time_of_day" && (v.dailyTarget < 0 || v.dailyTarget > 1439)) issue("Pick a time of day.", "dailyTarget");
     if (v.evalType === "checklist" && v.checklist.length === 0) {
       issue("Add at least one checklist item.", "checklist");
@@ -430,8 +430,8 @@ export async function deleteCategoryAction(id: number) {
 
 const taskSchema = z
   .object({
-    title: z.string().trim().min(1, "Give the task a title.").max(500),
-    notes: z.string().trim().max(500).optional().nullable(),
+    title: z.string().trim().min(1, "Give the task a title.").max(2000),
+    notes: z.string().trim().max(2000).optional().nullable(),
     categoryId: z.number().int().positive().nullable(),
     priority: z.enum(TASK_PRIORITIES),
     recurrence: z.enum(TASK_RECURRENCES),
@@ -491,6 +491,15 @@ export async function updateTaskAction(id: number, raw: TaskFormInput): Promise<
 export async function deleteTaskAction(id: number) {
   await ownTask(id);
   await deleteTask(id);
+  refresh();
+}
+
+/** Skip (or un-skip) one day of a recurring task. A one-off task has nothing to skip. */
+export async function skipTaskAction(input: { taskId: number; date: string; skipped: boolean }) {
+  const parsed = z.object({ taskId: z.number().int().positive(), date: isoDateSchema, skipped: z.boolean() }).parse(input);
+  const task = await ownTask(parsed.taskId);
+  if (task.recurrence === "none") throw new Error("Only repeating tasks can be skipped for a day.");
+  await setRecurringTaskSkipped(task.id, parsed.date, parsed.skipped);
   refresh();
 }
 

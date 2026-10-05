@@ -77,6 +77,8 @@ export type BoardTask = {
   recurring: boolean;
   recurrenceLabel: string;
   done: boolean;
+  /** A recurring task set aside for this one day. */
+  skipped: boolean;
   overdue: boolean;
   dueDate: string | null;
 };
@@ -153,7 +155,8 @@ export function buildBoardTasks(
   categories: CategoryRow[],
   completions: Record<number, Set<string>>,
   date: string,
-  today: string
+  today: string,
+  skips: Record<number, Set<string>> = {}
 ): BoardTask[] {
   const cats = new Map(categories.map((c) => [c.id, c]));
   const out: BoardTask[] = [];
@@ -161,6 +164,7 @@ export function buildBoardTasks(
   for (const t of tasks) {
     let show = false;
     let done = false;
+    let skipped = false;
     let overdue = false;
 
     if (t.recurrence === "none") {
@@ -177,6 +181,7 @@ export function buildBoardTasks(
     } else if (recurringTaskOccursOn(t, date)) {
       show = true;
       done = completions[t.id]?.has(date) ?? false;
+      skipped = !done && (skips[t.id]?.has(date) ?? false);
     }
 
     if (!show) continue;
@@ -191,11 +196,12 @@ export function buildBoardTasks(
       recurring: t.recurrence !== "none",
       recurrenceLabel: recurrenceLabel(t),
       done,
+      skipped,
       overdue,
       dueDate: t.dueDate,
     });
   }
 
   const rank = { high: 0, medium: 1, low: 2 } as const;
-  return out.sort((a, b) => Number(a.done) - Number(b.done) || rank[a.priority] - rank[b.priority]);
+  return out.sort((a, b) => Number(a.done || a.skipped) - Number(b.done || b.skipped) || rank[a.priority] - rank[b.priority]);
 }

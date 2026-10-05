@@ -34,7 +34,7 @@ export default async function HabitsTodayPage({
   const today = todayIso();
   const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? rawDate : today;
 
-  const { profileId, profile, readOnly, habits, categories, logsByHabit, tasks, completions } =
+  const { profileId, profile, readOnly, habits, categories, logsByHabit, tasks, completions, skips } =
     await loadHabitData();
 
   const goalChips = await getGoalChipsForHabits(habits.map((h) => h.id));
@@ -60,13 +60,13 @@ export default async function HabitsTodayPage({
               }))
           )
       : [];
-  const boardTasks = buildBoardTasks(tasks, categories, completions, date, today);
+  const boardTasks = buildBoardTasks(tasks, categories, completions, date, today, skips);
 
   // Summary numbers for the selected day.
   const habitDay = dayCompletion(habits, logsByHabit, date, today);
   const tasksDone = boardTasks.filter((t) => t.done).length;
   const done = habitDay.done + tasksDone;
-  const due = habitDay.due + boardTasks.length;
+  const due = habitDay.due + boardTasks.filter((t) => !t.skipped).length;
   const pct = due === 0 ? 0 : Math.round((done / due) * 100);
 
   // Best running streak, for the highlight chip.

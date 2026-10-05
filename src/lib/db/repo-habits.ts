@@ -275,11 +275,12 @@ export async function setSingleTaskCompleted(id: number, completedOn: string | n
   await db.update(habitTasks).set({ completedAt: completedOn }).where(eq(habitTasks.id, id));
 }
 
-/** Completion dates for a profile's recurring tasks in [from, to]: taskId -> Set of dates. */
-export async function getTaskCompletionsInRange(
+/** Dates a profile's recurring tasks were completed (`done`) or set aside (`skipped`) in [from, to]. */
+async function getTaskDatesInRange(
   profileId: number,
   from: string,
-  to: string
+  to: string,
+  status: "done" | "skipped"
 ): Promise<Record<number, Set<string>>> {
   const rows = await db
     .select({ taskId: habitTaskCompletions.taskId, date: habitTaskCompletions.date })
@@ -288,6 +289,7 @@ export async function getTaskCompletionsInRange(
     .where(
       and(
         eq(habitTasks.profileId, profileId),
+        eq(habitTaskCompletions.status, status),
         gte(habitTaskCompletions.date, from),
         lte(habitTaskCompletions.date, to)
       )
@@ -297,13 +299,37 @@ export async function getTaskCompletionsInRange(
   return out;
 }
 
+/** Completion dates for a profile's recurring tasks in [from, to]: taskId -> Set of dates. */
+export const getTaskCompletionsInRange = (profileId: number, from: string, to: string) => getTaskDatesInRange(profileId, from, to, "done");
+
+/** Days a profile skipped a recurring task in [from, to]: taskId -> Set of dates. */
+export const getTaskSkipsInRange = (profileId: number, from: string, to: string) => getTaskDatesInRange(profileId, from, to, "skipped");
+
 export async function setRecurringTaskDone(taskId: number, date: string, done: boolean) {
   if (done) {
-    await db.insert(habitTaskCompletions).values({ taskId, date }).onConflictDoNothing();
+    // Completing a day that was skipped turns the skip into a completion.
+    await db
+      .insert(habitTaskCompletions)
+      .values({ taskId, date, status: "done" })
+      .onConflictDoUpdate({ target: [habitTaskCompletions.taskId, habitTaskCompletions.date], set: { status: "done" } });
   } else {
     await db
       .delete(habitTaskCompletions)
       .where(and(eq(habitTaskCompletions.taskId, taskId), eq(habitTaskCompletions.date, date)));
+  }
+}
+
+/** Skip (or un-skip) one day of a recurring task. A skip is a completion row with status "skipped". */
+export async function setRecurringTaskSkipped(taskId: number, date: string, skipped: boolean) {
+  if (skipped) {
+    await db
+      .insert(habitTaskCompletions)
+      .values({ taskId, date, status: "skipped" })
+      .onConflictDoUpdate({ target: [habitTaskCompletions.taskId, habitTaskCompletions.date], set: { status: "skipped" } });
+  } else {
+    await db
+      .delete(habitTaskCompletions)
+      .where(and(eq(habitTaskCompletions.taskId, taskId), eq(habitTaskCompletions.date, date), eq(habitTaskCompletions.status, "skipped")));
   }
 }
 

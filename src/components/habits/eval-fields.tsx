@@ -67,7 +67,7 @@ export function EvaluationFields({ v, set, hex }: { v: HabitFormValues; set: Set
                 <Caption>Goal</Caption>
                 <NumberInput
                   value={v.dailyTarget}
-                  min={0}
+                  min={-1_000_000_000}
                   onChange={(n) => set("dailyTarget", n ?? 0)}
                   placeholder="e.g. 10"
                 />

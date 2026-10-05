@@ -77,7 +77,7 @@ export function NumberInput({
 
   // Follow outside changes (clamping, switching habit type) without fighting what's being typed:
   // "2." and "" both still parse to the value the parent already holds, so they're left alone.
-  const parsed = draft === "" || draft === "." ? null : Number(draft);
+  const parsed = draft === "" || draft === "." || draft === "-" || draft === "-." ? null : Number(draft);
   if (parsed !== value) setDraft(value === null ? "" : String(value));
 
   return (
@@ -89,9 +89,11 @@ export function NumberInput({
       onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => {
         const raw = e.target.value.replace(",", ".");
-        if (!(integer ? /^\d*$/ : /^\d*\.?\d*$/).test(raw)) return;
+        // A minus sign is only accepted where the field allows numbers below zero.
+        const sign = min < 0 ? "-?" : "";
+        if (!new RegExp(`^${sign}${integer ? "\\d*" : "\\d*\\.?\\d*"}$`).test(raw)) return;
         setDraft(raw);
-        if (raw === "" || raw === ".") {
+        if (raw === "" || raw === "." || raw === "-" || raw === "-.") {
           onChange(null);
           return;
         }

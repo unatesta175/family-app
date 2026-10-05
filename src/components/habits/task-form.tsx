@@ -102,7 +102,7 @@ export function TaskFormSheet({
             value={v.title}
             onChange={(e) => set("title", e.target.value)}
             placeholder="e.g. Pay internet bill, Clean the room"
-            maxLength={500}
+            maxLength={2000}
             rows={2}
             className={`${inputClass} resize-none`}
             autoFocus={!editing}
@@ -169,7 +169,7 @@ export function TaskFormSheet({
             value={v.notes ?? ""}
             onChange={(e) => set("notes", e.target.value)}
             rows={2}
-            maxLength={500}
+            maxLength={2000}
             className={inputClass}
             placeholder="Anything to remember?"
           />

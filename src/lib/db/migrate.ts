@@ -34,6 +34,7 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "habits", column: "checklist", ddl: "ALTER TABLE habits ADD COLUMN checklist TEXT NOT NULL DEFAULT '[]'" },
   { table: "habits", column: "goals", ddl: "ALTER TABLE habits ADD COLUMN goals TEXT NOT NULL DEFAULT '[]'" },
   { table: "habit_logs", column: "detail", ddl: "ALTER TABLE habit_logs ADD COLUMN detail TEXT" },
+  { table: "habit_task_completions", column: "status", ddl: "ALTER TABLE habit_task_completions ADD COLUMN status TEXT NOT NULL DEFAULT 'done'" },
 ];
 
 /**

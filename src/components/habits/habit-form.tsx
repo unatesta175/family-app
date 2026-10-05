@@ -171,7 +171,7 @@ export function HabitFormSheet({
               value={v.name}
               onChange={(e) => set("name", e.target.value)}
               placeholder={v.kind === "build" ? "e.g. Study, Workout, Read" : "e.g. Stop gaming, Stop doomscrolling"}
-              maxLength={60}
+              maxLength={500}
               className={inputClass}
               autoFocus={!editing}
             />
