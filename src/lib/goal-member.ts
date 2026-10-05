@@ -2,7 +2,7 @@ import "server-only";
 import { getOwnProfileId, requireAuth } from "@/lib/auth";
 import { getProfilesInHousehold } from "@/lib/db/repo";
 
-export type GoalMember = { id: number; name: string };
+export type GoalMember = { id: number; name: string; isMe?: boolean };
 
 /**
  * The family member whose Goals pages the signed-in user is looking at (`?member=<profile id>`), or
@@ -19,9 +19,10 @@ export async function resolveMember(raw: string | undefined): Promise<GoalMember
   return profile ? { id: profile.id, name: profile.name } : null;
 }
 
-/** Everyone else in the circle, for the "whose goals" switcher. */
+/** Everyone in the circle, you first, for the "whose goals" switcher. */
 export async function listCircleMembers(): Promise<GoalMember[]> {
   const session = await requireAuth();
   const own = await getOwnProfileId();
-  return (await getProfilesInHousehold(session.householdId)).filter((p) => p.id !== own).map((p) => ({ id: p.id, name: p.name }));
+  return (await getProfilesInHousehold(session.householdId)).map((p) => ({ id: p.id, name: p.name, isMe: p.id === own }))
+    .sort((a, b) => Number(!!b.isMe) - Number(!!a.isMe));
 }
