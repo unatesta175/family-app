@@ -50,6 +50,25 @@ export function colorHex(key: string): string {
 }
 
 /** Hex colour with an alpha channel, e.g. tint("#5b5bf0", 0.12). */
+/**
+ * One colour per status, everywhere (Today, Week, Calendar, Stats...). Never the habit's own colour,
+ * so a green block always means done and a red one always means slipped, whatever the habit.
+ */
+export const STATUS_COLOR = {
+  done: "#10b981", // green
+  partial: "#f59e0b", // amber
+  slipped: "#ef4444", // red
+  missed: "#a855f7", // purple
+  skipped: "#38bdf8", // sky blue
+} as const;
+export type StatusKey = keyof typeof STATUS_COLOR;
+
+/** Inline style for a status chip: filled (solid) or a tinted background with a coloured mark. */
+export function statusStyle(status: StatusKey, solid: boolean): { background: string; color: string; borderColor: string } {
+  const c = STATUS_COLOR[status];
+  return solid ? { background: c, color: "#fff", borderColor: c } : { background: tint(c, 0.16), color: c, borderColor: tint(c, 0.55) };
+}
+
 export function tint(hex: string, alpha: number): string {
   const a = Math.round(Math.min(1, Math.max(0, alpha)) * 255)
     .toString(16)

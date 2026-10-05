@@ -6,6 +6,8 @@ import { Check, ChevronLeft, ChevronRight, Minus, SkipForward, Undo2, X } from "
 import { logHabitAction, saveHabitNoteAction } from "@/lib/habit-actions";
 import {
   colorHex,
+  STATUS_COLOR,
+  statusStyle,
   targetLabel,
   targetMet,
   tint,
@@ -107,27 +109,23 @@ export function HabitCalendar({
           let extra = "";
           switch (d.state) {
             case "done":
-              style = { background: hex, color: "#fff", borderColor: hex };
+              style = statusStyle("done", true);
               icon = <Check className="h-4 w-4" strokeWidth={3.5} />;
               break;
             case "partial":
-              style = { background: tint(hex, 0.22), color: hex, borderColor: tint(hex, 0.6) };
+              style = statusStyle("partial", false);
               icon = <Minus className="h-4 w-4" strokeWidth={3.5} />;
               break;
             case "slipped":
-              style = { background: "var(--h-bad)", color: "#fff", borderColor: "var(--h-bad)" };
+              style = statusStyle("slipped", true);
               icon = <X className="h-4 w-4" strokeWidth={3.5} />;
               break;
             case "missed":
-              style = {
-                background: "color-mix(in srgb, var(--h-bad) 12%, transparent)",
-                color: "var(--h-bad)",
-                borderColor: "color-mix(in srgb, var(--h-bad) 45%, transparent)",
-              };
+              style = statusStyle("missed", false);
               icon = <X className="h-4 w-4" strokeWidth={3} />;
               break;
             case "skipped":
-              style = { background: "var(--h-surface-2)", color: "var(--h-muted)", borderColor: "var(--h-border)" };
+              style = statusStyle("skipped", false);
               icon = <SkipForward className="h-3.5 w-3.5" />;
               break;
             case "pending":
@@ -171,15 +169,19 @@ export function HabitCalendar({
 
       <ul className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 border-t border-h-border pt-3 text-[11px] font-semibold text-h-muted sm:grid-cols-3">
         <LegendItem label={kind === "break" ? "Clean" : "Done"}>
-          <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ background: hex, color: "#fff" }}>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ background: STATUS_COLOR.done, color: "#fff" }}>
             <Check className="h-3 w-3" strokeWidth={3.5} />
           </span>
         </LegendItem>
-        <LegendItem label={kind === "break" ? "Slipped / missed" : "Missed"}>
-          <span
-            className="flex h-5 w-5 items-center justify-center rounded-md border-2"
-            style={{ background: "color-mix(in srgb, var(--h-bad) 12%, transparent)", color: "var(--h-bad)", borderColor: "color-mix(in srgb, var(--h-bad) 45%, transparent)" }}
-          >
+        {kind === "break" && (
+          <LegendItem label="Slipped">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md" style={{ background: STATUS_COLOR.slipped, color: "#fff" }}>
+              <X className="h-3 w-3" strokeWidth={3.5} />
+            </span>
+          </LegendItem>
+        )}
+        <LegendItem label="Missed">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2" style={statusStyle("missed", false)}>
             <X className="h-3 w-3" strokeWidth={3} />
           </span>
         </LegendItem>
@@ -189,12 +191,12 @@ export function HabitCalendar({
           </span>
         </LegendItem>
         <LegendItem label="Partial">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2" style={{ background: tint(hex, 0.22), color: hex, borderColor: tint(hex, 0.6) }}>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2" style={statusStyle("partial", false)}>
             <Minus className="h-3 w-3" strokeWidth={3.5} />
           </span>
         </LegendItem>
         <LegendItem label="Skipped">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-h-border bg-h-surface2 text-h-muted">
+          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2" style={statusStyle("skipped", false)}>
             <SkipForward className="h-3 w-3" />
           </span>
         </LegendItem>

@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { logHabitAction, toggleTaskAction } from "@/lib/habit-actions";
 import {
+  STATUS_COLOR,
   STREAK_UNIT_SHORT,
   WEEKDAY_SHORT,
   colorHex,
@@ -34,6 +35,7 @@ import {
   formatNumber,
   formatTimeOfDay,
   PRIORITY_META,
+  statusStyle,
   targetMet,
   timeOffGoal,
   tint,
@@ -528,17 +530,19 @@ function HabitRow({
   const liveValue = isTimer && timer.running ? h.value + timer.elapsed : h.value;
   const checkedIds = h.checklist.filter((i) => i.checked).map((i) => i.id);
 
+  // Status colours are fixed (green done, amber partial, red slipped, purple missed, blue skipped);
+  // only a day with no status yet wears the habit's own colour.
   const circleStyle = done
-    ? { background: hex, color: "#fff", borderColor: hex }
-    : slipped || over
-      ? { background: "var(--h-bad)", color: "#fff", borderColor: "var(--h-bad)" }
-      : missed
-        ? {
-            background: "color-mix(in srgb, var(--h-bad) 12%, transparent)",
-            color: "var(--h-bad)",
-            borderColor: "color-mix(in srgb, var(--h-bad) 45%, transparent)",
-          }
-        : { background: tint(hex, 0.12), color: hex, borderColor: tint(hex, 0.35) };
+    ? statusStyle("done", true)
+    : slipped
+      ? statusStyle("slipped", true)
+      : partial
+        ? statusStyle("partial", false)
+        : missed
+          ? statusStyle("missed", false)
+          : skipped
+            ? statusStyle("skipped", false)
+            : { background: tint(hex, 0.12), color: hex, borderColor: tint(hex, 0.35) };
 
   function toggleTimer() {
     if (!canEdit) return;
@@ -681,10 +685,10 @@ function HabitRow({
                 {STREAK_UNIT_SHORT[h.streakUnit]}
               </span>
             )}
-            {h.state === "missed" && <span className="font-bold text-h-bad">Missed</span>}
-            {over && <span className="font-bold text-h-bad">Over limit</span>}
+            {h.state === "missed" && <span className="font-bold" style={{ color: STATUS_COLOR.missed }}>Missed</span>}
+            {over && <span className="font-bold" style={{ color: STATUS_COLOR.partial }}>Over limit</span>}
             {lateBy && (
-              <span className="font-bold text-h-bad">
+              <span className="font-bold" style={{ color: STATUS_COLOR.partial }}>
                 {lateBy.kind === "late" ? `Late by ${formatDuration(lateBy.minutes * 60)}` : lateBy.kind === "early" ? `${formatDuration(lateBy.minutes * 60)} too early` : "Off the goal time"}
               </span>
             )}
@@ -696,7 +700,7 @@ function HabitRow({
               disabled={!canEdit}
               onClick={() => setDialog(true)}
               title="Tap to log the time"
-              className={cn("mt-2 whitespace-nowrap text-[11px] font-bold tabular-nums", lateBy ? "text-h-bad" : "text-h-muted", canEdit && "rounded-md hover:text-h-fg")}
+              className={cn("mt-2 whitespace-nowrap text-[11px] font-bold tabular-nums", "text-h-muted", canEdit && "rounded-md hover:text-h-fg")}
             >
               {logged && (done || partial) ? formatTimeOfDay(h.value) : "Not logged"}
               {h.targetLabel && <span className="font-medium"> / {h.targetLabel}</span>}
@@ -708,7 +712,7 @@ function HabitRow({
               {!anyAmount && (
                 <ProgressBar
                   pct={h.dailyTarget > 0 ? (liveValue / h.dailyTarget) * 100 : 0}
-                  color={over || (atMost && liveValue > h.dailyTarget) ? "var(--h-bad)" : hex}
+                  color={over || (atMost && liveValue > h.dailyTarget) ? STATUS_COLOR.partial : hex}
                 />
               )}
               {editing && canEdit ? (

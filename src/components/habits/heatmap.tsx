@@ -1,14 +1,13 @@
-import { colorHex, tint } from "@/lib/habits";
+import { STATUS_COLOR } from "@/lib/habits";
 import type { HeatCell } from "@/lib/habit-stats";
 import { cn } from "@/lib/utils";
 
 /**
  * GitHub/HabitKit-style contribution grid: one column per week, one square per day, filled with
- * the habit's own colour when done. Pure markup, so it renders on the server with no JS.
+ * the shared status colours. Pure markup, so it renders on the server with no JS.
  */
 export function Heatmap({
   weeks,
-  color,
   cell = 12,
   className,
 }: {
@@ -17,7 +16,6 @@ export function Heatmap({
   cell?: number;
   className?: string;
 }) {
-  const hex = colorHex(color);
   return (
     <div className={cn("flex gap-[3px]", className)}>
       {weeks.map((col, i) => (
@@ -27,20 +25,19 @@ export function Heatmap({
             let border = "transparent";
             switch (c.state) {
               case "done":
-                bg = hex;
+                bg = STATUS_COLOR.done;
                 break;
               case "partial":
-                bg = tint(hex, 0.45);
+                bg = STATUS_COLOR.partial;
                 break;
               case "slipped":
-                bg = "var(--h-bad)";
+                bg = STATUS_COLOR.slipped;
                 break;
               case "missed":
-                bg = "color-mix(in srgb, var(--h-bad) 14%, var(--h-surface-2))";
+                bg = STATUS_COLOR.missed;
                 break;
               case "skipped":
-                bg = "var(--h-surface-2)";
-                border = "var(--h-border)";
+                bg = STATUS_COLOR.skipped;
                 break;
               case "upcoming":
                 bg = "transparent";

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlarmClock, Ban, Check, CircleHelp, CornerDownRight, Minus, Repeat, SkipForward, X } from "lucide-react";
 import { Sheet } from "@/components/habits/sheet";
+import { statusStyle } from "@/lib/habits";
 import { cn } from "@/lib/utils";
 
 /** A "?" button that opens a plain-language guide to every status a habit or task can have. */
@@ -41,7 +42,7 @@ const chip = "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl borde
 const HABIT_STATUSES: Item[] = [
   {
     marker: (
-      <span className={chip} style={{ background: BRAND, borderColor: BRAND, color: "#fff" }}>
+      <span className={chip} style={statusStyle("done", true)}>
         <Check className="h-4 w-4" strokeWidth={3.5} />
       </span>
     ),
@@ -52,7 +53,7 @@ const HABIT_STATUSES: Item[] = [
   },
   {
     marker: (
-      <span className={chip} style={{ background: `${BRAND}38`, borderColor: `${BRAND}99`, color: BRAND }}>
+      <span className={chip} style={statusStyle("partial", false)}>
         <Minus className="h-4 w-4" strokeWidth={3.5} />
       </span>
     ),
@@ -72,10 +73,7 @@ const HABIT_STATUSES: Item[] = [
   },
   {
     marker: (
-      <span
-        className={chip}
-        style={{ background: "color-mix(in srgb, #f43f5e 12%, transparent)", borderColor: "color-mix(in srgb, #f43f5e 45%, transparent)", color: "#f43f5e" }}
-      >
+      <span className={chip} style={statusStyle("missed", false)}>
         <X className="h-4 w-4" strokeWidth={3} />
       </span>
     ),
@@ -86,7 +84,7 @@ const HABIT_STATUSES: Item[] = [
   },
   {
     marker: (
-      <span className={chip} style={{ background: "#f43f5e", borderColor: "#f43f5e", color: "#fff" }}>
+      <span className={chip} style={statusStyle("slipped", true)}>
         <X className="h-4 w-4" strokeWidth={3.5} />
       </span>
     ),
@@ -97,7 +95,7 @@ const HABIT_STATUSES: Item[] = [
   },
   {
     marker: (
-      <span className={cn(chip, "border-h-border bg-h-surface2 text-h-muted")}>
+      <span className={chip} style={statusStyle("skipped", false)}>
         <SkipForward className="h-4 w-4" />
       </span>
     ),

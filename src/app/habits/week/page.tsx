@@ -10,16 +10,18 @@ import {
   periodDoneCount,
   weekDates,
   weekDoneCount,
+  STATUS_COLOR,
 } from "@/lib/habits";
 import { addDays, parseIso, todayIso } from "@/lib/date";
 import { WeekGrid, type WeekRow } from "@/components/habits/week-grid";
 import { Ring } from "@/components/habits/ring";
 
 const LEGEND = [
-  { label: "Done", cls: "bg-h-brand" },
-  { label: "Slipped", cls: "bg-h-bad" },
-  { label: "Missed", cls: "border border-dashed border-h-bad/50 bg-h-bad/10" },
-  { label: "Skipped", cls: "bg-h-surface2" },
+  { label: "Done", color: STATUS_COLOR.done },
+  { label: "Partial", color: STATUS_COLOR.partial },
+  { label: "Slipped", color: STATUS_COLOR.slipped },
+  { label: "Missed", color: STATUS_COLOR.missed },
+  { label: "Skipped", color: STATUS_COLOR.skipped },
 ] as const;
 
 export default async function HabitsWeekPage({
@@ -154,7 +156,7 @@ export default async function HabitsWeekPage({
           <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-1 text-[11px] font-medium text-h-muted">
             {LEGEND.map((l) => (
               <span key={l.label} className="flex items-center gap-1.5">
-                <span className={`h-3 w-3 rounded ${l.cls}`} />
+                <span className="h-3 w-3 rounded" style={{ background: l.color }} />
                 {l.label}
               </span>
             ))}

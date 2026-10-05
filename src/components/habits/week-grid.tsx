@@ -4,7 +4,7 @@ import { useMemo, useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, ChevronRight, Layers, Minus, MoreHorizontal, RotateCcw, X } from "lucide-react";
 import { logHabitAction, resetHabitProgressAction } from "@/lib/habit-actions";
-import { colorHex, formatNumber, formatTimeOfDay, targetMet, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
+import { colorHex, formatNumber, formatTimeOfDay, STATUS_COLOR, statusStyle, targetMet, tint, WEEKDAY_SHORT, type DayState } from "@/lib/habits";
 import type { HabitEvalType, PeriodUnit, TargetOp } from "@/lib/db/schema";
 import { habitIcon } from "@/lib/habit-icons";
 import { Sheet } from "@/components/habits/sheet";
@@ -561,26 +561,26 @@ function CellButton({
 
   switch (cell.state) {
     case "done":
-      style = { background: hex, color: "#fff" };
+      style = statusStyle("done", true);
       content = <Check className="habit-pop h-4 w-4" strokeWidth={3} />;
       break;
     case "partial":
-      style = { background: tint(hex, 0.25), color: hex };
+      style = statusStyle("partial", false);
       content = partialText(row, cell.value);
       break;
     case "slipped":
-      style = { background: "var(--h-bad)", color: "#fff" };
+      style = statusStyle("slipped", true);
       content = <X className="h-4 w-4" strokeWidth={3} />;
       break;
     case "skipped":
-      style = { background: "var(--h-surface-2)", color: "var(--h-muted)" };
+      style = statusStyle("skipped", false);
       content = <Minus className="h-3.5 w-3.5" />;
       break;
     case "missed":
-      style = { background: "color-mix(in srgb, var(--h-bad) 10%, transparent)", color: "var(--h-bad)" };
       // A deliberate "missed" gets a solid outline; an empty past day keeps the dashed one.
-      extra = cell.logged ? "border-2 border-h-bad/60" : "border border-dashed border-h-bad/30";
-      content = <X className="h-3.5 w-3.5 opacity-60" strokeWidth={2.5} />;
+      style = { ...statusStyle("missed", false), borderColor: cell.logged ? STATUS_COLOR.missed : `${STATUS_COLOR.missed}66` };
+      extra = cell.logged ? "border-2" : "border border-dashed";
+      content = <X className="h-3.5 w-3.5 opacity-70" strokeWidth={2.5} />;
       break;
     case "pending":
       style = { borderColor: hex, background: tint(hex, 0.08) };

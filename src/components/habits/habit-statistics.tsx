@@ -40,6 +40,7 @@ import {
   tint,
   weekStart,
   type StreakResult,
+  STATUS_COLOR,
 } from "@/lib/habits";
 import {
   STREAK_MILESTONES,
@@ -316,11 +317,12 @@ function MonthTimeline({
     const date = `${month}-${pad(i + 1)}`;
     return { date, day: i + 1, state: byDate.get(date) ?? null };
   });
-  const tally = { done: 0, partial: 0, missed: 0, skipped: 0 };
+  const tally = { done: 0, partial: 0, missed: 0, slipped: 0, skipped: 0 };
   for (const c of cells) {
     if (c.state === "done") tally.done += 1;
     else if (c.state === "partial") tally.partial += 1;
-    else if (c.state === "missed" || c.state === "slipped") tally.missed += 1;
+    else if (c.state === "missed") tally.missed += 1;
+    else if (c.state === "slipped") tally.slipped += 1;
     else if (c.state === "skipped") tally.skipped += 1;
   }
 
@@ -345,10 +347,11 @@ function MonthTimeline({
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-semibold text-h-muted">
-        <Legend color={hex} label={`${tally.done} ${kind === "break" ? "clean" : "done"}`} />
-        {tally.partial > 0 && <Legend color={tint(hex, 0.4)} label={`${tally.partial} partial`} />}
-        <Legend color="var(--h-bad)" label={`${tally.missed} ${kind === "break" ? "slipped" : "missed"}`} />
-        {tally.skipped > 0 && <Legend color="var(--h-border)" label={`${tally.skipped} skipped`} />}
+        <Legend color={STATUS_COLOR.done} label={`${tally.done} ${kind === "break" ? "clean" : "done"}`} />
+        {tally.partial > 0 && <Legend color={STATUS_COLOR.partial} label={`${tally.partial} partial`} />}
+        {(kind === "break" || tally.slipped > 0) && <Legend color={STATUS_COLOR.slipped} label={`${tally.slipped} slipped`} />}
+        <Legend color={STATUS_COLOR.missed} label={`${tally.missed} missed`} />
+        {tally.skipped > 0 && <Legend color={STATUS_COLOR.skipped} label={`${tally.skipped} skipped`} />}
       </div>
     </Card>
   );
@@ -368,29 +371,31 @@ function DayMarker({ state, hex }: { state: StatDay[1] | null; hex: string }) {
   switch (state) {
     case "done":
       return (
-        <span className={base} style={{ background: hex, color: "#fff" }}>
+        <span className={base} style={{ background: STATUS_COLOR.done, color: "#fff" }}>
           <Check className="h-4 w-4" strokeWidth={3} />
         </span>
       );
     case "partial":
       return (
-        <span className={base} style={{ background: tint(hex, 0.3), color: hex }}>
+        <span className={base} style={{ background: tint(STATUS_COLOR.partial, 0.25), color: STATUS_COLOR.partial }}>
           <span className="h-2 w-2 rounded-full bg-current" />
         </span>
       );
-    case "missed":
     case "slipped":
       return (
-        <span
-          className={base}
-          style={{ background: "color-mix(in srgb, var(--h-bad) 14%, transparent)", color: "var(--h-bad)" }}
-        >
+        <span className={base} style={{ background: STATUS_COLOR.slipped, color: "#fff" }}>
+          <X className="h-4 w-4" strokeWidth={3} />
+        </span>
+      );
+    case "missed":
+      return (
+        <span className={base} style={{ background: tint(STATUS_COLOR.missed, 0.2), color: STATUS_COLOR.missed }}>
           <X className="h-4 w-4" strokeWidth={3} />
         </span>
       );
     case "skipped":
       return (
-        <span className={base} style={{ background: "var(--h-surface-2)", color: "var(--h-muted)" }}>
+        <span className={base} style={{ background: tint(STATUS_COLOR.skipped, 0.22), color: STATUS_COLOR.skipped }}>
           <SkipForward className="h-3.5 w-3.5" />
         </span>
       );
@@ -571,25 +576,27 @@ function SuccessFail({ days, today, hex, kind }: { days: StatDay[]; today: strin
 
   const tally = useMemo(() => {
     const cutoff = range === "30d" ? addDays(today, -29) : range === "year" ? `${today.slice(0, 4)}-01-01` : "0000-00-00";
-    const t = { done: 0, partial: 0, missed: 0, skipped: 0 };
+    const t = { done: 0, partial: 0, missed: 0, slipped: 0, skipped: 0 };
     for (const [d, s] of days) {
       if (d < cutoff) continue;
       if (s === "done") t.done += 1;
       else if (s === "partial") t.partial += 1;
-      else if (s === "missed" || s === "slipped") t.missed += 1;
+      else if (s === "missed") t.missed += 1;
+      else if (s === "slipped") t.slipped += 1;
       else if (s === "skipped") t.skipped += 1;
     }
     return t;
   }, [days, range, today]);
 
   const slices = [
-    { name: isBreak ? "Clean" : "Success", value: tally.done, fill: hex },
-    { name: "Partial", value: tally.partial, fill: tint(hex, 0.4) },
-    { name: isBreak ? "Slipped" : "Fail", value: tally.missed, fill: "var(--h-bad)" },
-    { name: "Skipped", value: tally.skipped, fill: "var(--h-border)" },
+    { name: isBreak ? "Clean" : "Success", value: tally.done, fill: STATUS_COLOR.done },
+    { name: "Partial", value: tally.partial, fill: STATUS_COLOR.partial },
+    { name: "Slipped", value: tally.slipped, fill: STATUS_COLOR.slipped },
+    { name: isBreak ? "Missed" : "Fail", value: tally.missed, fill: STATUS_COLOR.missed },
+    { name: "Skipped", value: tally.skipped, fill: STATUS_COLOR.skipped },
   ].filter((s) => s.value > 0);
 
-  const judged = tally.done + tally.partial + tally.missed;
+  const judged = tally.done + tally.partial + tally.missed + tally.slipped;
   const rate = judged === 0 ? null : Math.round((tally.done / judged) * 100);
 
   return (
