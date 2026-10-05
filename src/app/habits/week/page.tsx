@@ -15,7 +15,7 @@ import {
 import { addDays, addMonths, parseIso, todayIso } from "@/lib/date";
 import { WeekGrid, type WeekRow } from "@/components/habits/week-grid";
 import { Ring } from "@/components/habits/ring";
-import { MonthMatrix, type MatrixRow } from "@/components/habits/month-matrix";
+import { MonthMatrix } from "@/components/habits/month-matrix";
 import { HabitHeatCard } from "@/components/habits/habit-heat-card";
 import { heatmapWeeks } from "@/lib/habit-stats";
 import { cn } from "@/lib/utils";
@@ -48,7 +48,7 @@ export default async function HabitsWeekPage({
   const { profile, readOnly, habits, logsByHabit, categories } = await loadHabitData();
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
-  const rows: WeekRow[] = habits.map((h) => {
+  const buildRow = (h: (typeof habits)[number], dates: string[]): WeekRow => {
     const logs = logsByHabit[h.id] ?? {};
     return {
       id: h.id,
@@ -74,7 +74,9 @@ export default async function HabitsWeekPage({
         logged: !!logs[d],
       })),
     };
-  });
+  };
+
+  const rows: WeekRow[] = habits.map((h) => buildRow(h, dates));
 
   // Week-level score: average of each habit's progress towards what was expected this week.
   let achieved = 0;
@@ -103,16 +105,8 @@ export default async function HabitsWeekPage({
   const monthKey = rawMonth && /^d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) ? rawMonth : today.slice(0, 7);
   const monthFirst = `${monthKey}-01`;
   const monthDays = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5)), 0).getDate();
-  const matrixRows: MatrixRow[] = monthView
-    ? habits.map((h) => {
-        const logs = logsByHabit[h.id] ?? {};
-        const states = Array.from({ length: monthDays }, (_, i) => dayState(h, logs, `${monthKey}-${String(i + 1).padStart(2, "0")}`, today));
-        const goal = isPeriodHabit(h)
-          ? Math.max(1, Math.round((h.weeklyTarget * monthDays) / PERIOD_DAYS[h.periodUnit]))
-          : states.filter((s) => s !== "off" && s !== "prestart" && s !== "skipped").length;
-        return { id: h.id, name: h.name, icon: h.icon, color: h.color, kind: h.kind, states, done: states.filter((s) => s === "done").length, goal };
-      })
-    : [];
+  const monthDates = Array.from({ length: monthDays }, (_, i) => `${monthKey}-${String(i + 1).padStart(2, "0")}`);
+  const matrixRows: WeekRow[] = monthView ? habits.map((h) => buildRow(h, monthDates)) : [];
   const monthLabel = parseIso(monthFirst).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const fmt = (iso: string) => parseIso(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
@@ -206,7 +200,7 @@ export default async function HabitsWeekPage({
         </p>
       ) : monthView ? (
         <>
-          <MonthMatrix month={monthKey} days={monthDays} today={today} rows={matrixRows} />
+          <MonthMatrix month={monthKey} days={monthDays} today={today} rows={matrixRows} readOnly={readOnly} />
         </>
       ) : heat ? (
         <>

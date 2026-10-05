@@ -36,7 +36,7 @@ export type WeekRow = {
 };
 
 /** What a one-tap "done" logs for this habit: the full goal. */
-function doneEntry(row: WeekRow): { value: number; checked?: string[] } {
+function doneEntry(row: Pick<WeekRow, "evalType" | "checklist" | "dailyTarget">): { value: number; checked?: string[] } {
   if (row.evalType === "checklist") {
     const ids = row.checklist.map((i) => i.id);
     return { value: ids.length, checked: ids };
@@ -61,7 +61,7 @@ type Next = { status: "done" | "slipped" | "missed" | "skipped" | "clear"; state
  * and checklist habits open the progress dialog instead, see onCell.) A day that only *looks* missed
  * because nothing was logged has no entry yet, so its next step is done.
  */
-function nextForClick(row: WeekRow, cell: WeekCell): Next {
+export function nextForClick(row: Pick<WeekRow, "evalType" | "checklist" | "dailyTarget">, cell: Pick<WeekCell, "state" | "logged">): Next {
   switch (cell.state) {
     case "done":
       return { status: "slipped", state: "slipped", value: 0 };
@@ -80,12 +80,12 @@ function nextForClick(row: WeekRow, cell: WeekCell): Next {
 }
 
 /** The state a cell shows once its entry is cleared (or if it was never logged). */
-function emptyState(row: WeekRow, date: string, today: string): DayState {
+export function emptyState(row: Pick<WeekRow, "isPeriod">, date: string, today: string): DayState {
   return row.isPeriod ? "flex" : date === today ? "pending" : "missed";
 }
 
 /** The state a saved numeric / timer / checklist entry lands on: done only if it meets the goal. */
-function entryState(row: WeekRow, date: string, today: string, entry: { value?: number; checked?: string[] }): DayState {
+export function entryState(row: Pick<WeekRow, "evalType" | "checklist" | "targetOp" | "dailyTarget" | "isPeriod">, date: string, today: string, entry: { value?: number; checked?: string[] }): DayState {
   if (row.evalType === "checklist") {
     const n = entry.checked?.length ?? 0;
     if (n === 0) return emptyState(row, date, today);

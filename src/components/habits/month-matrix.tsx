@@ -1,22 +1,18 @@
+"use client";
+
+import { useOptimistic, useState, useTransition } from "react";
 import Link from "next/link";
 import { Check, Minus, X } from "lucide-react";
+import { logHabitAction } from "@/lib/habit-actions";
+import { ProgressDialog } from "@/components/habits/progress-dialog";
+import { emptyState, entryState, nextForClick, type WeekRow } from "@/components/habits/week-grid";
+import { parseIso } from "@/lib/date";
 import { HabitIcon } from "@/components/habits/habit-icon";
 import { MonthChart } from "@/components/habits/month-chart";
-import { STATUS_COLOR, colorHex, tint, type DayState } from "@/lib/habits";
+import { PERIOD_DAYS, STATUS_COLOR, colorHex, tint, type DayState } from "@/lib/habits";
 import { cn } from "@/lib/utils";
 
-export type MatrixRow = {
-  id: number;
-  name: string;
-  icon: string;
-  color: string;
-  kind: "build" | "break";
-  /** One state per day of the month, in order. */
-  states: DayState[];
-  done: number;
-  /** What the month asks of this habit: its scheduled days (or the period target, spread over the month). */
-  goal: number;
-};
+type Change = { habitId: number; date: string; state: DayState; value: number; checked: string[]; logged: boolean };
 
 const COUNTED: DayState[] = ["done", "partial", "missed", "slipped", "pending"];
 
@@ -96,14 +92,47 @@ export function MonthMatrix({
   month,
   days,
   today,
-  rows,
+  rows: serverRows,
+  readOnly,
 }: {
   /** yyyy-mm */
   month: string;
   days: number;
   today: string;
-  rows: MatrixRow[];
+  /** One row per habit, with a cell for every day of the month. */
+  rows: WeekRow[];
+  readOnly: boolean;
 }) {
+  const [rows, applyChange] = useOptimistic<WeekRow[], Change>(serverRows, (state, c) =>
+    state.map((r) =>
+      r.id !== c.habitId ? r : { ...r, cells: r.cells.map((cell) => (cell.date === c.date ? { ...cell, state: c.state, value: c.value, checked: c.checked, logged: c.logged } : cell)) }
+    )
+  );
+  const [, startTransition] = useTransition();
+  const [adjusting, setAdjusting] = useState<{ rowId: number; date: string } | null>(null);
+
+  function send(row: WeekRow, date: string, status: "done" | "slipped" | "missed" | "skipped" | "clear", state: DayState, value: number, checked?: string[]) {
+    startTransition(async () => {
+      applyChange({ habitId: row.id, date, state, value, checked: checked ?? [], logged: status !== "clear" });
+      await logHabitAction({ habitId: row.id, date, status, value, checked });
+    });
+  }
+
+  /** Same tap as the Week grid: plain habits cycle done, slipped, missed, skipped, empty; the rest open a dialog. */
+  function onCell(row: WeekRow, cell: WeekRow["cells"][number]) {
+    if (readOnly || cell.date > today || cell.state === "off") return;
+    if (row.evalType !== "yes_no") {
+      setAdjusting({ rowId: row.id, date: cell.date });
+      return;
+    }
+    const next = nextForClick(row, cell);
+    const state = next.status === "clear" ? emptyState(row, cell.date, today) : next.state;
+    send(row, cell.date, next.status, state, next.value, next.checked);
+  }
+
+  const adjustRow = adjusting ? rows.find((r) => r.id === adjusting.rowId) : undefined;
+  const adjustCell = adjustRow?.cells.find((c) => c.date === adjusting?.date);
+
   const dayNumbers = Array.from({ length: days }, (_, i) => i + 1);
   const dateOf = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
 
@@ -113,14 +142,18 @@ export function MonthMatrix({
     let completed = 0;
     let counted = 0;
     for (const r of rows) {
-      const s = r.states[i];
+      const s = r.cells[i].state;
       if (s === "done") completed += 1;
       if (COUNTED.includes(s)) counted += 1;
     }
     const reached = dateOf(d) <= today;
     return { d, reached, completed, notCompleted: counted - completed, pct: reached && counted > 0 ? Math.round((completed / counted) * 100) : null };
   });
-  const total = rows.reduce((n, r) => n + r.done, 0);
+  const doneOf = (r: WeekRow) => r.cells.filter((c) => c.state === "done").length;
+  // What the month asks of a habit: its scheduled days, or its period target spread over the month.
+  const goalOf = (r: WeekRow) =>
+    r.isPeriod ? Math.max(1, Math.round((r.periodTarget * days) / PERIOD_DAYS[r.periodUnit])) : r.cells.filter((c) => c.state !== "off" && c.state !== "prestart" && c.state !== "skipped").length;
+  const total = rows.reduce((n, r) => n + doneOf(r), 0);
 
   const columns = `minmax(7.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
   // Habit rows share whatever height is left (down to nothing), and text and squares scale with the row.
@@ -145,7 +178,9 @@ export function MonthMatrix({
           {/* Habit rows */}
           {rows.map((r, ri) => {
             const hex = colorHex(r.color);
-            const pct = r.goal > 0 ? Math.min(100, Math.round((r.done / r.goal) * 100)) : 0;
+            const done = doneOf(r);
+            const goal = goalOf(r);
+            const pct = goal > 0 ? Math.min(100, Math.round((done / goal) * 100)) : 0;
             const edge = "border-t border-h-border";
             return (
               <div key={r.id} className="contents">
@@ -157,19 +192,30 @@ export function MonthMatrix({
                     <span className="truncate font-bold">{r.name}</span>
                   </Link>
                 </Cell>
-                {r.states.map((s, i) => (
-                  <Cell key={i} row={ri + 2} className={edge}>
-                    {s === "off" || s === "prestart" ? (
-                      <Square state={s} />
-                    ) : (
-                      <Link href={`/habits?date=${dateOf(i + 1)}`} aria-label={`${r.name}, ${dateOf(i + 1)}: ${s}`} title={`${dateOf(i + 1)} · ${s}`} className="flex items-center justify-center">
-                        <Square state={s} />
-                      </Link>
-                    )}
-                  </Cell>
-                ))}
-                <Cell row={ri + 2} className={cn(edge, "font-extrabold tabular-nums")}>{r.done}</Cell>
-                <Cell row={ri + 2} className={cn(edge, "font-semibold tabular-nums text-h-muted")}>{r.goal}</Cell>
+                {r.cells.map((c) => {
+                  const tappable = !readOnly && c.date <= today && c.state !== "off";
+                  return (
+                    <Cell key={c.date} row={ri + 2} className={edge}>
+                      {tappable ? (
+                        <button
+                          type="button"
+                          onClick={() => onCell(r, c)}
+                          aria-label={`${r.name}, ${c.date}: ${c.state}. Tap to change.`}
+                          title={`${c.date} · ${c.state}`}
+                          className="flex items-center justify-center rounded-[22%] transition-transform hover:scale-110 active:scale-90"
+                        >
+                          <Square state={c.state} />
+                        </button>
+                      ) : (
+                        <span title={`${c.date} · ${c.state}`} className="flex items-center justify-center">
+                          <Square state={c.state} />
+                        </span>
+                      )}
+                    </Cell>
+                  );
+                })}
+                <Cell row={ri + 2} className={cn(edge, "font-extrabold tabular-nums")}>{done}</Cell>
+                <Cell row={ri + 2} className={cn(edge, "font-semibold tabular-nums text-h-muted")}>{goal}</Cell>
                 <Cell row={ri + 2} className={cn(edge, "justify-start px-3")}>
                   <div className="flex w-full items-center gap-2">
                     <div className="h-2 flex-1 overflow-hidden rounded-full bg-h-surface2">
@@ -232,6 +278,26 @@ export function MonthMatrix({
           </div>
         </div>
       </section>
+
+      {adjustRow && adjustCell && (
+        <ProgressDialog
+          name={adjustRow.name}
+          dateLabel={parseIso(adjustCell.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+          color={adjustRow.color}
+          spec={{ evalType: adjustRow.evalType, targetOp: adjustRow.targetOp, dailyTarget: adjustRow.dailyTarget, unit: adjustRow.unit, checklist: adjustRow.checklist }}
+          initialValue={adjustRow.evalType === "checklist" ? 0 : adjustCell.value}
+          initialChecked={adjustCell.checked}
+          onClose={() => setAdjusting(null)}
+          onSave={(entry) => {
+            const state = entryState(adjustRow, adjustCell.date, today, entry);
+            send(adjustRow, adjustCell.date, "done", state, entry.value ?? entry.checked?.length ?? 0, entry.checked);
+          }}
+          breakHabit={adjustRow.kind === "break"}
+          onMissed={() => (adjustRow.kind === "break" ? send(adjustRow, adjustCell.date, "slipped", "slipped", 0) : send(adjustRow, adjustCell.date, "missed", "missed", 0))}
+          onSkip={() => send(adjustRow, adjustCell.date, "skipped", "skipped", 0)}
+          onReset={() => send(adjustRow, adjustCell.date, "clear", emptyState(adjustRow, adjustCell.date, today), 0)}
+        />
+      )}
     </div>
   );
 }
