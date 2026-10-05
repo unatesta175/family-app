@@ -449,9 +449,11 @@ function blendAmethyst(condition: GardenCondition, goldenFraction: number): (typ
   const base = CONDITION_PALETTE[condition === "golden" ? "thriving" : condition];
   const f = Math.max(0, Math.min(1, goldenFraction));
   if (f <= 0) return base;
-  // Five on time is the full golden tree, exactly what a man gets for five on time and jamaah. The
-  // amethyst halo, rings and sparkles stay on top of it (see TreeBlessing), so it is never less.
-  if (f >= 1) return CONDITION_PALETTE.golden;
+  // Five on time is the grand tree: burnished gold armour with pearl-lilac highlights and a deep gloss
+  // (like a polished crest), under a purple aura (see TreeBlessing). Gold at least as rich as a man's.
+  if (f >= 1) {
+    return { canopyA: "#c98f14", canopyB: "#ffcb2f", canopyC: "#f6d9ff", trunk: "#f0c94a", droop: false, glow: true, emissiveIntensity: 0.62, metalness: 0.8 };
+  }
   const t = 0.22 + 0.78 * f;
   const am = AMETHYST_PALETTE;
   return {
@@ -814,6 +816,8 @@ const CONDITION_BLOOM_SECONDARY: Record<GardenCondition, string> = {
 };
 
 const BLESS_FAR_DISTANCE = 14;
+/** Wisps of violet mist rising off a grand amethyst tree. */
+const MIST_COUNT = 12;
 const PETAL_COUNT = 10;
 const FAR_PETAL_COUNT = 5;
 const BFLY_COUNT = 3;
@@ -919,6 +923,8 @@ function TreeBlessing({ seed, fraction, theme = "gold" }: { seed: number; fracti
   const ringA = useRef<Mesh>(null);
   const ringB = useRef<Mesh>(null);
   const glow2 = useRef<Sprite>(null);
+  const aura = useRef<Sprite>(null);
+  const mist = useRef<(Sprite | null)[]>([]);
   const tex = getSoftTexture();
   const wingMats = getButterflyWingMats();
   const root = useRef<Group>(null);
@@ -950,6 +956,28 @@ function TreeBlessing({ seed, fraction, theme = "gold" }: { seed: number; fracti
     // Amethyst: two slow gold rings turning against each other around the crown, and a second, gold halo.
     if (ringA.current) ringA.current.rotation.z = time * 0.45 + seed;
     if (ringB.current) ringB.current.rotation.z = -time * 0.3 + seed;
+    // The grand look (amethyst, 5/5): a purple aura breathing around the tree and wisps of violet
+    // mist rising off it, a few at a time on far-away trees.
+    const au = aura.current;
+    if (au) {
+      const fa = 0.9 + 0.1 * Math.sin(time * 0.8 + seed);
+      au.scale.setScalar(3.1 * fa);
+      au.material.opacity = 0.5 * fa;
+    }
+    const mistLimit = far ? MIST_COUNT / 3 : MIST_COUNT;
+    for (let i = 0; i < MIST_COUNT; i++) {
+      const m = mist.current[i];
+      if (!m) continue;
+      m.visible = i < mistLimit;
+      if (!m.visible) continue;
+      const ph = (seed * 0.013 + i * 0.382) % 1;
+      const t = (time * 0.12 + ph) % 1;
+      const r = 0.3 + 0.28 * Math.sin(ph * 17 + t * 2.5);
+      m.position.set(Math.cos(ph * 23 + t * 3) * r, 0.2 + t * 1.5, Math.sin(ph * 19 + t * 3) * r);
+      m.scale.setScalar(0.5 + 0.55 * t);
+      m.material.opacity = Math.sin(t * Math.PI) * 0.55;
+    }
+
     const gl2 = glow2.current;
     if (gl2) {
       const f2 = 0.8 + 0.2 * Math.sin(time * 0.9 + seed * 0.5);
@@ -1034,6 +1062,18 @@ function TreeBlessing({ seed, fraction, theme = "gold" }: { seed: number; fracti
         distance={amethyst ? 3.4 : 3}
         decay={2}
       />
+      {amethyst && perfect && (
+        <>
+          <sprite ref={aura} position={[0, 0.95, 0]}>
+            <spriteMaterial map={tex} color="#8a4dff" transparent depthWrite={false} />
+          </sprite>
+          {Array.from({ length: MIST_COUNT }, (_, i) => (
+            <sprite key={i} ref={(el) => void (mist.current[i] = el)}>
+              <spriteMaterial map={tex} color={["#9a55ff", "#6f7dff", "#c77cff"][i % 3]} transparent depthWrite={false} />
+            </sprite>
+          ))}
+        </>
+      )}
       {amethyst && (
         <>
           <sprite ref={glow2} position={[0, 1.1, 0]}>
