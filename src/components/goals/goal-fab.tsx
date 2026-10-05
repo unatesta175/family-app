@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { LayoutTemplate, Plus, Sparkles, Target } from "lucide-react";
 import { createFromTemplateAction } from "@/lib/goal-actions";
 import { GOAL_TEMPLATES } from "@/lib/goals";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 /** The "+" button: a blank goal, or one started from a template. */
 export function GoalFab() {
+  const viewingMember = !!useSearchParams().get("member");
   const [menu, setMenu] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [templatesOpen, setTemplatesOpen] = useState(false);
@@ -30,6 +31,8 @@ export function GoalFab() {
       document.removeEventListener("touchstart", onDown);
     };
   }, [menu]);
+
+  if (viewingMember) return null;
 
   return (
     <>

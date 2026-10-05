@@ -27,8 +27,9 @@ function birthDateFromAge(age: number, today: string): string {
 }
 
 /** Everything the Time page needs for the signed-in user. */
-export async function loadPlannerData(): Promise<PlannerData> {
-  const profileId = await getOwnProfileId();
+export async function loadPlannerData(memberId?: number): Promise<PlannerData> {
+  // `memberId` is a family member already checked by `resolveMember`; the page shows it read-only.
+  const profileId = memberId ?? (await getOwnProfileId());
   const today = todayIso();
   if (profileId === null) return { today, routines: [], dayMap: Array(7).fill(null), birthDate: null, birthSource: null, profileBirthDate: null, lifespanYears: 80 };
 

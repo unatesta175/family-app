@@ -5,20 +5,23 @@ import { getReviews } from "@/lib/db/repo-goals";
 import { reviewWeekStart, shortDate } from "@/lib/goals";
 import { addDays } from "@/lib/date";
 import { DeleteReviewButton, ReviewForm } from "@/components/goals/review-form";
+import { resolveMember } from "@/lib/goal-member";
 
 export const metadata = { title: "Weekly review" };
 
 /** A two-minute Sunday check-in: what moved, what stalled, and one thing to change. */
-export default async function ReviewPage() {
+export default async function ReviewPage({ searchParams }: { searchParams: Promise<{ member?: string }> }) {
+  const member = await resolveMember((await searchParams).member);
   const { today, viewerId, views } = await loadGoalsData();
-  const reviews = viewerId >= 0 ? await getReviews(viewerId) : [];
+  const subjectId = member ? member.id : viewerId;
+  const reviews = subjectId >= 0 ? await getReviews(subjectId) : [];
   const weekStart = reviewWeekStart(today);
   const weekEnd = addDays(weekStart, 6);
   const current = reviews.find((r) => r.weekStart === weekStart);
   const past = reviews.filter((r) => r.weekStart !== weekStart);
 
   // Which active goals saw activity during the week being reviewed, and which didn't.
-  const active = views.filter((v) => v.mine && v.goal.status === "active");
+  const active = views.filter((v) => (member ? v.goal.profileId === member.id : v.mine) && v.goal.status === "active");
   const moved = active.filter((v) => v.activity.some((d) => d >= weekStart && d <= weekEnd));
   const stalled = active.filter((v) => !moved.includes(v));
 
@@ -29,7 +32,7 @@ export default async function ReviewPage() {
           {shortDate(weekStart)} – {shortDate(weekEnd)}
         </p>
         <h1 className="text-2xl font-extrabold tracking-tight">Weekly review</h1>
-        <p className="text-sm text-h-muted">Look back for two minutes so next week goes better.</p>
+        <p className="text-sm text-h-muted">{member ? `${member.name}'s reflections. View only.` : "Look back for two minutes so next week goes better."}</p>
       </div>
 
       {active.length > 0 && (
@@ -80,14 +83,26 @@ export default async function ReviewPage() {
       <section className="h-card flex flex-col gap-3 p-4">
         <h2 className="flex items-center gap-2 text-sm font-extrabold">
           <MoonStar className="h-4 w-4 text-h-brand" />
-          Your reflection
+          {member ? `${member.name}'s reflection` : "Your reflection"}
         </h2>
-        <ReviewForm
-          key={weekStart}
-          weekStart={weekStart}
-          saved={!!current}
-          initial={{ moved: current?.moved ?? "", stalled: current?.stalled ?? "", change: current?.change ?? "" }}
-        />
+        {member ? (
+          current ? (
+            <dl className="flex flex-col gap-2 text-sm">
+              {current.moved && <Answer label="Moved" text={current.moved} />}
+              {current.stalled && <Answer label="Stalled" text={current.stalled} />}
+              {current.change && <Answer label="Change" text={current.change} />}
+            </dl>
+          ) : (
+            <p className="text-xs text-h-muted">No reflection written for this week yet.</p>
+          )
+        ) : (
+          <ReviewForm
+            key={weekStart}
+            weekStart={weekStart}
+            saved={!!current}
+            initial={{ moved: current?.moved ?? "", stalled: current?.stalled ?? "", change: current?.change ?? "" }}
+          />
+        )}
       </section>
 
       {past.length > 0 && (
@@ -100,7 +115,7 @@ export default async function ReviewPage() {
                   <p className="text-xs font-extrabold">
                     Week of {shortDate(r.weekStart)}
                   </p>
-                  <DeleteReviewButton weekStart={r.weekStart} />
+                  {!member && <DeleteReviewButton weekStart={r.weekStart} />}
                 </div>
                 <dl className="mt-2 flex flex-col gap-2 text-sm">
                   {r.moved && <Answer label="Moved" text={r.moved} />}

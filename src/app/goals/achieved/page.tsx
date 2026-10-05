@@ -4,13 +4,15 @@ import { loadGoalsData } from "@/lib/goal-data";
 import { shortDate } from "@/lib/goals";
 import { daysBetween } from "@/lib/habits";
 import { GoalTile } from "@/components/goals/goal-parts";
+import { resolveMember } from "@/lib/goal-member";
 
 export const metadata = { title: "Achieved" };
 
 /** The wall of goals you've achieved, and the archive of ones you dropped. */
-export default async function AchievedPage() {
+export default async function AchievedPage({ searchParams }: { searchParams: Promise<{ member?: string }> }) {
+  const member = await resolveMember((await searchParams).member);
   const { today, views } = await loadGoalsData();
-  const mine = views.filter((v) => v.mine);
+  const mine = member ? views.filter((v) => v.goal.profileId === member.id) : views.filter((v) => v.mine);
   const achieved = mine
     .filter((v) => v.goal.status === "achieved")
     .sort((a, b) => ((a.goal.achievedAt ?? "") < (b.goal.achievedAt ?? "") ? 1 : -1));

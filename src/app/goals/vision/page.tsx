@@ -4,20 +4,22 @@ import { loadGoalsData } from "@/lib/goal-data";
 import { colorHex } from "@/lib/habits";
 import { HabitIcon } from "@/components/habits/habit-icon";
 import { StatusBadge } from "@/components/goals/goal-parts";
+import { resolveMember } from "@/lib/goal-member";
 
 export const metadata = { title: "Vision board" };
 
 /** A visual board of your goals: the picture and the line you chose for each. */
-export default async function VisionPage() {
+export default async function VisionPage({ searchParams }: { searchParams: Promise<{ member?: string }> }) {
+  const member = await resolveMember((await searchParams).member);
   const { views } = await loadGoalsData();
-  const goals = views.filter((v) => v.mine && v.goal.status !== "dropped");
+  const goals = views.filter((v) => (member ? v.goal.profileId === member.id : v.mine) && v.goal.status !== "dropped");
 
   return (
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-4xl">
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">See it to be it</p>
         <h1 className="text-2xl font-extrabold tracking-tight">Vision board</h1>
-        <p className="text-sm text-h-muted">Add a picture and a quote when you edit a goal and it shows up here.</p>
+        <p className="text-sm text-h-muted">{member ? `${member.name}'s shared goals, with the picture and line they chose.` : "Add a picture and a quote when you edit a goal and it shows up here."}</p>
       </div>
 
       {goals.length === 0 ? (
@@ -25,8 +27,8 @@ export default async function VisionPage() {
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-h-brand-soft text-h-brand">
             <ImageIcon className="h-7 w-7" />
           </span>
-          <p className="text-base font-extrabold">Your board is empty</p>
-          <p className="text-sm text-h-muted">Create a goal, then give it a picture and a line that moves you.</p>
+          <p className="text-base font-extrabold">{member ? "Nothing shared yet" : "Your board is empty"}</p>
+          <p className="text-sm text-h-muted">{member ? `${member.name} has not shared any goals.` : "Create a goal, then give it a picture and a line that moves you."}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3">

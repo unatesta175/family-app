@@ -7,6 +7,7 @@ import type { GoalStatus } from "@/lib/db/schema";
 import { colorHex } from "@/lib/habits";
 import { GoalCard } from "@/components/goals/goal-card";
 import { GoalTile } from "@/components/goals/goal-parts";
+import { resolveMember } from "@/lib/goal-member";
 import { cn } from "@/lib/utils";
 
 const STATUS_FILTERS: { key: string; label: string; match: (s: GoalStatus) => boolean }[] = [
@@ -17,16 +18,18 @@ const STATUS_FILTERS: { key: string; label: string; match: (s: GoalStatus) => bo
   { key: "dropped", label: "Archived", match: (s) => s === "dropped" },
 ];
 
-export default async function GoalsHomePage({ searchParams }: { searchParams: Promise<{ status?: string; area?: string }> }) {
-  const { status: rawStatus, area: rawArea } = await searchParams;
+export default async function GoalsHomePage({ searchParams }: { searchParams: Promise<{ status?: string; area?: string; member?: string }> }) {
+  const { status: rawStatus, area: rawArea, member: rawMember } = await searchParams;
+  const member = await resolveMember(rawMember);
   const { today, viewerId, views } = await loadGoalsData();
   const filter = STATUS_FILTERS.find((f) => f.key === rawStatus) ?? STATUS_FILTERS[0];
   const reviews = viewerId >= 0 ? await getReviews(viewerId) : [];
   const reviewWeek = reviewWeekStart(today);
-  const needsReview = views.some((v) => v.mine && v.goal.status === "active") && !reviews.some((r) => r.weekStart === reviewWeek);
+  const needsReview = !member && views.some((v) => v.mine && v.goal.status === "active") && !reviews.some((r) => r.weekStart === reviewWeek);
 
-  const mine = views.filter((v) => v.mine);
-  const familyShared = views.filter((v) => !v.mine && v.goal.status !== "dropped");
+  // Looking at a family member: only their shared goals are in `views`, and nothing is editable.
+  const mine = member ? views.filter((v) => v.goal.profileId === member.id) : views.filter((v) => v.mine);
+  const familyShared = member ? [] : views.filter((v) => !v.mine && v.goal.status !== "dropped");
   const inFilter = mine.filter((v) => filter.match(v.goal.status));
   const areas = [...new Set(mine.filter((v) => filter.match(v.goal.status)).map((v) => v.goal.area))].sort();
   const area = rawArea && areas.includes(rawArea) ? rawArea : null;
@@ -57,6 +60,7 @@ export default async function GoalsHomePage({ searchParams }: { searchParams: Pr
     const q = new URLSearchParams();
     if (s !== "open") q.set("status", s);
     if (a) q.set("area", a);
+    if (member) q.set("member", String(member.id));
     const qs = q.toString();
     return `/goals${qs ? `?${qs}` : ""}`;
   };
@@ -65,10 +69,10 @@ export default async function GoalsHomePage({ searchParams }: { searchParams: Pr
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-4xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Your life, on purpose</p>
-          <h1 className="text-2xl font-extrabold tracking-tight">Goals</h1>
+          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{member ? `${member.name}'s life, on purpose` : "Your life, on purpose"}</p>
+          <h1 className="text-2xl font-extrabold tracking-tight">{member ? `${member.name}'s goals` : "Goals"}</h1>
         </div>
-        {mine.length > 0 && (
+        {mine.length > 0 && !member && (
           <Link
             href="/goals/export"
             prefetch={false}
@@ -84,7 +88,7 @@ export default async function GoalsHomePage({ searchParams }: { searchParams: Pr
         <div className="grid grid-cols-3 gap-2">
           <Stat value={String(active.length)} label="Active" />
           <Stat value={`${avg}%`} label="Avg. progress" />
-          <Stat value={String(achieved.length)} label="Achieved" href="/goals/achieved" />
+          <Stat value={String(achieved.length)} label="Achieved" href={`/goals/achieved${member ? `?member=${member.id}` : ""}`} />
         </div>
       )}
 
@@ -153,12 +157,12 @@ export default async function GoalsHomePage({ searchParams }: { searchParams: Pr
             <Target className="h-7 w-7" />
           </span>
           <div>
-            <p className="text-base font-extrabold">What do you want from your life?</p>
+            <p className="text-base font-extrabold">{member ? `${member.name} has not shared any goals yet` : "What do you want from your life?"}</p>
             <p className="mx-auto mt-1 max-w-sm text-sm text-h-muted">
-              Write your first goal, or start from a template. Link habits to it and watch your daily effort add up.
+              {member ? "Goals show up here once they switch one to Shared." : "Write your first goal, or start from a template. Link habits to it and watch your daily effort add up."}
             </p>
           </div>
-          <p className="text-xs font-semibold text-h-muted">Tap the + button to begin.</p>
+          {!member && <p className="text-xs font-semibold text-h-muted">Tap the + button to begin.</p>}
         </div>
       ) : (
         <>
