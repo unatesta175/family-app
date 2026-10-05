@@ -111,10 +111,10 @@ export default async function HabitsWeekPage({
   const fmt = (iso: string) => parseIso(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return (
-    <div className={cn("flex flex-col gap-5 md:mx-auto", monthView ? "md:max-w-none lg:h-[calc(100dvh-8.5rem)] lg:gap-3" : "md:max-w-3xl")}>
+    <div className={cn("flex min-w-0 max-w-full flex-col gap-5 overflow-x-clip md:mx-auto", monthView ? "md:max-w-none lg:h-[calc(100dvh-8.5rem)] lg:gap-3" : "md:max-w-3xl")}>
       <div>
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{profile?.name}</p>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           <h1 className="text-2xl font-extrabold tracking-tight">Progress</h1>
           {monthView && (
             <div className="flex items-center gap-1 rounded-full border border-h-border bg-h-surface p-0.5 shadow-sm">

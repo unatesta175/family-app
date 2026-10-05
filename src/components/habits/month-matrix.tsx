@@ -155,17 +155,17 @@ export function MonthMatrix({
     r.isPeriod ? Math.max(1, Math.round((r.periodTarget * days) / PERIOD_DAYS[r.periodUnit])) : r.cells.filter((c) => c.state !== "off" && c.state !== "prestart" && c.state !== "skipped").length;
   const total = rows.reduce((n, r) => n + doneOf(r), 0);
 
-  const columns = `minmax(7.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
+  const columns = `minmax(6.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
   // Habit rows share whatever height is left (down to nothing), and text and squares scale with the row.
   const rowTemplate = `1.5rem repeat(${rows.length}, minmax(0.9rem,1fr)) 1.25rem 1.25rem 1.5rem`;
   const summaryRow = rows.length + 3; // the header is row 1, habits follow, then the three summary rows
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
       <div className="h-card min-h-0 flex-1 overflow-x-auto p-3 lg:overflow-y-auto">
         <div className="grid h-full min-h-[22rem] min-w-[58rem] gap-y-px lg:min-w-0" style={{ gridTemplateColumns: columns, gridTemplateRows: rowTemplate }}>
           {/* Header */}
-          <Cell row={1} className={cn(label, "justify-start px-1")}>Habit</Cell>
+          <Cell row={1} className={cn(label, "justify-start px-1", "max-lg:sticky max-lg:left-0 max-lg:z-10 max-lg:bg-h-surface")}>Habit</Cell>
           {dayNumbers.map((d) => (
             <Cell key={d} row={1} className={cn("text-[11px] font-bold tabular-nums", dateOf(d) === today ? "text-h-brand" : "text-h-muted")}>
               <span className={cn("flex items-center justify-center rounded-md px-1", dateOf(d) === today && "bg-h-brand-soft")}>{d}</span>
@@ -184,7 +184,7 @@ export function MonthMatrix({
             const edge = "border-t border-h-border";
             return (
               <div key={r.id} className="contents">
-                <Cell row={ri + 2} className={cn(edge, "justify-start px-1")}>
+                <Cell row={ri + 2} className={cn(edge, "justify-start px-1", "max-lg:sticky max-lg:left-0 max-lg:z-10 max-lg:bg-h-surface")}>
                   <Link href={`/habits/${r.id}`} className="flex h-full min-w-0 items-center gap-2" title={r.name}>
                     <span className="flex aspect-square h-[88%] max-h-6 shrink-0 items-center justify-center rounded-lg" style={{ background: tint(hex, 0.15), color: hex }}>
                       <HabitIcon name={r.icon} className="h-3.5 w-3.5" />
@@ -229,7 +229,7 @@ export function MonthMatrix({
           })}
 
           {/* Summary */}
-          <Cell row={summaryRow} className={cn(label, "justify-start border-t-2 border-h-border px-1")}>Completed</Cell>
+          <Cell row={summaryRow} className={cn(label, "justify-start border-t-2 border-h-border px-1", "max-lg:sticky max-lg:left-0 max-lg:z-10 max-lg:bg-h-surface")}>Completed</Cell>
           {perDay.map((p) => (
             <Cell key={p.d} row={summaryRow} className="border-t-2 border-h-border font-bold tabular-nums">
               {p.reached ? p.completed : <span className="text-h-border">·</span>}
@@ -239,13 +239,13 @@ export function MonthMatrix({
             <span className={label}>Total this month</span>
             <span className="text-2xl font-extrabold leading-none tabular-nums">{total}</span>
           </Cell>
-          <Cell row={summaryRow + 1} className={cn(label, "justify-start px-1")}>Not completed</Cell>
+          <Cell row={summaryRow + 1} className={cn(label, "justify-start px-1", "max-lg:sticky max-lg:left-0 max-lg:z-10 max-lg:bg-h-surface")}>Not completed</Cell>
           {perDay.map((p) => (
             <Cell key={p.d} row={summaryRow + 1} className="font-semibold tabular-nums text-h-muted">
               {p.reached ? p.notCompleted : ""}
             </Cell>
           ))}
-          <Cell row={summaryRow + 2} className={cn(label, "justify-start px-1")}>Productivity</Cell>
+          <Cell row={summaryRow + 2} className={cn(label, "justify-start px-1", "max-lg:sticky max-lg:left-0 max-lg:z-10 max-lg:bg-h-surface")}>Productivity</Cell>
           {perDay.map((p) => (
             <Cell key={p.d} row={summaryRow + 2}>
               {p.pct === null ? (
