@@ -449,6 +449,9 @@ function blendAmethyst(condition: GardenCondition, goldenFraction: number): (typ
   const base = CONDITION_PALETTE[condition === "golden" ? "thriving" : condition];
   const f = Math.max(0, Math.min(1, goldenFraction));
   if (f <= 0) return base;
+  // Five on time is the full golden tree, exactly what a man gets for five on time and jamaah. The
+  // amethyst halo, rings and sparkles stay on top of it (see TreeBlessing), so it is never less.
+  if (f >= 1) return CONDITION_PALETTE.golden;
   const t = 0.22 + 0.78 * f;
   const am = AMETHYST_PALETTE;
   return {
