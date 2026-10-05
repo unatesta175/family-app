@@ -18,6 +18,7 @@ import {
   type PlotState,
 } from "@/lib/garden";
 import { GardenClient } from "@/components/garden/garden-client";
+import { PRAYER_ORDER } from "@/lib/prayers";
 import type { Prayer, Status } from "@/lib/db/schema";
 
 export default async function GardenPage({
@@ -64,6 +65,8 @@ export default async function GardenPage({
     goldenFraction: number;
     missedCount: number;
     theme: GardenTheme;
+    /** A woman who prayed all five on time AND in jamaah: the grand golden tree. */
+    grand: boolean;
   }[] = [];
   const dayDetails: Record<
     string,
@@ -89,6 +92,7 @@ export default async function GardenPage({
       goldenFraction: 0,
       missedCount: 0,
       theme,
+      grand: false,
     });
 
   for (let d = 1; d <= daysInMonth; d++) {
@@ -106,7 +110,9 @@ export default async function GardenPage({
     // Streak/jamaah flourishes only apply to a plot that's actually growing a tree.
     const tier = plotState === "growing" && stage === "flowering" ? gardenTier(streakLengthEndingOn(logsByDate, date)) : "none";
     const bonus = plotState === "growing" && pct === 100 && (hasJamaah || gender === "female");
-    cells.push({ date, stage, pct, quality, condition, plotState, bonus, tier, goldenFraction, missedCount, theme });
+    // Real jamaah is what earns a woman the golden crown; on time alone tops out at the royal purple.
+    const grand = gender === "female" && plotState === "growing" && Object.keys(day).length > 0 && PRAYER_ORDER.every((p) => day[p] === "on_time_jamaah");
+    cells.push({ date, stage, pct, quality, condition, plotState, bonus, tier, goldenFraction, missedCount, theme, grand });
     if (date <= today) dayDetails[date] = { pct, quality, condition, plotState, prayers: day };
   }
 

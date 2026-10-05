@@ -49,6 +49,7 @@ type Cell = {
   goldenFraction: number;
   missedCount: number;
   theme: GardenTheme;
+  grand: boolean;
 };
 type DayDetail = {
   pct: number;
@@ -432,7 +433,7 @@ function GardenGuide({ theme }: { theme: GardenTheme }) {
           <p className="text-xs font-bold uppercase tracking-wide text-white/90">For the best score</p>
           <p className="mt-0.5 text-[12px] leading-relaxed text-white/90">
             {amethyst
-              ? "For you, praying on time already counts as on time and jamaah. Each prayer on time deepens the tree's amethyst glow, from a soft lilac with one to a royal purple with four. All five on time gives the full golden tree, the same as five on time and jamaah for men, with your amethyst halo and rings on top. Keep the streak running and never let one go missed."
+              ? "For you, praying on time already counts as on time and jamaah. Each prayer on time deepens the tree's amethyst glow, from a soft lilac with one to a royal purple with four. All five on time makes a royal purple tree. Pray all five on time in jamaah too and it becomes the grand golden crown, glowing under a purple aura. Keep the streak running and never let one go missed."
               : "Pray every prayer on time and in jamaah, don't let a single one go marked missed, and keep the streak running, that's a golden tree, every day."}
           </p>
         </div>

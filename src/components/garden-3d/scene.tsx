@@ -19,6 +19,7 @@ export type Garden3DProps = {
     tier: GardenCell["tier"];
     goldenFraction: GardenCell["goldenFraction"];
     theme: GardenCell["theme"];
+    grand: GardenCell["grand"];
     missedCount: GardenCell["missedCount"];
   }[];
   cols: number;

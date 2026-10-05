@@ -44,6 +44,8 @@ export type GardenCell = {
   goldenFraction: number;
   /** Plain gold, or the amethyst-and-gold look women's trees get. */
   theme: GardenTheme;
+  /** A woman's five on time AND jamaah: the grand golden tree under a purple aura. */
+  grand: boolean;
   /** How many of the day's 5 prayers are actively marked missed (1-4 for a tombstoned plot). */
   missedCount: number;
   col: number;
@@ -444,14 +446,15 @@ function mixColor(a: string, b: string, t: number): string {
  * time tints the tree a soft lilac (a 22% floor), and each further prayer deepens it toward a rich
  * royal purple, with more shine and metal than the plain-gold tree ever gets.
  */
-function blendAmethyst(condition: GardenCondition, goldenFraction: number): (typeof CONDITION_PALETTE)[GardenCondition] {
+function blendAmethyst(condition: GardenCondition, goldenFraction: number, grand = false): (typeof CONDITION_PALETTE)[GardenCondition] {
   // A "golden" day is all-on-time, which for the amethyst look starts from healthy green and goes purple.
   const base = CONDITION_PALETTE[condition === "golden" ? "thriving" : condition];
   const f = Math.max(0, Math.min(1, goldenFraction));
   if (f <= 0) return base;
-  // Five on time is the grand tree: burnished gold armour with pearl-lilac highlights and a deep gloss
-  // (like a polished crest), under a purple aura (see TreeBlessing). Gold at least as rich as a man's.
-  if (f >= 1) {
+  // Five on time AND jamaah is the grand tree: burnished gold armour with pearl-lilac highlights and a
+  // deep gloss (like a polished crest), under a purple aura (see TreeBlessing). Five on time alone tops
+  // out at the full royal purple below.
+  if (grand) {
     return { canopyA: "#c98f14", canopyB: "#ffcb2f", canopyC: "#f6d9ff", trunk: "#f0c94a", droop: false, glow: true, emissiveIntensity: 0.62, metalness: 0.8 };
   }
   const t = 0.22 + 0.78 * f;
@@ -471,9 +474,10 @@ function blendAmethyst(condition: GardenCondition, goldenFraction: number): (typ
 function blendGolden(
   condition: GardenCondition,
   goldenFraction: number,
-  theme: GardenTheme = "gold"
+  theme: GardenTheme = "gold",
+  grand = false
 ): (typeof CONDITION_PALETTE)[GardenCondition] {
-  if (theme === "amethyst") return blendAmethyst(condition, goldenFraction);
+  if (theme === "amethyst") return blendAmethyst(condition, goldenFraction, grand);
   const base = CONDITION_PALETTE[condition];
   const t = Math.max(0, Math.min(1, goldenFraction));
   if (condition === "golden" || t <= 0) return base;
@@ -918,7 +922,7 @@ function butterflyPath(tt: number, i: number, time: number, out: Vector3) {
  * The bird and ground flowers stay reserved for a fully golden day, so there's still something
  * exclusive to reach for. One useFrame for everything; far-away trees draw fewer particles.
  */
-function TreeBlessing({ seed, fraction, theme = "gold" }: { seed: number; fraction: number; theme?: GardenTheme }) {
+function TreeBlessing({ seed, fraction, theme = "gold", grand = false }: { seed: number; fraction: number; theme?: GardenTheme; grand?: boolean }) {
   const amethyst = theme === "amethyst";
   const ringA = useRef<Mesh>(null);
   const ringB = useRef<Mesh>(null);
@@ -1062,7 +1066,7 @@ function TreeBlessing({ seed, fraction, theme = "gold" }: { seed: number; fracti
         distance={amethyst ? 3.4 : 3}
         decay={2}
       />
-      {amethyst && perfect && (
+      {amethyst && grand && (
         <>
           <sprite ref={aura} position={[0, 0.95, 0]}>
             <spriteMaterial map={tex} color="#8a4dff" transparent depthWrite={false} />
@@ -1208,6 +1212,7 @@ export function FloweringStage({
   goldenFraction = 0,
   seed = 0,
   theme = "gold",
+  grand = false,
 }: {
   bonus?: boolean;
   tier?: GardenTier;
@@ -1215,10 +1220,11 @@ export function FloweringStage({
   goldenFraction?: number;
   seed?: number;
   theme?: GardenTheme;
+  grand?: boolean;
 }) {
   const scale = TIER_SCALE[tier];
   const ringColor = TIER_RING_COLOR[tier];
-  const p = blendGolden(condition, goldenFraction, theme);
+  const p = blendGolden(condition, goldenFraction, theme, grand);
   const bloomCount = CONDITION_BLOOM_COUNT[condition];
   // Any on_time_jamaah prayer today (not just a perfect 5/5) earns a scaled-down blessing —
   // butterflies/glow/sparkles all grow with goldenFraction instead of being all-or-nothing.
@@ -1312,7 +1318,7 @@ export function FloweringStage({
         )}
       </group>
 
-      {blessFraction > 0 && <TreeBlessing seed={seed} fraction={blessFraction} theme={theme} />}
+      {blessFraction > 0 && <TreeBlessing seed={seed} fraction={blessFraction} theme={theme} grand={grand} />}
     </group>
   );
 }
@@ -1727,6 +1733,7 @@ export function StageLayer({ cells, cols, rows }: { cells: GardenCell[]; cols: n
             condition={c.condition}
             goldenFraction={c.goldenFraction}
             theme={c.theme}
+            grand={c.grand}
             seed={c.col * 131 + c.row * 977}
           />
         )}
