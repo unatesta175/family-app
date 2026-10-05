@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { AlarmClock, Ban, Check, CircleHelp, CornerDownRight, Minus, Repeat, SkipForward, X } from "lucide-react";
 import { Sheet } from "@/components/habits/sheet";
-import { statusStyle } from "@/lib/habits";
+import { STATUS_COLOR, statusStyle } from "@/lib/habits";
 import { cn } from "@/lib/utils";
 
 /** A "?" button that opens a plain-language guide to every status a habit or task can have. */
@@ -63,7 +63,7 @@ const HABIT_STATUSES: Item[] = [
   },
   {
     marker: (
-      <span className={cn(chip, "border-dashed")} style={{ background: `${BRAND}10`, borderColor: BRAND, color: BRAND }}>
+      <span className={cn(chip, "border-dashed")} style={{ background: `${STATUS_COLOR.pending}14`, borderColor: STATUS_COLOR.pending, color: STATUS_COLOR.pending }}>
         <span className="h-1.5 w-1.5 rounded-full bg-current" />
       </span>
     ),

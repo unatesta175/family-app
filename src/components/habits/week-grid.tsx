@@ -318,7 +318,6 @@ export function WeekGrid({
                     <td key={cell.date} className="px-0.5 py-1.5 text-center">
                       <CellButton
                         cell={cell}
-                        hex={hex}
                         row={row}
                         disabled={readOnly || cell.date > today}
                         onClick={() => onCell(row, cell)}
@@ -435,7 +434,6 @@ export function WeekGrid({
                     </span>
                     <CellButton
                       cell={cell}
-                      hex={hex}
                       row={row}
                       disabled={readOnly || cell.date > today}
                       onClick={() => onCell(row, cell)}
@@ -542,13 +540,11 @@ export function WeekGrid({
 
 function CellButton({
   cell,
-  hex,
   row,
   disabled,
   onClick,
 }: {
   cell: WeekCell;
-  hex: string;
   row: WeekRow;
   disabled: boolean;
   onClick: () => void;
@@ -583,7 +579,7 @@ function CellButton({
       content = <X className="h-3.5 w-3.5 opacity-70" strokeWidth={2.5} />;
       break;
     case "pending":
-      style = { borderColor: hex, background: tint(hex, 0.08) };
+      style = { borderColor: STATUS_COLOR.pending, background: tint(STATUS_COLOR.pending, 0.08) };
       extra = "border-2";
       break;
     case "flex":

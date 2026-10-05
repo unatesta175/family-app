@@ -73,7 +73,6 @@ export function HabitCalendar({
   today: string;
   readOnly: boolean;
 }) {
-  const hex = colorHex(color);
   const [selected, setSelected] = useState<CalendarDay | null>(null);
 
   return (
@@ -131,7 +130,7 @@ export function HabitCalendar({
             case "pending":
             case "flex":
               // Due but not logged yet: a dashed outline in the habit's colour with a dot.
-              style = { background: tint(hex, 0.06), color: hex, borderColor: hex };
+              style = { ...statusStyle("pending", false), background: tint(STATUS_COLOR.pending, 0.06), borderColor: STATUS_COLOR.pending };
               extra = "border-dashed";
               icon = <span className="h-1.5 w-1.5 rounded-full bg-current" />;
               break;
@@ -186,7 +185,7 @@ export function HabitCalendar({
           </span>
         </LegendItem>
         <LegendItem label="Pending">
-          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-dashed" style={{ borderColor: hex, color: hex, background: tint(hex, 0.06) }}>
+          <span className="flex h-5 w-5 items-center justify-center rounded-md border-2 border-dashed" style={{ borderColor: STATUS_COLOR.pending, color: STATUS_COLOR.pending, background: tint(STATUS_COLOR.pending, 0.06) }}>
             <span className="h-1.5 w-1.5 rounded-full bg-current" />
           </span>
         </LegendItem>

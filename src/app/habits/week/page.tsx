@@ -27,6 +27,7 @@ const LEGEND = [
   { label: "Slipped", color: STATUS_COLOR.slipped },
   { label: "Missed", color: STATUS_COLOR.missed },
   { label: "Skipped", color: STATUS_COLOR.skipped },
+  { label: "Pending", color: STATUS_COLOR.pending },
 ] as const;
 
 export default async function HabitsWeekPage({
@@ -168,7 +169,7 @@ export default async function HabitsWeekPage({
         </p>
       ) : heat ? (
         <>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-3 sm:grid-cols-2">
             {habits.map((h) => {
               const logs = logsByHabit[h.id] ?? {};
               return (

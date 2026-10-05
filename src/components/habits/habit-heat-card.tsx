@@ -13,7 +13,7 @@ const TODAY_LABEL: Partial<Record<DayState, { text: string; color: string | null
   slipped: { text: "Slipped", color: STATUS_COLOR.slipped },
   missed: { text: "Missed", color: STATUS_COLOR.missed },
   skipped: { text: "Skipped", color: STATUS_COLOR.skipped },
-  pending: { text: "Due today", color: null },
+  pending: { text: "Due today", color: STATUS_COLOR.pending },
 };
 
 function cellStyle(state: DayState): React.CSSProperties {
@@ -30,7 +30,7 @@ function cellStyle(state: DayState): React.CSSProperties {
       return { background: STATUS_COLOR.skipped };
     case "pending":
     case "flex":
-      return { background: "var(--h-surface)", boxShadow: "inset 0 0 0 1.5px var(--h-muted)" };
+      return { background: "var(--h-surface)", boxShadow: `inset 0 0 0 1.5px ${STATUS_COLOR.pending}` };
     case "upcoming":
       return { background: "transparent", boxShadow: "inset 0 0 0 1px var(--h-border)" };
     default:
@@ -77,7 +77,7 @@ export function HabitHeatCard({
   });
 
   return (
-    <Link href={`/habits/${id}`} className="h-card flex flex-col gap-3 p-4 transition-shadow hover:shadow-md">
+    <Link href={`/habits/${id}`} className="h-card flex min-w-0 flex-col gap-3 overflow-hidden p-3.5 transition-shadow hover:shadow-md sm:p-4">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl" style={{ background: tint(hex, 0.15), color: hex }}>
           <HabitIcon name={icon} className="h-5 w-5" />
@@ -105,8 +105,8 @@ export function HabitHeatCard({
         </span>
       </div>
 
-      <div className="flex gap-1.5">
-        <div className="grid shrink-0 grid-rows-[auto_repeat(7,1fr)] gap-[3px] pt-0 text-[9px] font-semibold leading-none text-h-muted">
+      <div className="flex min-w-0 gap-1.5">
+        <div className="grid shrink-0 grid-rows-[auto_repeat(7,1fr)] gap-[2px] sm:gap-[3px] text-[9px] font-semibold leading-none text-h-muted">
           <span className="h-3" />
           {DAY_LABELS.map((d, i) => (
             <span key={i} className="flex items-center">
@@ -114,7 +114,7 @@ export function HabitHeatCard({
             </span>
           ))}
         </div>
-        <div className="grid min-w-0 flex-1 gap-[3px]" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
+        <div className="grid min-w-0 flex-1 gap-[2px] sm:gap-[3px]" style={{ gridTemplateColumns: `repeat(${weeks.length}, minmax(0, 1fr))` }}>
           {months.map((m, i) => (
             <span key={`m${i}`} className="h-3 overflow-visible whitespace-nowrap text-[9px] font-semibold leading-none text-h-muted">
               {m}
@@ -128,7 +128,7 @@ export function HabitHeatCard({
                   key={c.date}
                   title={`${c.date} · ${c.state}`}
                   style={{ ...cellStyle(c.state), gridColumn: i + 1, gridRow: row + 2 }}
-                  className={`aspect-square rounded-[3px] ${c.date === today ? "ring-2 ring-h-fg/70 ring-offset-1 ring-offset-h-surface" : ""}`}
+                  className={`aspect-square rounded-[2px] sm:rounded-[3px] ${c.date === today ? "ring-2 ring-h-fg/70 ring-offset-1 ring-offset-h-surface" : ""}`}
                 />
               );
             })

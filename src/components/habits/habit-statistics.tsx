@@ -339,7 +339,7 @@ function MonthTimeline({
       <div className="grid grid-cols-[repeat(auto-fill,minmax(2.25rem,1fr))] gap-x-1 gap-y-2.5">
         {cells.map((c) => (
           <div key={c.date} className="flex flex-col items-center gap-1" title={`${short(c.date)} · ${c.state ?? "not scheduled"}`}>
-            <DayMarker state={c.state} hex={hex} />
+            <DayMarker state={c.state} />
             <span className={cn("text-[10px] font-bold tabular-nums", c.date === today ? "text-h-brand" : "text-h-muted")}>
               {c.day}
             </span>
@@ -366,7 +366,7 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function DayMarker({ state, hex }: { state: StatDay[1] | null; hex: string }) {
+function DayMarker({ state }: { state: StatDay[1] | null }) {
   const base = "flex h-8 w-8 items-center justify-center rounded-full";
   switch (state) {
     case "done":
@@ -401,7 +401,7 @@ function DayMarker({ state, hex }: { state: StatDay[1] | null; hex: string }) {
       );
     case "pending":
     case "flex":
-      return <span className={base} style={{ border: `2px solid ${hex}`, background: tint(hex, 0.08) }} />;
+      return <span className={base} style={{ border: `2px solid ${STATUS_COLOR.pending}`, background: tint(STATUS_COLOR.pending, 0.08) }} />;
     default:
       return (
         <span className={base}>

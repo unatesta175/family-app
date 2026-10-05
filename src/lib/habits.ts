@@ -58,8 +58,10 @@ export const STATUS_COLOR = {
   done: "#10b981", // green
   partial: "#f59e0b", // amber
   slipped: "#ef4444", // red
-  missed: "#a855f7", // purple
-  skipped: "#38bdf8", // sky blue
+  // Missed is a gap, not a punishment: a calm slate grey, so only a real slip (red) shouts.
+  missed: "#78859b", // slate
+  skipped: "#38bdf8", // sky blue, a deliberate rest
+  pending: "#6366f1", // indigo, still to do (drawn as an outline)
 } as const;
 export type StatusKey = keyof typeof STATUS_COLOR;
 

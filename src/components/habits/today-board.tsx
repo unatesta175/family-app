@@ -542,7 +542,7 @@ function HabitRow({
           ? statusStyle("missed", false)
           : skipped
             ? statusStyle("skipped", false)
-            : { background: tint(hex, 0.12), color: hex, borderColor: tint(hex, 0.35) };
+            : statusStyle("pending", false);
 
   function toggleTimer() {
     if (!canEdit) return;
