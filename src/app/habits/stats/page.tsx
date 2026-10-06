@@ -7,8 +7,8 @@ import { dailyTrend, heatmapWeeks } from "@/lib/habit-stats";
 import { addDays, todayIso } from "@/lib/date";
 import { habitIcon } from "@/lib/habit-icons";
 import { Heatmap } from "@/components/habits/heatmap";
-import { WorldRankCard } from "@/components/habits/world-rank-card";
-import { standingFor, standingInput } from "@/lib/world-rank";
+import { WorldRankList } from "@/components/habits/world-rank-list";
+import { habitStandingInput, standingFor } from "@/lib/world-rank";
 import { TrendChart } from "@/components/habits/charts";
 import { TodayBoard } from "@/components/habits/today-board";
 import { Ring } from "@/components/habits/ring";
@@ -48,7 +48,11 @@ export default async function HabitsStatsPage({
     };
   });
 
-  const standing = standingFor(standingInput(habits, logsByHabit, today));
+  // Each habit has its own world standing, not one blended number.
+  const rankRows = habits.map((h) => {
+    const input = habitStandingInput(h, logsByHabit[h.id] ?? {}, today);
+    return { id: h.id, name: h.name, icon: h.icon, color: h.color, kind: h.kind, standing: standingFor(input), input };
+  });
   const overall = avg(perHabit.map((p) => p.rate));
   const buildRate = avg(perHabit.filter((p) => p.habit.kind === "build").map((p) => p.rate));
   const breakRate = avg(perHabit.filter((p) => p.habit.kind === "break").map((p) => p.rate));
@@ -114,7 +118,7 @@ export default async function HabitsStatsPage({
         </p>
       ) : (
         <>
-          <WorldRankCard standing={standing} />
+          <WorldRankList rows={rankRows} />
 
           {/* Pending today */}
           <section className="flex flex-col gap-2">

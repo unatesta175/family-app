@@ -29,6 +29,8 @@ import { HabitCalendar, type CalendarDay } from "@/components/habits/habit-calen
 import { HabitDetailActions } from "@/components/habits/habit-detail-actions";
 import { HabitStatistics } from "@/components/habits/habit-statistics";
 import { HabitTowerPanel } from "@/components/habit-tower/tower-panel";
+import { WorldRankCard } from "@/components/habits/world-rank-card";
+import { habitStandingInput, standingFor } from "@/lib/world-rank";
 import { cn } from "@/lib/utils";
 
 export default async function HabitDetailPage({
@@ -119,6 +121,11 @@ export default async function HabitDetailPage({
           goals={selectableGoals}
         />
       )}
+
+      {(() => {
+        const input = habitStandingInput(habit, logs, today);
+        return <WorldRankCard standing={standingFor(input)} input={input} title="This habit's world standing" />;
+      })()}
 
       <nav className="flex gap-1 rounded-xl bg-h-surface2 p-1" aria-label="Habit sections">
         {tabs.map((t) => (

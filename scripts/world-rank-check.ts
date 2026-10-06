@@ -1,7 +1,7 @@
 /* Sanity checks for the world-standing model. Run: npx tsx scripts/world-rank-check.ts */
 import { addDays } from "../src/lib/date";
 import type { HabitLite, HabitLogMap } from "../src/lib/habits";
-import { disciplineScore, formatRank, formatTopPercent, standingFor, standingInput, topPercent } from "../src/lib/world-rank";
+import { disciplineScore, formatRank, formatTopPercent, habitStandingInput, scoreBreakdown, standingFor, standingInput, tierLadder, topPercent } from "../src/lib/world-rank";
 
 let failed = 0;
 function ok(name: string, cond: boolean, detail?: unknown) {
@@ -82,6 +82,23 @@ ok("half the days done ranks well below perfect", half.topPercent > four.topPerc
 
 // A next step is always offered below the top.
 ok("a next tier is suggested", month.next !== null && month.next.hint.length > 0, month.next);
+
+// Per habit: each habit stands on its own.
+function singleHabit(days: number, every = 1) {
+  const m: HabitLogMap = {};
+  for (let i = 0; i < days; i += every) m[addDays(today, -i)] = { status: "done", value: 1 };
+  return habitStandingInput(base, m, today);
+}
+const h4 = standingFor(singleHabit(120));
+ok("one habit kept for four months is about top 1%", h4.topPercent >= 0.5 && h4.topPercent <= 2, h4.topPercent);
+const hMonth = standingFor(singleHabit(30));
+ok("a single habit for a month is well behind four months", hMonth.topPercent > h4.topPercent * 3, [hMonth.topPercent, h4.topPercent]);
+ok("a lapsed habit ranks lower than a steady one", standingFor(singleHabit(120, 3)).topPercent > h4.topPercent * 5);
+const parts = scoreBreakdown(singleHabit(120));
+ok("the breakdown adds up to the score", Math.abs(parts.reduce((n, p) => n + p.points, 0) - disciplineScore(singleHabit(120))) < 1e-9);
+const ladder = tierLadder();
+ok("the ladder takes longer for each tier", ladder.slice(1).every((r, i) => i === 0 || (r.days ?? 1e9) >= (ladder[i].days ?? 0)), ladder.map((r) => r.days));
+ok("the top rung is reachable", ladder[ladder.length - 1].days !== null, ladder[ladder.length - 1]);
 
 ok("formatting", formatTopPercent(50) === "50%" && formatTopPercent(1.04) === "1%" && formatRank(40_000_000) === "#40,000,000", [formatTopPercent(1.04), formatRank(40_000_000)]);
 

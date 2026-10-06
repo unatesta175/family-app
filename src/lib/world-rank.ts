@@ -153,6 +153,68 @@ export function standingFor(input: StandingInput): Standing {
   return { ranked, score, topPercent: top, rank: (top / 100) * WORLD_POOL, tier: TIERS[idx].name, next };
 }
 
+/** The four parts of the score, with what each is out of, for the guide. */
+export function scoreBreakdown(i: StandingInput) {
+  return [
+    { key: "consistency", label: "Consistency", max: 400, points: 400 * clamp01(i.activeDays / STANDING_WINDOW) * Math.pow(clamp01(i.rate), 1.5), hint: "Days you showed up in the last 4 months, weighted by how often you hit the goal." },
+    { key: "streak", label: "Streak", max: 350, points: 350 * clamp01(i.streakDays / STANDING_WINDOW), hint: "Your current unbroken run. 120 days fills it." },
+    { key: "track", label: "Track record", max: 150, points: 150 * clamp01(i.habitCount / 5), hint: "How long you have kept this habit going. A year of check-ins fills it." },
+    { key: "volume", label: "Volume", max: 100, points: 100 * clamp01(i.totalCheckins / 1500), hint: "Every check-in you have ever made. 1,500 fills it." },
+  ];
+}
+
+/**
+ * What it takes to reach each tier: the days of perfect, uninterrupted effort on a single habit
+ * (found by running the model forward), and the estimated place that tier means.
+ */
+export function tierLadder(): { name: string; top: number; rank: number; days: number | null }[] {
+  return TIERS.map((t) => {
+    let days: number | null = null;
+    if (t.top >= 100) days = 1;
+    else {
+      for (let d = 1; d <= 2000; d++) {
+        const sim: StandingInput = { activeDays: Math.min(STANDING_WINDOW, d), rate: 1, streakDays: d, habitCount: Math.min(5, d / 73), totalCheckins: d };
+        if (topPercent(disciplineScore(sim)) <= t.top) {
+          days = d;
+          break;
+        }
+      }
+    }
+    return { name: t.name, top: t.top, rank: Math.max(1, Math.min(t.top, 100) / 100 * WORLD_POOL), days };
+  });
+}
+
+/**
+ * The inputs for ONE habit, so every habit has its own standing instead of one blended number. A
+ * single habit has no "how many habits" to lean on, so its track record is how long it has been kept up.
+ */
+export function habitStandingInput(habit: HabitLite, logs: HabitLogMap, today: string): StandingInput {
+  const from = addDays(today, -(STANDING_WINDOW - 1));
+  let done = 0;
+  let counted = 0;
+  let activeDays = 0;
+  for (let d = from; d <= today; d = addDays(d, 1)) {
+    const s = dayState(habit, logs, d, today);
+    if (s === "done") {
+      done += 1;
+      counted += 1;
+      activeDays += 1;
+    } else if (s === "partial" || s === "missed" || s === "slipped") {
+      counted += 1;
+    }
+  }
+  const st = computeStreak(habit, logs, today);
+  const unitDays = { day: 1, week: 7, month: 30, year: 365 } as const;
+  const total = totalDone(habit, logs);
+  return {
+    activeDays,
+    rate: counted === 0 ? 0 : done / counted,
+    streakDays: Math.min(st.current * unitDays[st.unit], 3650),
+    habitCount: Math.min(5, total / 73),
+    totalCheckins: total,
+  };
+}
+
 /** Works out the model's inputs from a person's habits and logs. */
 export function standingInput(habits: HabitLite[], logsByHabit: Record<number, HabitLogMap>, today: string): StandingInput {
   const from = addDays(today, -(STANDING_WINDOW - 1));
