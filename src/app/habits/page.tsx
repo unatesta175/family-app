@@ -4,6 +4,8 @@ import { loadHabitData } from "@/lib/habit-data";
 import { buildBoardHabits, buildBoardTasks } from "@/lib/habit-board";
 import { loadGoalsData } from "@/lib/goal-data";
 import { getGoalChipsForHabits } from "@/lib/db/repo-goals";
+import { WorldRankCard } from "@/components/habits/world-rank-card";
+import { standingFor, standingInput } from "@/lib/world-rank";
 import { GoalsFocus } from "@/components/goals/goals-focus";
 import { TodayMilestones, type TodayMilestone } from "@/components/goals/today-milestones";
 import { computeStreak, dayCompletion, weekDates, WEEKDAY_SHORT, type StreakResult } from "@/lib/habits";
@@ -60,6 +62,7 @@ export default async function HabitsTodayPage({
               }))
           )
       : [];
+  const standing = standingFor(standingInput(habits, logsByHabit, today));
   const boardTasks = buildBoardTasks(tasks, categories, completions, date, today, skips);
 
   // Summary numbers for the selected day.
@@ -214,6 +217,8 @@ export default async function HabitsTodayPage({
           </div>
         </div>
       )}
+
+      {!empty && <WorldRankCard standing={standing} compact href="/habits/stats" />}
 
       {goalsData && <GoalsFocus views={goalsData.views} />}
 

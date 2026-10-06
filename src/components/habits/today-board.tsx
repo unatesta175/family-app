@@ -105,7 +105,16 @@ function reduce(date: string, today: string) {
             nextState = value === 0 ? empty : value >= h.dailyTarget ? "done" : "partial";
           } else {
             value = action.value ?? h.dailyTarget;
-            nextState = value === 0 && h.targetOp !== "at_most" && h.evalType !== "time_of_day" ? empty : targetMet(h, value) ? "done" : "partial";
+            nextState =
+              value === 0 && h.targetOp !== "at_most" && h.evalType !== "time_of_day"
+                ? empty
+                : targetMet(h, value)
+                  ? "done"
+                  : h.evalType === "time_of_day"
+                    ? h.kind === "break"
+                      ? "slipped"
+                      : "missed"
+                    : "partial";
           }
         } else if (action.status === "slipped") nextState = "slipped";
         else if (action.status === "skipped") nextState = "skipped";
@@ -541,7 +550,8 @@ function HabitRow({
   // Numeric, timer and checklist habits are adjusted in a dialog instead of a one-tap toggle.
   const adjustable = measured || checklist || timeOfDay;
   const over = partial && atMost && measured;
-  const lateBy = timeOfDay && partial ? timeOffGoal(h, h.value) : null;
+  // A logged time that misses the goal shows how far off it was (the day itself counts as missed or slipped).
+  const lateBy = timeOfDay && (partial || ((missed || slipped) && h.value > 0)) ? timeOffGoal(h, h.value) : null;
 
   // A running timer adds its live seconds on top of what's already logged.
   const liveValue = isTimer && timer.running ? h.value + timer.elapsed : h.value;
@@ -702,7 +712,7 @@ function HabitRow({
                 {STREAK_UNIT_SHORT[h.streakUnit]}
               </span>
             )}
-            {h.state === "missed" && <span className="font-bold" style={{ color: STATUS_COLOR.missed }}>Missed</span>}
+            {h.state === "missed" && !lateBy && <span className="font-bold" style={{ color: STATUS_COLOR.missed }}>Missed</span>}
             {over && <span className="font-bold" style={{ color: STATUS_COLOR.partial }}>Over limit</span>}
             {lateBy && (
               <span className="font-bold" style={{ color: STATUS_COLOR.partial }}>
@@ -719,7 +729,7 @@ function HabitRow({
               title="Tap to log the time"
               className={cn("mt-2 whitespace-nowrap text-[11px] font-bold tabular-nums", "text-h-muted", canEdit && "rounded-md hover:text-h-fg")}
             >
-              {logged && (done || partial) ? formatTimeOfDay(h.value) : "Not logged"}
+              {done || partial || ((missed || slipped) && h.value > 0) ? formatTimeOfDay(h.value) : "Not logged"}
               {h.targetLabel && <span className="font-medium"> / {h.targetLabel}</span>}
             </button>
           )}

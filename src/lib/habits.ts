@@ -458,7 +458,13 @@ export function dayState(habit: HabitLite, logs: HabitLogMap, date: string, toda
   if (log?.status === "slipped") return "slipped";
   if (log?.status === "skipped") return "skipped";
   if (log?.status === "missed") return "missed";
-  if (log?.status === "done") return targetMet(habit, log.value) ? "done" : "partial";
+  if (log?.status === "done") {
+    if (targetMet(habit, log.value)) return "done";
+    // A time of day can't be made up later: arriving at 9:10 for a "no later than 9:00" goal is a
+    // failed day (missed, or slipped for a break habit), not progress still to finish.
+    if (habit.evalType === "time_of_day") return habit.kind === "break" ? "slipped" : "missed";
+    return "partial";
+  }
   if (habit.endDate !== null && date > habit.endDate) return "off";
   if (date < habit.startDate) return date > today ? "off" : "prestart";
 

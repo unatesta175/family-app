@@ -71,7 +71,7 @@ export function ProgressDialog({
   else if (empty) status = "Nothing logged — saving will leave this day empty.";
   else if (off) {
     const gap = formatDuration(off.minutes * 60);
-    status = `${off.kind === "late" ? `Late by ${gap}` : off.kind === "early" ? `${gap} too early` : `${gap} off the goal time`} — saved as progress, not marked done.`;
+    status = `${off.kind === "late" ? `Late by ${gap}` : off.kind === "early" ? `${gap} too early` : `${gap} off the goal time`} — this day will be marked ${breakHabit ? "slipped" : "missed"}.`;
   } else if (atMost) status = "Over the limit — saved as progress, not marked done.";
   else if (isChecklist) status = `${checklist.length - checked.length} item${checklist.length - checked.length === 1 ? "" : "s"} left — saved as progress until every item is ticked.`;
   else status = `Below the goal (${targetLabel(spec)}) — saved as progress, not marked done.`;
@@ -103,7 +103,7 @@ export function ProgressDialog({
               className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-extrabold text-white"
             >
               <Check className="h-4 w-4" strokeWidth={3} />
-              {complete ? "Save & mark done" : empty ? "Save" : "Save progress"}
+              {complete ? "Save & mark done" : isTime ? (breakHabit ? "Save as slipped" : "Save as missed") : empty ? "Save" : "Save progress"}
             </button>
             <div className="grid grid-cols-3 gap-2">
               <button

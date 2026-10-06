@@ -202,7 +202,10 @@ eq("time of day: not before 6:00, 5:45 is early", [targetMet(notBefore, 345), ti
 eq("time of day: format", [formatTimeOfDay(540), formatTimeOfDay(0), formatTimeOfDay(785)], ["9:00 AM", "12:00 AM", "1:05 PM"]);
 eq("time of day: label", targetLabel(wake), "No later than 9:00 AM");
 const wakeLogs: HabitLogMap = { "2026-09-10": { status: "done", value: 550 }, "2026-09-11": { status: "done", value: 530 } };
-eq("time of day: late day is partial, on-time day is done", [dayState(wake, wakeLogs, "2026-09-10", "2026-09-12"), dayState(wake, wakeLogs, "2026-09-11", "2026-09-12")], ["partial", "done"]);
+eq("time of day: a late time slips a break habit, an on-time day is done", [dayState(wake, wakeLogs, "2026-09-10", "2026-09-12"), dayState(wake, wakeLogs, "2026-09-11", "2026-09-12")], ["slipped", "done"]);
+const arrive: HabitLite = { ...wake, kind: "build" };
+eq("time of day: a late time is a missed day for a build habit", dayState(arrive, wakeLogs, "2026-09-10", "2026-09-12"), "missed");
+eq("time of day: a late time does not count towards a streak", computeStreak(arrive, { "2026-09-10": { status: "done", value: 550 } }, "2026-09-10").current, 0);
 
 console.log(failed === 0 ? "\nAll checks passed" : `\n${failed} check(s) FAILED`);
 process.exit(failed === 0 ? 0 : 1);

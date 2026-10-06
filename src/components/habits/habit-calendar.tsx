@@ -260,7 +260,7 @@ function DayEditor({
     : measured
       ? targetMet(spec, value)
       : true;
-  const saveLabel = complete ? "Done" : "Save progress";
+  const saveLabel = complete ? "Done" : evalType === "time_of_day" ? (kind === "break" ? "Save as slipped" : "Save as missed") : "Save progress";
 
   const label = parseIso(day.date).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
 

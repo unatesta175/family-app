@@ -85,7 +85,7 @@ export function emptyState(row: Pick<WeekRow, "isPeriod">, date: string, today: 
 }
 
 /** The state a saved numeric / timer / checklist entry lands on: done only if it meets the goal. */
-export function entryState(row: Pick<WeekRow, "evalType" | "checklist" | "targetOp" | "dailyTarget" | "isPeriod">, date: string, today: string, entry: { value?: number; checked?: string[] }): DayState {
+export function entryState(row: Pick<WeekRow, "evalType" | "checklist" | "targetOp" | "dailyTarget" | "isPeriod" | "kind">, date: string, today: string, entry: { value?: number; checked?: string[] }): DayState {
   if (row.evalType === "checklist") {
     const n = entry.checked?.length ?? 0;
     if (n === 0) return emptyState(row, date, today);
@@ -93,7 +93,10 @@ export function entryState(row: Pick<WeekRow, "evalType" | "checklist" | "target
   }
   const value = entry.value ?? 0;
   if (value === 0 && row.targetOp !== "at_most" && row.evalType !== "time_of_day") return emptyState(row, date, today);
-  return targetMet(row, value) ? "done" : "partial";
+  if (targetMet(row, value)) return "done";
+  // A time of day that misses the goal is a failed day, not progress.
+  if (row.evalType === "time_of_day") return row.kind === "break" ? "slipped" : "missed";
+  return "partial";
 }
 
 export function WeekGrid({

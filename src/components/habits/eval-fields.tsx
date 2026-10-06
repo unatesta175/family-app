@@ -125,9 +125,9 @@ function timeSummary(v: HabitFormValues): string {
   const t = formatTimeOfDay(v.dailyTarget);
   switch (v.targetOp) {
     case "at_most":
-      return `log the time. ${t} or earlier counts as ${v.kind === "break" ? "clean" : "done"}; later is marked late.`;
+      return `log the time. ${t} or earlier counts as ${v.kind === "break" ? "clean" : "done"}; later counts as ${v.kind === "break" ? "slipped" : "missed"}.`;
     case "at_least":
-      return `log the time. ${t} or later counts as ${v.kind === "break" ? "clean" : "done"}; earlier is marked early.`;
+      return `log the time. ${t} or later counts as ${v.kind === "break" ? "clean" : "done"}; earlier counts as ${v.kind === "break" ? "slipped" : "missed"}.`;
     default:
       return `log the time. Only exactly ${t} counts as ${v.kind === "break" ? "clean" : "done"}.`;
   }
