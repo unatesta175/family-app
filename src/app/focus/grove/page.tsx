@@ -72,6 +72,7 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
   // The distribution chart: by hour for a day, by day for a week or month, by month for a year.
   let bars: DistBar[] = [];
   const chartTitle = "Focused Time Distribution";
+  const chartSub = view === "day" ? "Hour by hour" : view === "week" ? "Day by day this week" : view === "month" ? "Day by day this month" : "Month by month this year";
   if (view === "day") {
     bars = hourDistribution(lite).map((s, h) => ({ label: `${String(h).padStart(2, "0")}`, seconds: s, title: `${String(h).padStart(2, "0")}:00`, showLabel: h % 6 === 0 }));
   } else if (view === "week") {
@@ -152,7 +153,7 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
       </section>
 
       <div className="flex flex-col gap-4 px-4 md:px-0">
-        <Distribution title={chartTitle} bars={bars} />
+        <Distribution title={chartTitle} subtitle={chartSub} bars={bars} />
         {sum.sessions > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Sessions</h2>
