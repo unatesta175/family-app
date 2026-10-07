@@ -162,7 +162,7 @@ function toLog(r: { status: HabitLogStatus; value: number; detail: string | null
 // --- Prayer habits ----------------------------------------------------------------------------
 // Every profile has the five daily prayers as habits. They are read-only here: each day comes straight
 // from the Prayer module's log (see prayerToLog), so the two can never disagree and every habit
-// screen (streaks, statistics, calendar, tower, world standing) works for them with no extra code.
+// screen (streaks, statistics, calendar, world standing) works for them with no extra code.
 
 export const PRAYER_HABITS = [
   { key: "fajr", name: "Fajr", icon: "sunrise" },

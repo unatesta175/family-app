@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BarChart3, Blocks, CalendarDays, Moon } from "lucide-react";
+import { ArrowLeft, BarChart3, CalendarDays, Moon } from "lucide-react";
 import { requireAuth, getOwnProfileId } from "@/lib/auth";
 import { getProfile, getProfilesInHousehold } from "@/lib/db/repo";
 import { getAllLogsForHabit, getCategories, getHabit, getHabitNotesInRange } from "@/lib/db/repo-habits";
@@ -28,7 +28,6 @@ import { HabitIcon } from "@/components/habits/habit-icon";
 import { HabitCalendar, type CalendarDay } from "@/components/habits/habit-calendar";
 import { HabitDetailActions } from "@/components/habits/habit-detail-actions";
 import { HabitStatistics } from "@/components/habits/habit-statistics";
-import { HabitTowerPanel } from "@/components/habit-tower/tower-panel";
 import { WorldRankCard } from "@/components/habits/world-rank-card";
 import { habitStandingInput, standingFor } from "@/lib/world-rank";
 import { cn } from "@/lib/utils";
@@ -44,7 +43,7 @@ export default async function HabitDetailPage({
   const { month: rawMonth, tab: rawTab } = await searchParams;
   const id = Number(rawId);
   if (!Number.isInteger(id) || id <= 0) notFound();
-  const tab = rawTab === "stats" ? "stats" : rawTab === "tower" ? "tower" : "calendar";
+  const tab = rawTab === "stats" ? "stats" : "calendar";
 
   const session = await requireAuth();
   const habit = await getHabit(id);
@@ -75,7 +74,6 @@ export default async function HabitDetailPage({
   const tabs = [
     { key: "calendar", label: "Calendar", icon: CalendarDays, href: `/habits/${habit.id}` },
     { key: "stats", label: "Statistics", icon: BarChart3, href: `/habits/${habit.id}?tab=stats` },
-    { key: "tower", label: "Tower", icon: Blocks, href: `/habits/${habit.id}?tab=tower` },
   ] as const;
 
   return (
@@ -160,8 +158,6 @@ export default async function HabitDetailPage({
 
       {tab === "stats" ? (
         <StatsTab habit={habit} logs={logs} today={today} />
-      ) : tab === "tower" ? (
-        <HabitTowerPanel name={habit.name} color={habit.color} days={buildStatDays(habit, logs, today)} startDate={habit.startDate} today={today} evalType={habit.evalType} unit={habit.unit} />
       ) : (
         <CalendarTab habit={habit} logs={logs} notes={notes} today={today} rawMonth={rawMonth} readOnly={readOnly || locked} hex={hex} />
       )}

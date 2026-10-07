@@ -1,5 +1,3 @@
-import Link from "next/link";
-import { Blocks } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import { requireAuth } from "@/lib/auth";
 import { loadSelectableGoals } from "@/lib/goal-data";
@@ -40,10 +38,6 @@ export default async function HabitsManagePage() {
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{profile?.name}</p>
         <h1 className="text-2xl font-extrabold tracking-tight">My habits</h1>
         <p className="text-sm text-h-muted">Create, edit, archive and organise everything you track.</p>
-        <Link href="/habits/towers" className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-h-border bg-h-surface px-3 py-1.5 text-xs font-bold text-h-brand hover:bg-h-brand-soft">
-          <Blocks className="h-3.5 w-3.5" />
-          See your habit towers
-        </Link>
       </div>
       <HabitManager
         habits={habits}
