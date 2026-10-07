@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { HABIT_COLOR_KEYS, HABIT_COLORS, WEEKDAY_INITIAL, WEEKDAY_SHORT, colorHex, isCustomColor } from "@/lib/habits";
 import { HABIT_ICON_KEYS, habitIcon } from "@/lib/habit-icons";
-import { Check } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 
 export function Field({
   label,
@@ -81,7 +81,9 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (v: 
         )}
         style={{ background: isCustomColor(value) ? colorHex(value) : "conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444)" }}
       >
-        {isCustomColor(value) ? <Check className="h-4 w-4 text-white" strokeWidth={3} /> : <span className="rounded-full bg-white/90 px-1 text-[10px] font-extrabold leading-none text-neutral-700">+</span>}
+        {isCustomColor(value) ? <Check className="h-4 w-4 text-white" strokeWidth={3} /> : <span className="flex h-4 w-4 items-center justify-center rounded-full bg-white shadow-sm">
+            <Plus className="h-3 w-3 text-neutral-700" strokeWidth={3} />
+          </span>}
         <input
           type="color"
           aria-label="Custom colour"
