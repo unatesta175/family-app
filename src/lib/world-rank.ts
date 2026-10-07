@@ -5,17 +5,17 @@ import { computeStreak, dayState, totalDone, type HabitLite, type HabitLogMap } 
  * "Where do I stand in the world?" An estimate, not a measurement.
  *
  * There is no global dataset behind this: no company publishes how disciplined 8 billion people are.
- * So the app models it. Roughly half of the planet is out of reach (children, people with no time or
- * freedom to build routines), so the pool it compares you with is about 4 billion people who could
- * be working on habits. Research on habit formation (about two months to automate one, and most
+ * So the app models it. The pool is everyone on Earth (about 8.1 billion), and the top 100% is where
+ * everybody starts. Research on habit formation (about two months to automate one, and most
  * resolutions fading within weeks) says staying consistent is rare, so the share of people who keep
  * it up falls off very fast. The model turns your logged consistency into a 0 to 1000 "discipline
  * score", then reads it off a curve of anchors: everyone starts at the top 100% (the whole pool), a month of showing up
  * about top 20%, four months of near-perfect consistency about top 1%, and only a year of it across
  * several habits reaches the top 100.
  */
-export const WORLD_POOL = 4_000_000_000;
 export const WORLD_POPULATION = 8_100_000_000;
+/** Everyone is compared with everyone: the whole population. */
+export const WORLD_POOL = WORLD_POPULATION;
 
 /** How many recent days count towards the consistency part of the score. */
 export const STANDING_WINDOW = 120;
@@ -57,7 +57,7 @@ const ANCHORS: [number, number][] = [
   [920, 0.1],
   [960, 0.001],
   [985, 0.00001],
-  [1000, 0.0000025], // 100 people out of 4 billion
+  [1000, 0.00000123], // 100 people out of 8.1 billion
 ];
 
 /** The share of the pool you are ahead of the rest of, as "top X%". */
@@ -82,7 +82,7 @@ export const TIERS = [
   { name: "Elite", top: 2.5 },
   { name: "Master", top: 1 },
   { name: "Legend", top: 0.001 },
-  { name: "World class", top: 0.0000025 },
+  { name: "World class", top: 0.00000123 },
 ] as const;
 
 export type Standing = {
@@ -113,7 +113,7 @@ export function formatRank(rank: number): string {
 function tierFor(top: number): number {
   let idx = 0;
   TIERS.forEach((t, i) => {
-    if (top <= t.top) idx = i;
+    if (top <= t.top * (1 + 1e-9)) idx = i;
   });
   return idx;
 }
@@ -136,7 +136,7 @@ export function standingFor(input: StandingInput): Standing {
         streakDays: input.streakDays + add,
         totalCheckins: input.totalCheckins + add * Math.max(1, input.habitCount),
       };
-      if (topPercent(disciplineScore(sim)) <= nextTier.top) {
+      if (topPercent(disciplineScore(sim)) <= nextTier.top * (1 + 1e-9)) {
         days = add;
         break;
       }
@@ -174,7 +174,7 @@ export function tierLadder(): { name: string; top: number; rank: number; days: n
     else {
       for (let d = 1; d <= 2000; d++) {
         const sim: StandingInput = { activeDays: Math.min(STANDING_WINDOW, d), rate: 1, streakDays: d, habitCount: Math.min(5, d / 73), totalCheckins: d };
-        if (topPercent(disciplineScore(sim)) <= t.top) {
+        if (topPercent(disciplineScore(sim)) <= t.top * (1 + 1e-9)) {
           days = d;
           break;
         }

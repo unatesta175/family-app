@@ -56,10 +56,10 @@ ok("a first week of showing up is about the top half", week.topPercent > 35 && w
 const month = standingFor(perfect(2, 30));
 ok("a month is clearly ahead of most people", month.topPercent < 25 && month.topPercent > 3, month.topPercent);
 
-// Four months of consistency is the top 1% (about 40 million of 4 billion).
+// Four months of consistency is the top 1% (about 80 million of 8.1 billion).
 const four = standingFor(perfect(3, 120));
 ok("four months consistent is about top 1%", four.topPercent >= 0.5 && four.topPercent <= 1.5, four.topPercent);
-ok("that is a rank around 40 million", four.rank > 20_000_000 && four.rank < 60_000_000, four.rank);
+ok("that is a rank around 80 million", four.rank > 40_000_000 && four.rank < 120_000_000, four.rank);
 
 // A year across five habits reaches the top 100.
 const year = standingFor(perfect(5, 365));

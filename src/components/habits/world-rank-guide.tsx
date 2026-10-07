@@ -41,8 +41,8 @@ export function WorldRankGuide({
           <section className="rounded-2xl bg-h-brand-soft p-4">
             <p className="text-xs font-extrabold uppercase tracking-wider text-h-brand">The idea</p>
             <p className="mt-1 text-sm leading-relaxed">
-              Out of about {(WORLD_POPULATION / 1e9).toFixed(1)} billion people, roughly {(WORLD_POOL / 1e9).toFixed(0)} billion could be building habits. Almost everyone starts and almost everyone fades, so
-              staying consistent is rare. Each of your habits earns a <b>score out of 1000</b>, and the score is turned into a &ldquo;Top X%&rdquo; of those {(WORLD_POOL / 1e9).toFixed(0)} billion.
+              Out of about {(WORLD_POPULATION / 1e9).toFixed(1)} billion people, everyone starts at the Top 100%. Almost everyone who starts a habit fades, so
+              staying consistent is rare. Each of your habits earns a <b>score out of 1000</b>, and the score is turned into a &ldquo;Top X%&rdquo; of all {(WORLD_POOL / 1e9).toFixed(1)} billion people.
             </p>
             <p className="mt-2 text-[11px] leading-snug text-h-muted">
               It is an estimate from habit-formation research, not a live leaderboard: no one has data on the whole world. Treat it as a fun, honest yardstick of how consistent you are.

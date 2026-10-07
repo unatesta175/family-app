@@ -4,8 +4,7 @@ import { TIERS, WORLD_POOL, formatRank, formatTopPercent, scoreBreakdown, tierLa
 import { cn } from "@/lib/utils";
 
 /**
- * Where a habit's consistency would put you among the roughly 4 billion people who could be building
- * habits. Modelled, not measured, and it says so on the card (see lib/world-rank.ts).
+ * Where a habit's consistency would put you among everyone on Earth (about 8.1 billion people). Modelled, not measured, and it says so on the card (see lib/world-rank.ts).
  */
 export function WorldRankCard({ standing, input, title = "World standing" }: { standing: Standing; input: StandingInput; title?: string }) {
   const billions = (WORLD_POOL / 1_000_000_000).toFixed(1);
@@ -24,7 +23,7 @@ export function WorldRankCard({ standing, input, title = "World standing" }: { s
                 <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-extrabold">{standing.tier}</span>
               </p>
               <p className="text-[11px] font-medium text-white/85">
-                about {formatRank(standing.rank)} of {billions} billion people building habits
+                about {formatRank(standing.rank)} of {billions} billion people
               </p>
             </div>
           </div>

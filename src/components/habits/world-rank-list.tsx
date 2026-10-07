@@ -18,7 +18,7 @@ export function WorldRankList({ rows }: { rows: RankRow[] }) {
         {best && <WorldRankGuide parts={scoreBreakdown(best.input)} ladder={ladder} tier={best.standing.tier} className="!bg-h-brand-soft !text-h-brand hover:!bg-h-brand-soft/70" />}
       </div>
       <p className="px-1 text-[11px] text-h-muted">
-        How each habit ranks among about {(WORLD_POOL / 1e9).toFixed(0)} billion people building habits. An estimate, not a live leaderboard.
+        How each habit ranks among about {(WORLD_POOL / 1e9).toFixed(1)} billion people. An estimate, not a live leaderboard.
       </p>
       <ul className="flex flex-col gap-2">
         {sorted.map((r) => {
