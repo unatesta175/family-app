@@ -1,12 +1,19 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Check, Coffee, Play } from "lucide-react";
+import { Box, Check, Coffee, Layers, Pause, Play } from "lucide-react";
 import { startFocusAction } from "@/lib/focus-actions";
 import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, SPECIES_LABEL, TREE_TIERS, formatFocus, segmentsFor, tierInfo, treeTier, type FocusMode, type FocusSpecies } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { Switch } from "@/components/habits/ui/switch";
+import { useGardenMode } from "@/components/focus/garden-view";
+
+const Tree3DPreview = dynamic(() => import("@/components/focus/tree-3d-preview"), {
+  ssr: false,
+  loading: () => <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-white/70">Loading 3D…</div>,
+});
 import { colorHex, tint } from "@/lib/habits";
 import { cn } from "@/lib/utils";
 
@@ -26,14 +33,17 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [species, setSpecies] = useState<FocusSpecies>("oak");
   const [habitId, setHabitId] = useState<number | null>(defaultHabitId && habits.some((h) => h.id === defaultHabitId) ? defaultHabitId : null);
   const [error, setError] = useState<string | null>(null);
-  // The hero tree grows and starts over, so the screen shows what a session does.
+  // The hero tree grows and starts over, so the screen shows what a session does. Drag the slider to
+  // scrub through the growth, or tap play to let it run.
   const [demo, setDemo] = useState(0.45);
+  const [playing, setPlaying] = useState(true);
+  const { mode: view, setMode: setView, webgl } = useGardenMode();
 
   useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (!playing || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const t = window.setInterval(() => setDemo((d) => (d >= 1 ? 0.05 : Math.min(1, d + 0.04))), 700);
     return () => window.clearInterval(t);
-  }, []);
+  }, [playing]);
 
   const tier = treeTier(minutes * 60);
   const mode: FocusMode = pomodoro ? "pomodoro" : "single";
@@ -63,9 +73,36 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
         <div className="pointer-events-none absolute -right-8 top-10 h-44 w-44 rounded-full bg-emerald-100/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-6 h-24 w-64 rounded-[50%] bg-lime-200/70 blur-xl" />
         <div className="pointer-events-none absolute bottom-7 h-16 w-52 rounded-[50%] bg-lime-300/60" />
-        <FocusTree progress={demo} species={species} tier={tier} className="relative z-10 mb-3 h-52 w-44" />
+        {view === "3d" ? (
+          <div className="absolute inset-x-0 bottom-0 top-8 z-10">
+            <Tree3DPreview progress={demo} species={species} tier={tier} />
+          </div>
+        ) : (
+          <FocusTree progress={demo} species={species} tier={tier} className="relative z-10 mb-3 h-52 w-44" />
+        )}
         <p className="absolute left-5 top-5 text-sm font-bold text-white/90">Plant a tree</p>
         <p className="absolute right-5 top-5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">{SPECIES_LABEL[species]} · {tierInfo(tier).name}</p>
+        <div className="absolute left-5 top-12 z-20 flex rounded-full bg-black/25 p-0.5 text-[11px] font-bold text-white backdrop-blur-sm" role="tablist" aria-label="Tree view">
+          {(
+            [
+              { key: "2.5d", label: "2.5D", icon: Layers },
+              { key: "3d", label: "3D", icon: Box },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              role="tab"
+              aria-selected={view === o.key}
+              disabled={o.key === "3d" && !webgl}
+              onClick={() => setView(o.key)}
+              className={cn("flex items-center gap-1 rounded-full px-2.5 py-1 transition-colors disabled:opacity-40", view === o.key ? "bg-white text-[#14503b] shadow" : "text-white/85 hover:bg-white/10")}
+            >
+              <o.icon className="h-3 w-3" />
+              {o.label}
+            </button>
+          ))}
+        </div>
         <div className="absolute bottom-3 left-5 flex gap-1" aria-hidden>
           {TREE_TIERS.map((t) => (
             <span key={t.tier} className={cn("h-1.5 w-5 rounded-full", t.tier <= tier ? "bg-white" : "bg-white/30")} />
@@ -107,6 +144,38 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           <span>{MAX_MINUTES / 60} h</span>
         </div>
         <p className="mt-2 text-center text-xs font-semibold text-h-brand">{tierInfo(tier).name}: {tierInfo(tier).blurb}</p>
+
+        {/* watch it grow */}
+        <div className="mt-3 flex items-center gap-3 rounded-2xl bg-h-surface2/80 px-3 py-2.5">
+          <button type="button" onClick={() => setPlaying((p) => !p)} aria-label={playing ? "Pause the preview" : "Play the preview"} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-h-brand text-h-brand-fg">
+            {playing ? <Pause className="h-3.5 w-3.5" fill="currentColor" /> : <Play className="h-3.5 w-3.5" fill="currentColor" />}
+          </button>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            value={Math.round(demo * 100)}
+            onChange={(e) => {
+              setPlaying(false);
+              setDemo(Number(e.target.value) / 100);
+            }}
+            aria-label="How far the tree has grown"
+            className="min-w-0 flex-1 accent-[var(--h-brand)]"
+          />
+          <span className="w-9 shrink-0 text-right text-xs font-extrabold tabular-nums text-h-muted">{Math.round(demo * 100)}%</span>
+        </div>
+        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+          {TREE_TIERS.map((t) => (
+            <button
+              key={t.tier}
+              type="button"
+              onClick={() => set(t.minMinutes)}
+              className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors", tier === t.tier ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted hover:text-h-fg")}
+            >
+              {t.minMinutes}m · {t.name.replace(" tree", "")}
+            </button>
+          ))}
+        </div>
         <div className="mt-3 flex flex-wrap justify-center gap-1.5">
           {PRESETS.map((m) => (
             <button

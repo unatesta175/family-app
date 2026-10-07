@@ -52,15 +52,20 @@ function hasWebGL(): boolean {
   return webglChecked;
 }
 
+/** The remembered 2.5D / 3D choice, and whether this device can draw 3D at all. */
+export function useGardenMode(): { mode: Mode; setMode: (m: Mode) => void; webgl: boolean } {
+  const stored = useSyncExternalStore(subscribe, read, () => "2.5d" as Mode);
+  // Assumed fine on the server, checked once in the browser.
+  const webgl = useSyncExternalStore(() => () => undefined, hasWebGL, () => true);
+  return { mode: webgl ? stored : "2.5d", setMode: save, webgl };
+}
+
 /**
  * The garden with a switch between the 2.5D block and the 3D scene. Devices with no WebGL stay on 2.5D.
  * `overlay` sits in the corner of the garden (the Grove puts its tree counters there).
  */
 export function GardenView({ sessions, overlay, className }: { sessions: SessionLite[]; overlay?: React.ReactNode; className?: string }) {
-  const stored = useSyncExternalStore(subscribe, read, () => "2.5d" as Mode);
-  // Assumed fine on the server, checked once in the browser.
-  const webgl = useSyncExternalStore(() => () => undefined, hasWebGL, () => true);
-  const mode: Mode = webgl ? stored : "2.5d";
+  const { mode, webgl } = useGardenMode();
 
   return (
     <div className={cn("relative", className)}>

@@ -36,7 +36,7 @@ function branchCurve(b: Curve, zOff: number) {
  * blossoms, glow, rays, roots and pine layers for each tier, just given depth. Leaves are placed from
  * the same coordinates relative to the trunk top, so the crown always sits on the trunk.
  */
-function Tree3D({ species, tier, withered, progress }: { species: FocusSpecies; tier: TreeTier; withered: boolean; progress: number }) {
+export function Tree3D({ species, tier, withered, progress }: { species: FocusSpecies; tier: TreeTier; withered: boolean; progress: number }) {
   const s = useMemo(() => treeSpec({ progress, species, tier, withered }), [progress, species, tier, withered]);
   const t = s.trunk;
   const topX = wx(s.top[0]);
