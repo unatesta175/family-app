@@ -23,6 +23,8 @@ import type { HabitEvalType, HabitKind, HabitSchedule, PeriodUnit, TargetOp, Tas
 /** Serialisable rows the Today board renders. Built on the server, consumed by a client component. */
 export type BoardHabit = {
   id: number;
+  /** Estimated world standing for this habit (top %, tier). */
+  rank?: { top: number; tier: string };
   name: string;
   kind: HabitKind;
   icon: string;

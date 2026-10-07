@@ -5,6 +5,7 @@ import { buildBoardHabits, buildBoardTasks } from "@/lib/habit-board";
 import { loadGoalsData } from "@/lib/goal-data";
 import { getGoalChipsForHabits } from "@/lib/db/repo-goals";
 import { GoalsFocus } from "@/components/goals/goals-focus";
+import { habitStandingInput, standingFor } from "@/lib/world-rank";
 import { TodayMilestones, type TodayMilestone } from "@/components/goals/today-milestones";
 import { computeStreak, dayCompletion, weekDates, WEEKDAY_SHORT, type StreakResult } from "@/lib/habits";
 import { getProfilesInHousehold } from "@/lib/db/repo";
@@ -38,7 +39,11 @@ export default async function HabitsTodayPage({
     await loadHabitData();
 
   const goalChips = await getGoalChipsForHabits(habits.map((h) => h.id));
-  const boardHabits = buildBoardHabits(habits, categories, logsByHabit, date, today, goalChips);
+  const boardHabits = buildBoardHabits(habits, categories, logsByHabit, date, today, goalChips).map((b) => {
+    const h = habits.find((x) => x.id === b.id);
+    const s = h ? standingFor(habitStandingInput(h, logsByHabit[h.id] ?? {}, today)) : null;
+    return s ? { ...b, rank: { top: s.topPercent, tier: s.tier } } : b;
+  });
 
   // Goals: the focus card, and milestones that are due today. Only for your own habit page.
   const goalsData = readOnly ? null : await loadGoalsData();

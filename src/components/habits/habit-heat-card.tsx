@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Flame } from "lucide-react";
 import { HabitIcon } from "@/components/habits/habit-icon";
+import { RankChip, type HabitRank } from "@/components/habits/rank-chip";
 import { MONTH_SHORT, STATUS_COLOR, STREAK_UNIT_SHORT, colorHex, tint, type DayState, type StreakResult } from "@/lib/habits";
 import type { HeatCell } from "@/lib/habit-stats";
 import { parseIso } from "@/lib/date";
@@ -51,7 +52,9 @@ export function HabitHeatCard({
   weeks,
   streak,
   today,
+  rank,
 }: {
+  rank?: HabitRank;
   id: number;
   name: string;
   icon: string;
@@ -86,6 +89,7 @@ export function HabitHeatCard({
           <p className="truncate text-sm font-extrabold leading-tight">{name}</p>
           <p className="mt-0.5 flex items-center gap-2 text-[11px] font-semibold text-h-muted">
             <span className={kind === "break" ? "text-h-break" : "text-h-brand"}>{kind === "break" ? "Break" : "Build"}</span>
+            {rank && <RankChip rank={rank} />}
             {todayInfo && (
               <span className="flex items-center gap-1">
                 {todayInfo.color && <span className="h-1.5 w-1.5 rounded-full" style={{ background: todayInfo.color }} />}

@@ -18,6 +18,7 @@ import { Ring } from "@/components/habits/ring";
 import { MonthMatrix } from "@/components/habits/month-matrix";
 import { HabitHeatCard } from "@/components/habits/habit-heat-card";
 import { heatmapWeeks } from "@/lib/habit-stats";
+import { habitStandingInput, standingFor } from "@/lib/world-rank";
 import { cn } from "@/lib/utils";
 
 const HEAT_WEEKS = 26;
@@ -48,10 +49,18 @@ export default async function HabitsWeekPage({
   const { profile, readOnly, habits, logsByHabit, categories } = await loadHabitData();
   const categoryName = new Map(categories.map((c) => [c.id, c.name]));
 
+  // Each habit's own estimated world standing, shown in the week, month and heatmap views.
+  const ranks = new Map(
+    habits.map((h) => {
+      const s = standingFor(habitStandingInput(h, logsByHabit[h.id] ?? {}, today));
+      return [h.id, { top: s.topPercent, tier: s.tier }] as const;
+    })
+  );
   const buildRow = (h: (typeof habits)[number], dates: string[]): WeekRow => {
     const logs = logsByHabit[h.id] ?? {};
     return {
       id: h.id,
+      rank: ranks.get(h.id),
       name: h.name,
       kind: h.kind,
       color: h.color,
@@ -217,6 +226,7 @@ export default async function HabitsWeekPage({
                   kind={h.kind}
                   weeks={heatmapWeeks(h, logs, HEAT_WEEKS, today)}
                   streak={computeStreak(h, logs, today)}
+                  rank={ranks.get(h.id)}
                   today={today}
                 />
               );

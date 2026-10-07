@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { ProgressDialog } from "@/components/habits/progress-dialog";
 import { cn } from "@/lib/utils";
 import { parseIso } from "@/lib/date";
+import { RankChip } from "@/components/habits/rank-chip";
 
 /** `logged` = an entry exists for the day (as opposed to a day that is just empty). */
 export type WeekCell = { date: string; state: DayState; value: number; checked: string[]; logged: boolean };
@@ -22,6 +23,8 @@ export type WeekRow = {
   color: string;
   icon: string;
   categoryName: string | null;
+  /** Estimated world standing for this habit (top %, tier). */
+  rank?: { top: number; tier: string };
   evalType: HabitEvalType;
   targetOp: TargetOp;
   dailyTarget: number;
@@ -300,8 +303,9 @@ export function WeekGrid({
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate text-xs font-bold leading-tight">{row.name}</span>
-                          <span className="block text-[10px] font-medium leading-tight text-h-muted">
+                          <span className="flex items-center gap-1 text-[10px] font-medium leading-tight text-h-muted">
                             {row.kind === "break" ? "Break" : "Build"}
+                            {row.rank && <RankChip rank={row.rank} className="!px-1 !text-[9px]" />}
                           </span>
                         </span>
                       </Link>
@@ -398,7 +402,10 @@ export function WeekGrid({
                 </span>
                 <span className="min-w-0">
                   <span className="line-clamp-2 break-words text-sm font-bold leading-snug">{row.name}</span>
-                  <span className="block text-[11px] font-medium text-h-muted">{row.kind === "break" ? "Break" : "Build"}</span>
+                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-h-muted">
+                    {row.kind === "break" ? "Break" : "Build"}
+                    {row.rank && <RankChip rank={row.rank} />}
+                  </span>
                 </span>
               </Link>
               <span

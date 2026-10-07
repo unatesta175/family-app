@@ -50,6 +50,7 @@ import { ProgressDialog } from "@/components/habits/progress-dialog";
 import { StatusGuideButton } from "@/components/habits/status-guide";
 import type { BoardGoal, BoardHabit, BoardTask } from "@/lib/habit-board";
 import { parseIso } from "@/lib/date";
+import { RankChip } from "@/components/habits/rank-chip";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "build" | "break" | "tasks";
@@ -670,6 +671,7 @@ function HabitRow({
             >
               {isBreak ? "Break" : "Build"}
             </span>
+            {h.rank && <RankChip rank={h.rank} />}
             {h.priority > 0 && (
               <span className="rounded-md bg-h-surface2 px-1.5 py-px font-bold text-h-fg" title={`Priority ${h.priority}`}>
                 P{h.priority}

@@ -8,6 +8,7 @@ import { ProgressDialog } from "@/components/habits/progress-dialog";
 import { emptyState, entryState, nextForClick, type WeekRow } from "@/components/habits/week-grid";
 import { parseIso } from "@/lib/date";
 import { HabitIcon } from "@/components/habits/habit-icon";
+import { RankChip } from "@/components/habits/rank-chip";
 import { MonthChart } from "@/components/habits/month-chart";
 import { PERIOD_DAYS, STATUS_COLOR, colorHex, tint, type DayState } from "@/lib/habits";
 import { cn } from "@/lib/utils";
@@ -184,7 +185,7 @@ export function MonthMatrix({
     r.isPeriod ? Math.max(1, Math.round((r.periodTarget * days) / PERIOD_DAYS[r.periodUnit])) : r.cells.filter((c) => c.state !== "off" && c.state !== "prestart" && c.state !== "skipped").length;
   const total = shown.reduce((n, r) => n + doneOf(r), 0);
 
-  const columns = `minmax(6.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
+  const columns = `minmax(6.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem) 4.25rem`;
   // Habit rows share whatever height is left (down to nothing), and text and squares scale with the row.
   const rowTemplate = `1.5rem ${items.map((it) => (it.kind === "group" ? "1.15rem" : "minmax(0.9rem,1fr)")).join(" ")} 1.25rem 1.25rem 1.5rem`;
   const summaryRow = items.length + 3; // the header is row 1, habits follow, then the three summary rows
@@ -246,6 +247,7 @@ export function MonthMatrix({
           <Cell row={1} className={label}>Sum</Cell>
           <Cell row={1} className={label}>Goal</Cell>
           <Cell row={1} className={cn(label, "justify-start px-3")}>Progress</Cell>
+          <Cell row={1} className={label}>World</Cell>
 
           {/* Habit rows */}
           {items.map((it, ii) => {
@@ -305,6 +307,9 @@ export function MonthMatrix({
                     <span className="w-9 text-right text-[0.85em] font-extrabold tabular-nums text-h-muted">{pct}%</span>
                   </div>
                 </Cell>
+                <Cell row={ri + 2} className={edge}>
+                  {r.rank && <RankChip rank={r.rank} className="!px-1 !text-[0.8em]" />}
+                </Cell>
               </div>
             );
           })}
@@ -316,7 +321,7 @@ export function MonthMatrix({
               {p.reached ? p.completed : <span className="text-h-border">·</span>}
             </Cell>
           ))}
-          <Cell row={summaryRow} className="flex-col border-t-2 border-h-border" style={{ gridRow: `${summaryRow} / span 3`, gridColumn: `${days + 2} / ${days + 5}` }}>
+          <Cell row={summaryRow} className="flex-col border-t-2 border-h-border" style={{ gridRow: `${summaryRow} / span 3`, gridColumn: `${days + 2} / ${days + 6}` }}>
             <span className={label}>Total this month</span>
             <span className="text-2xl font-extrabold leading-none tabular-nums">{total}</span>
           </Cell>
