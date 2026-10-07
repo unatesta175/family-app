@@ -57,17 +57,76 @@ function notify(title: string, body: string) {
 
 type Outcome = { kind: "done" } | { kind: "withered" } | null;
 
+/**
+ * A field of fine particles across the whole scene, in three depths: tiny far dust that barely moves,
+ * pollen at mid distance, and a few big soft blurred ones close to the eye. They drift upward at
+ * different speeds, plus a handful of sparks that twinkle in place. Slower and warmer during a break.
+ */
+function Particles({ resting }: { resting?: boolean }) {
+  const tone = resting ? ["#fde68a", "#fbbf24"] : ["#ffffff", "#d9f99d"];
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      {Array.from({ length: 34 }, (_, i) => {
+        const depth = i % 3; // 0 far, 1 mid, 2 near
+        const size = [2, 3.5, 7][depth] + (i % 2);
+        return (
+          <span
+            key={i}
+            className="nrg-mote"
+            style={
+              {
+                left: `${(i * 29) % 100}%`,
+                top: `${52 + ((i * 17) % 56)}%`,
+                width: size,
+                height: size,
+                background: tone[i % 2],
+                opacity: [0.5, 0.65, 0.4][depth],
+                filter: depth === 2 ? "blur(2px)" : undefined,
+                boxShadow: depth === 0 ? undefined : `0 0 ${size * 2}px ${tone[i % 2]}`,
+                "--dx": `${((i % 7) - 3) * (depth + 1) * 7}px`,
+                "--rise": `${[70, 95, 120][depth]}svh`,
+                "--dur": `${([34, 24, 15][depth] + (i % 5) * 2.2) * (resting ? 1.6 : 1)}s`,
+                "--delay": `-${(i * 1.7) % 30}s`,
+              } as React.CSSProperties
+            }
+          />
+        );
+      })}
+      {/* sparks that twinkle where they are */}
+      {Array.from({ length: 14 }, (_, i) => (
+        <span
+          key={`s${i}`}
+          className="nrg-twinkle"
+          style={
+            {
+              left: `${6 + ((i * 53) % 88)}%`,
+              top: `${8 + ((i * 31) % 62)}%`,
+              width: 2 + (i % 3),
+              height: 2 + (i % 3),
+              background: "#ffffff",
+              boxShadow: "0 0 8px rgba(255,255,255,0.9)",
+              "--dur": `${2.4 + (i % 5) * 0.7}s`,
+              "--delay": `-${(i * 0.9) % 5}s`,
+            } as React.CSSProperties
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
 /** The full-screen forest backdrop: layered greens and soft light from above. The content scrolls if a screen is short. */
-function Scene({ children }: { children: React.ReactNode }) {
+function Scene({ children, resting }: { children: React.ReactNode; resting?: boolean }) {
   return (
     <div className="fixed inset-0 z-40 overflow-hidden bg-gradient-to-b from-[#38b583] via-[#1f9468] to-[#0b5a43] text-white">
       <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-lime-200/25 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 top-1/3 h-80 w-80 rounded-full bg-emerald-100/20 blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#06402f]/70 to-transparent" />
-      {/* slow rays of light turning behind the scene */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="nrg-rays h-[170vmax] w-[170vmax] opacity-[0.16]" style={{ background: "repeating-conic-gradient(from 0deg, rgba(255,255,255,0.9) 0deg 6deg, transparent 6deg 24deg)", maskImage: "radial-gradient(circle, black 0%, transparent 62%)", WebkitMaskImage: "radial-gradient(circle, black 0%, transparent 62%)" }} />
-      </div>
+      {/* soft light from above, and two slow banks of mist drifting across */}
+      <div className="pointer-events-none absolute left-1/2 top-[-12%] h-[60%] w-[120%] -translate-x-1/2 rounded-full bg-white/15 blur-3xl" />
+      <div className="nrg-mist pointer-events-none absolute left-[-10%] top-[38%] h-24 w-[70%] rounded-full bg-white/10 blur-2xl" />
+      <div className="nrg-mist pointer-events-none absolute right-[-12%] top-[58%] h-28 w-[75%] rounded-full bg-emerald-100/10 blur-2xl" style={{ animationDelay: "-14s" }} />
+      <Particles resting={resting} />
       <div className="relative flex h-full flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">{children}</div>
     </div>
   );
@@ -88,85 +147,64 @@ function TreeOnIsland({ children, resting, className, aura }: { children: React.
   );
 }
 
+/** What the session reads out as it goes: a focus or discipline word, changing every few seconds. */
+const FOCUS_VERBS = ["Focusing", "Concentrating", "Staying present", "Building discipline", "Holding steady", "Going deep", "Persisting", "Locked in", "Committing", "Showing up"];
+const REST_VERBS = ["Resting", "Recovering", "Breathing", "Recharging"];
+
 /**
- * "Gathering nature energy": a breathing aura around the tree, motes of light streaming in from the
- * ground and rising into the crown, pulses spreading from the soil, a halo that fills with the session's
- * progress, and leaves drifting past. It grows stronger as the tree grows and richer with the tier
- * (gold from the grand trees up), and turns amber and slow during a Pomodoro break.
+ * The glow and life around the tree, all tied to the green ground it stands on: a soft breathing glow,
+ * ripples spreading across the ground, a fine ring on the island's edge that fills with the session's
+ * progress, and a few motes of light rising from the grass. It grows stronger as the tree grows, takes
+ * a golden tone from the Ancient tree up, and turns amber and slow during a break.
  */
-function NatureAura({ progress, tier, resting }: { progress: number; tier: TreeTier; resting: boolean }) {
+function FocusAura({ progress, tier, resting }: { progress: number; tier: TreeTier; resting: boolean }) {
   const gold = tier >= 5;
   const tint = resting ? "#fbbf24" : gold ? "#fde047" : "#bef264";
   const tint2 = resting ? "#fcd34d" : gold ? "#fff3a3" : "#86efac";
-  const motes = resting ? 10 : 12 + tier * 3;
-  const speed = resting ? 1.7 : 1;
+  const motes = resting ? 7 : 10 + tier * 2;
+  const slow = resting ? 1.6 : 1;
 
   return (
     <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden>
-      {/* the aura: two soft layers that breathe at different speeds, stronger as the tree grows */}
-      <div className="nrg-breathe h-[150%] w-[190%] blur-2xl" style={{ background: `radial-gradient(circle, ${tint}88 0%, ${tint}33 40%, transparent 70%)`, ["--nrg-o" as string]: 0.28 + progress * 0.45 }} />
-      <div className="nrg-breathe h-[105%] w-[125%] blur-xl" style={{ background: `radial-gradient(circle, ${tint2}aa 0%, transparent 68%)`, animationDelay: "-2.2s", ["--nrg-o" as string]: 0.22 + progress * 0.4 }} />
+      {/* a soft glow behind the crown that breathes, a little stronger as the tree grows */}
+      <div className="nrg-breathe h-[120%] w-[150%] blur-2xl" style={{ background: `radial-gradient(circle, ${tint}77 0%, ${tint}22 45%, transparent 72%)`, ["--nrg-o" as string]: 0.25 + progress * 0.4 }} />
 
-      {/* a halo that fills as the session goes on */}
-      <svg viewBox="0 0 100 100" className="absolute left-1/2 top-[52%] h-[122%] -translate-x-1/2 -translate-y-1/2 overflow-visible" style={{ aspectRatio: "1 / 1", filter: `drop-shadow(0 0 6px ${tint})` }}>
-        <circle cx="50" cy="50" r="47" fill="none" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="0.8" strokeDasharray="0.8 2.4" />
-        <circle cx="50" cy="50" r="47" fill="none" stroke={tint} strokeWidth="1.4" strokeLinecap="round" pathLength={100} strokeDasharray="100" strokeDashoffset={100 - progress * 100} transform="rotate(-90 50 50)" style={{ transition: "stroke-dashoffset 1s linear" }} />
-      </svg>
-
-      {/* pulses spreading out from the soil */}
-      {[0, 2, 4].map((d) => (
-        <span key={d} className="nrg-ring h-[26%] w-[120%] border" style={{ borderColor: `${tint}99`, animationDelay: `${d / speed}s`, animationDuration: `${6 * speed}s` }} />
-      ))}
-
-      {/* energy streaming in from the ground and up into the crown */}
-      {Array.from({ length: motes }, (_, i) => {
-        const a = (i / motes) * Math.PI * 2 + (i % 3) * 0.4;
-        const r = 105 + (i % 5) * 26;
-        const size = 3 + (i % 4);
-        return (
-          <span
-            key={i}
-            className="nrg-mote"
-            style={
-              {
-                width: size,
-                height: size,
-                background: i % 3 === 0 ? tint2 : tint,
-                boxShadow: `0 0 ${6 + size * 2}px ${i % 3 === 0 ? tint2 : tint}`,
-                "--sx": `${Math.cos(a) * r}px`,
-                "--sy": `${Math.sin(a) * r * 0.22 + 6}px`,
-                "--ex": `${Math.cos(a) * r * 0.1}px`,
-                "--ey": `-${130 + (i % 6) * 26}px`,
-                "--dur": `${(3.8 + (i % 7) * 0.6) * speed}s`,
-                "--delay": `-${(i * 0.53) % 6}s`,
-              } as React.CSSProperties
-            }
-          />
-        );
-      })}
-
-      {/* a few leaves drifting down past the tree */}
-      {!resting &&
-        [0, 1, 2, 3, 4].map((i) => (
-          <span
-            key={i}
-            className="nrg-leaf"
-            style={
-              {
-                left: `${22 + i * 14}%`,
-                width: 9,
-                height: 5,
-                borderRadius: "9999px 0 9999px 0",
-                background: i % 2 ? "#86efac" : "#bef264",
-                "--sx": "0px",
-                "--dx": `${(i % 2 ? 1 : -1) * (24 + i * 8)}px`,
-                "--rot": `${(i % 2 ? 1 : -1) * 320}deg`,
-                "--dur": `${11 + i * 2.2}s`,
-                "--delay": `-${i * 3.1}s`,
-              } as React.CSSProperties
-            }
-          />
+      {/* everything below is placed on the island itself, so it can never drift off the green base */}
+      <div className="absolute left-1/2 top-[88%] h-[30%] w-[135%] -translate-x-1/2 -translate-y-1/2">
+        {/* ripples across the ground */}
+        {[0, 1.8, 3.6].map((d) => (
+          <span key={d} className="nrg-ripple border" style={{ borderColor: `${tint}aa`, animationDelay: `${d * slow}s`, animationDuration: `${5.5 * slow}s` }} />
         ))}
+        {/* the progress ring, on the island's edge */}
+        <svg viewBox="0 0 150 40" className="absolute -inset-[3%] h-[106%] w-[106%] overflow-visible" style={{ filter: `drop-shadow(0 0 4px ${tint})` }}>
+          <ellipse cx="75" cy="20" rx="73" ry="18" fill="none" stroke="#ffffff" strokeOpacity="0.2" strokeWidth="0.7" />
+          <ellipse cx="75" cy="20" rx="73" ry="18" fill="none" stroke={tint} strokeWidth="1.3" strokeLinecap="round" pathLength={100} strokeDasharray="100" strokeDashoffset={100 - progress * 100} style={{ transition: "stroke-dashoffset 1s linear" }} />
+        </svg>
+        {/* motes of light lifting off the grass */}
+        {Array.from({ length: motes }, (_, i) => {
+          const size = 2.5 + (i % 3);
+          return (
+            <span
+              key={i}
+              className="nrg-mote"
+              style={
+                {
+                  left: `${8 + ((i * 37) % 84)}%`,
+                  top: `${30 + ((i * 23) % 40)}%`,
+                  width: size,
+                  height: size,
+                  background: i % 3 === 0 ? tint2 : tint,
+                  boxShadow: `0 0 ${5 + size * 2}px ${i % 3 === 0 ? tint2 : tint}`,
+                  "--dx": `${((i % 5) - 2) * 8}px`,
+                  "--rise": `min(${20 + (i % 4) * 4}svh, ${190 + (i % 4) * 30}px)`,
+                  "--dur": `${(5 + (i % 6) * 0.7) * slow}s`,
+                  "--delay": `-${(i * 0.71) % 7}s`,
+                } as React.CSSProperties
+              }
+            />
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -300,9 +338,11 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
   // --- Running ---------------------------------------------------------------------------------
   const resting = tl.phase === "break";
   const grace = tl.wallElapsed < GRACE_SECONDS;
+  const verbs = resting ? REST_VERBS : FOCUS_VERBS;
+  const verb = verbs[Math.floor(tl.wallElapsed / 3.4) % verbs.length];
 
   return (
-    <Scene>
+    <Scene resting={resting}>
       <div className="flex items-start justify-between">
         <div>
           <p className="flex items-center gap-2 text-lg font-bold leading-tight">
@@ -319,8 +359,10 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
       </div>
 
       <div className="flex flex-1 items-center justify-center py-3">
-        <TreeOnIsland resting={resting} aura={<NatureAura progress={tl.progress} tier={tier} resting={resting} />}>
-          <FocusTree progress={tl.progress} species={session.species} tier={tier} className="relative z-10 h-[34svh] max-h-80 min-h-44 w-auto" />
+        <TreeOnIsland resting={resting} aura={<FocusAura progress={tl.progress} tier={tier} resting={resting} />}>
+          <div className="nrg-sway relative z-10">
+            <FocusTree progress={tl.progress} species={session.species} tier={tier} className="h-[34svh] max-h-80 min-h-44 w-auto" />
+          </div>
         </TreeOnIsland>
       </div>
 
@@ -328,7 +370,9 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
         <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(tl.phaseRemaining)}</p>
         <p className="flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md" aria-live="off">
           <span className="nrg-dot h-2 w-2 rounded-full" style={{ background: resting ? "#fbbf24" : "#bef264", boxShadow: `0 0 10px ${resting ? "#fbbf24" : "#bef264"}` }} />
-          {resting ? "Resting. Your tree is soaking in the calm" : "Gathering nature energy"}
+          <span key={verb} className="nrg-verb">
+            {verb}
+          </span>
           {!resting && <span className="tabular-nums text-lime-200">{Math.round(tl.progress * 100)}%</span>}
         </p>
         <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">

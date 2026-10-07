@@ -727,41 +727,49 @@ html:has(.habits-app) {
   .fx-pop, .fx-rise { animation: none; }
 }
 
-/* Focus session: "gathering nature energy". Only transform and opacity move, so it runs on the GPU. */
+/* Focus session animation. Only transform and opacity move, so it stays smooth on a phone. */
 @keyframes nrg-breathe {
-  0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: var(--nrg-o, 0.5); }
-  50% { transform: translate(-50%, -50%) scale(1.1); opacity: calc(var(--nrg-o, 0.5) + 0.2); }
+  0%, 100% { transform: translate(-50%, -50%) scale(0.92); opacity: var(--nrg-o, 0.5); }
+  50% { transform: translate(-50%, -50%) scale(1.06); opacity: calc(var(--nrg-o, 0.5) + 0.16); }
 }
-@keyframes nrg-mote {
-  0% { transform: translate(var(--sx), var(--sy)) scale(0.3); opacity: 0; }
-  14% { opacity: 1; }
-  72% { opacity: 0.85; }
-  100% { transform: translate(var(--ex), var(--ey)) scale(1); opacity: 0; }
+@keyframes nrg-rise {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  16% { opacity: 1; }
+  100% { transform: translate(var(--dx, 0px), calc(var(--rise, 220px) * -1)) scale(1); opacity: 0; }
 }
-@keyframes nrg-ring {
-  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.5; }
-  100% { transform: translate(-50%, -50%) scale(1.45); opacity: 0; }
+@keyframes nrg-ripple {
+  0% { transform: scale(0.25); opacity: 0.6; }
+  100% { transform: scale(1.12); opacity: 0; }
 }
-@keyframes nrg-rays {
-  from { transform: translate(-50%, -50%) rotate(0deg); }
-  to { transform: translate(-50%, -50%) rotate(360deg); }
+@keyframes nrg-sway {
+  0%, 100% { transform: rotate(-0.8deg); }
+  50% { transform: rotate(0.8deg); }
 }
-@keyframes nrg-leaf {
-  0% { transform: translate(var(--sx), -30px) rotate(0deg); opacity: 0; }
-  12% { opacity: 0.85; }
-  100% { transform: translate(calc(var(--sx) + var(--dx)), 320px) rotate(var(--rot)); opacity: 0; }
+@keyframes nrg-mist {
+  0%, 100% { transform: translateX(-6%); }
+  50% { transform: translateX(6%); }
+}
+@keyframes nrg-twinkle {
+  0%, 100% { transform: scale(0.5); opacity: 0.1; }
+  50% { transform: scale(1.2); opacity: 0.95; }
 }
 @keyframes nrg-dot {
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.7); opacity: 0.45; }
 }
-.nrg-breathe { position: absolute; left: 50%; top: 52%; border-radius: 9999px; animation: nrg-breathe 4.6s ease-in-out infinite; will-change: transform, opacity; }
-.nrg-mote { position: absolute; left: 50%; top: 88%; border-radius: 9999px; animation: nrg-mote var(--dur, 5s) cubic-bezier(0.3, 0.1, 0.2, 1) var(--delay, 0s) infinite; will-change: transform, opacity; }
-.nrg-ring { position: absolute; left: 50%; top: 88%; border-radius: 50%; animation: nrg-ring 6s ease-out infinite; will-change: transform, opacity; }
-.nrg-rays { position: absolute; left: 50%; top: 40%; animation: nrg-rays 90s linear infinite; will-change: transform; }
-.nrg-leaf { position: absolute; top: 0; animation: nrg-leaf var(--dur, 12s) ease-in var(--delay, 0s) infinite; will-change: transform, opacity; }
+@keyframes nrg-verb {
+  0% { transform: translateY(7px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+.nrg-breathe { position: absolute; left: 50%; top: 52%; border-radius: 9999px; animation: nrg-breathe 5s ease-in-out infinite; will-change: transform, opacity; }
+.nrg-mote { position: absolute; border-radius: 9999px; animation: nrg-rise var(--dur, 6s) cubic-bezier(0.25, 0.1, 0.25, 1) var(--delay, 0s) infinite; will-change: transform, opacity; }
+.nrg-ripple { position: absolute; inset: 0; border-radius: 50%; animation: nrg-ripple 5.5s ease-out infinite; will-change: transform, opacity; }
+.nrg-sway { transform-origin: 50% 100%; animation: nrg-sway 6.5s ease-in-out infinite; will-change: transform; }
+.nrg-mist { animation: nrg-mist 28s ease-in-out infinite; will-change: transform; }
+.nrg-twinkle { position: absolute; border-radius: 9999px; animation: nrg-twinkle var(--dur, 3s) ease-in-out var(--delay, 0s) infinite; will-change: transform, opacity; }
 .nrg-dot { animation: nrg-dot 1.8s ease-in-out infinite; }
+.nrg-verb { animation: nrg-verb 0.5s ease-out both; }
 @media (prefers-reduced-motion: reduce) {
-  .nrg-mote, .nrg-ring, .nrg-leaf, .nrg-rays { display: none; }
-  .nrg-breathe, .nrg-dot { animation: none; }
+  .nrg-mote, .nrg-ripple, .nrg-mist, .nrg-twinkle { display: none; }
+  .nrg-breathe, .nrg-sway, .nrg-dot, .nrg-verb { animation: none; }
 }
