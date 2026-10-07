@@ -2,6 +2,8 @@
 import { addDays } from "../src/lib/date";
 import { treeTier, byDay, clock, focusStreak, formatFocus, hourDistribution, segmentsFor, stageName, summarize, timeline, type SessionLite } from "../src/lib/focus";
 
+import { treeSpec } from "../src/lib/focus-tree";
+
 let failed = 0;
 function eq(name: string, got: unknown, want: unknown) {
   const ok = JSON.stringify(got) === JSON.stringify(want);
@@ -59,6 +61,19 @@ eq("focus streak runs back from today", focusStreak(days, "2026-10-07", addDays)
 eq("a day with only a stump breaks the streak", focusStreak(byDay([mk(5, "2026-10-07", "withered", 30)]), "2026-10-07", addDays), 0);
 const hours = hourDistribution([mk(6, "2026-10-07", "completed", 90, 9)]);
 eq("a 90 minute session at 9:00 covers hours 9 and 10", [Math.round(hours[9] / 60), Math.round(hours[10] / 60)], [60, 30]);
+
+// The tree description both renderers share: the crown sits on the trunk and gets richer with the tier.
+const tiers = [1, 2, 3, 4, 5, 6] as const;
+const specs = tiers.map((t) => treeSpec({ progress: 1, species: "oak", tier: t, withered: false }));
+eq("every leaf sits within reach of the trunk top", specs.every((sp) => sp.leaves.every((l) => Math.abs(l.y - sp.top[1]) <= 52 && Math.abs(l.x - sp.top[0]) <= 45)), true);
+eq("more leaves for bigger tiers", specs.map((sp) => sp.leaves.length).every((n, i, a) => i === 0 || n >= a[i - 1]), true);
+eq("blossoms from tier 3, none before", specs.map((sp) => sp.blooms.length > 0), [false, false, true, true, true, true]);
+eq("glow from tier 5, rays only at 6", [specs[3].halo !== null, specs[4].halo !== null, specs[4].rays !== null, specs[5].rays !== null], [false, true, false, true]);
+eq("roots from tier 4", specs.map((sp) => sp.roots !== null), [false, false, false, true, true, true]);
+const pines = tiers.map((t) => treeSpec({ progress: 1, species: "pine", tier: t, withered: false }));
+eq("pine layers grow with the tier and a star crowns tier 6", [pines.map((sp) => sp.pine!.layers.length), pines[5].pine!.star !== null, pines[4].pine!.star !== null], [[4, 4, 5, 5, 6, 7], true, false]);
+const sprout = treeSpec({ progress: 0.05, species: "oak", tier: 3, withered: false });
+eq("a barely started tree is a short stem with few leaves", [sprout.leaves.length <= 3, sprout.trunk.y1 > 80], [true, true]);
 
 console.log(failed === 0 ? "\nAll checks passed" : `\n${failed} check(s) FAILED`);
 process.exit(failed === 0 ? 0 : 1);
