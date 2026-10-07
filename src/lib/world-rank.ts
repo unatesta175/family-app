@@ -10,7 +10,7 @@ import { computeStreak, dayState, totalDone, type HabitLite, type HabitLogMap } 
  * be working on habits. Research on habit formation (about two months to automate one, and most
  * resolutions fading within weeks) says staying consistent is rare, so the share of people who keep
  * it up falls off very fast. The model turns your logged consistency into a 0 to 1000 "discipline
- * score", then reads it off a curve of anchors: a first good start is top 50%, a month of showing up
+ * score", then reads it off a curve of anchors: everyone starts at the top 100% (the whole pool), a month of showing up
  * about top 20%, four months of near-perfect consistency about top 1%, and only a year of it across
  * several habits reaches the top 100.
  */
@@ -46,9 +46,9 @@ export function disciplineScore(i: StandingInput): number {
 
 /** [score, top percent of the pool]. Read off in log space, so each step feels like a real jump. */
 const ANCHORS: [number, number][] = [
-  [0, 50],
-  [40, 40],
-  [120, 25],
+  [0, 100],
+  [40, 55],
+  [120, 28],
   [250, 12],
   [400, 5],
   [550, 2.5],
@@ -86,7 +86,7 @@ export const TIERS = [
 ] as const;
 
 export type Standing = {
-  /** False until the first habit is done: there is nobody to compare yet. */
+  /** Always true now: a habit with nothing done yet starts at the top 100%, the whole pool. */
   ranked: boolean;
   score: number;
   /** Top X percent of the pool. */
@@ -120,9 +120,9 @@ function tierFor(top: number): number {
 
 /** The standing for a score, with the next tier and what it would take to get there. */
 export function standingFor(input: StandingInput): Standing {
-  const ranked = input.totalCheckins > 0;
-  const score = ranked ? disciplineScore(input) : 0;
-  const top = ranked ? topPercent(score) : 100;
+  const ranked = true;
+  const score = disciplineScore(input);
+  const top = topPercent(score);
   const idx = tierFor(top);
   const nextTier = TIERS[idx + 1] ?? null;
   let next: Standing["next"] = null;

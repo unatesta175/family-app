@@ -84,11 +84,11 @@ export function WorldRankGuide({
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-extrabold leading-tight">{r.name}</p>
                       <p className="text-[11px] text-h-muted">
-                        {r.top >= 100 ? "Your first check-in" : `Top ${formatTopPercent(r.top)} · about ${formatRank(r.rank)}`}
+                        {r.top >= 100 ? "Where everyone starts: Top 100%" : `Top ${formatTopPercent(r.top)} · about ${formatRank(r.rank)}`}
                       </p>
                     </div>
                     <span className="shrink-0 text-right text-[11px] font-bold tabular-nums text-h-muted">
-                      {r.top >= 100 ? "Day 1" : r.days === null ? "years" : r.days >= 365 ? `~${(r.days / 365).toFixed(1)} yrs` : `~${r.days} days`}
+                      {r.top >= 100 ? "Start" : r.days === null ? "years" : r.days >= 365 ? `~${(r.days / 365).toFixed(1)} yrs` : `~${r.days} days`}
                     </span>
                   </li>
                 );

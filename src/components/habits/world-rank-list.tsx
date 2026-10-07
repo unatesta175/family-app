@@ -39,7 +39,7 @@ export function WorldRankList({ rows }: { rows: RankRow[] }) {
                       <p className="mt-1 text-[11px] text-h-muted">about {formatRank(r.standing.rank)} of {(WORLD_POOL / 1e9).toFixed(1)} billion</p>
                     </>
                   ) : (
-                    <p className="mt-0.5 text-[11px] text-h-muted">Complete it once to join the ranking</p>
+                    <p className="mt-0.5 text-[11px] text-h-muted">Top 100%: where everyone starts</p>
                   )}
                 </div>
                 {r.standing.ranked && (

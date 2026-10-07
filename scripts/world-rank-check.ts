@@ -43,11 +43,14 @@ function perfect(n: number, days: number) {
 }
 
 // Nothing logged: nobody to compare with yet.
-ok("no check-ins is unranked", !standingFor({ activeDays: 0, rate: 0, streakDays: 0, habitCount: 0, totalCheckins: 0 }).ranked);
+const none = standingFor({ activeDays: 0, rate: 0, streakDays: 0, habitCount: 0, totalCheckins: 0 });
+ok("nothing done yet starts at the top 100%", none.topPercent === 100 && none.tier === "Starter", none);
 
 // A first good start is already top half.
 const day1 = standingFor(perfect(1, 1));
-ok("one day in is about top 50%", day1.ranked && day1.topPercent > 45 && day1.topPercent <= 50, day1.topPercent);
+ok("one day in is barely off the top 100%", day1.topPercent > 90 && day1.topPercent < 100, day1.topPercent);
+const week = standingFor(perfect(1, 7));
+ok("a first week of showing up is about the top half", week.topPercent > 35 && week.topPercent < 75, week.topPercent);
 
 // A month of showing up on two habits.
 const month = standingFor(perfect(2, 30));

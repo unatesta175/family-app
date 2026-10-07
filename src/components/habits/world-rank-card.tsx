@@ -54,7 +54,7 @@ export function WorldRankCard({ standing, input, title = "World standing" }: { s
           </span>
           <div>
             <p className="text-sm font-extrabold">{title}</p>
-            <p className="text-[11px] text-white/85">Complete this habit once and it starts in the top 50% of about {billions} billion people.</p>
+            <p className="text-[11px] text-white/85">Everyone starts at the top 100% of about {billions} billion people. Keep showing up and the number falls.</p>
           </div>
         </div>
       )}
