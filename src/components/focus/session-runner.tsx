@@ -125,9 +125,9 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
     const grown = outcome.kind === "done";
     return (
       <div className="flex flex-col items-center gap-5 pt-4 text-center md:mx-auto md:max-w-md">
-        <div className="relative w-full overflow-hidden rounded-3xl bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 p-6 dark:from-[#12302b] dark:via-[#0f2723] dark:to-[#0d201c]">
+        <div className="relative w-full overflow-hidden rounded-3xl bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 p-6 [.dark_&]:from-[#12302b] [.dark_&]:via-[#0f2723] [.dark_&]:to-[#0d201c]">
           <FocusTree progress={grown ? 1 : Math.max(0.3, tl.progress)} species={session.species} withered={!grown} className="mx-auto h-56 w-56" />
-          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-emerald-300/50 to-transparent dark:from-emerald-900/50" />
+          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-emerald-300/50 to-transparent [.dark_&]:from-emerald-900/50" />
         </div>
         <div>
           <p className="text-2xl font-extrabold tracking-tight">{grown ? "Tree planted" : "The tree withered"}</p>
@@ -167,10 +167,10 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
         </p>
       </div>
 
-      <div className={cn("relative w-full overflow-hidden rounded-3xl p-6 transition-colors duration-700", resting ? "bg-gradient-to-b from-amber-100 via-orange-50 to-emerald-100 dark:from-[#2e2410] dark:via-[#241d10] dark:to-[#0d201c]" : "bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 dark:from-[#12302b] dark:via-[#0f2723] dark:to-[#0d201c]")}>
+      <div className={cn("relative w-full overflow-hidden rounded-3xl p-6 transition-colors duration-700", resting ? "bg-gradient-to-b from-amber-100 via-orange-50 to-emerald-100 [.dark_&]:from-[#2e2410] [.dark_&]:via-[#241d10] [.dark_&]:to-[#0d201c]" : "bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 [.dark_&]:from-[#12302b] [.dark_&]:via-[#0f2723] [.dark_&]:to-[#0d201c]")}>
         <FocusTree progress={tl.progress} species={session.species} className="mx-auto h-60 w-60" />
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-emerald-300/50 to-transparent dark:from-emerald-900/50" />
-        <span className="absolute left-3 top-3 rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm dark:bg-white/10">
+        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-emerald-300/50 to-transparent [.dark_&]:from-emerald-900/50" />
+        <span className="absolute left-3 top-3 rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm [.dark_&]:bg-white/10">
           {SPECIES_LABEL[session.species]} · {stage}
         </span>
       </div>

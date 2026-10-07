@@ -18,7 +18,7 @@ export function DayGarden({ day, names }: { day: DayTotals | undefined; names: H
   // 12 tiles fit whole rows at 4 and 6 columns; one spare row of room is always kept.
   const tiles = Math.max(12, Math.ceil((sessions.length + 3) / 12) * 12);
   return (
-    <div className="rounded-3xl border border-emerald-200/70 bg-gradient-to-b from-emerald-50 to-emerald-100/70 p-3 shadow-sm dark:border-[#21392f] dark:from-[#0f221d] dark:to-[#0b1814]">
+    <div className="rounded-3xl border border-emerald-200/70 bg-gradient-to-b from-emerald-50 to-emerald-100/70 p-3 shadow-sm [.dark_&]:border-[#21392f] [.dark_&]:from-[#0f221d] [.dark_&]:to-[#0b1814]">
       <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
         {Array.from({ length: tiles }, (_, i) => {
           const s = sessions[i];
@@ -26,7 +26,7 @@ export function DayGarden({ day, names }: { day: DayTotals | undefined; names: H
             <div
               key={i}
               title={s ? `${clockLabel(s.startedAt)} · ${formatFocus(s.focusedSeconds)}${s.habitId ? ` · ${names.get(s.habitId) ?? ""}` : ""}${s.status === "withered" ? " · withered" : ""}` : undefined}
-              className={cn("relative aspect-square overflow-hidden rounded-xl", s ? "bg-gradient-to-b from-emerald-100 to-emerald-200/80 dark:from-[#14302a] dark:to-[#10261f]" : "border border-dashed border-emerald-300/50 dark:border-[#21392f]")}
+              className={cn("relative aspect-square overflow-hidden rounded-xl", s ? "bg-gradient-to-b from-emerald-100 to-emerald-200/80 [.dark_&]:from-[#14302a] [.dark_&]:to-[#10261f]" : "border border-dashed border-emerald-300/50 [.dark_&]:border-[#21392f]")}
             >
               {s && <FocusTree progress={s.status === "completed" ? 1 : Math.max(0.2, s.focusedSeconds / s.plannedSeconds)} species={s.species} withered={s.status === "withered"} animate={false} className="absolute inset-0 h-full w-full" />}
             </div>
@@ -45,7 +45,7 @@ export function SessionList({ sessions, names }: { sessions: SessionLite[]; name
     <ul className="flex flex-col divide-y divide-h-border overflow-hidden rounded-2xl border border-h-border bg-h-surface">
       {sessions.map((s) => (
         <li key={s.id} className="flex items-center gap-3 px-3 py-2.5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-emerald-100 dark:bg-[#14302a]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-emerald-100 [.dark_&]:bg-[#14302a]">
             <FocusTree progress={s.status === "completed" ? 1 : Math.max(0.2, s.focusedSeconds / s.plannedSeconds)} species={s.species} withered={s.status === "withered"} animate={false} className="h-9 w-9" />
           </span>
           <div className="min-w-0 flex-1">
@@ -69,7 +69,7 @@ export function MiniGarden({ day, max = 12, cols = "grid-cols-4" }: { day: DayTo
   return (
     <div className={cn("grid gap-0.5", cols)}>
       {shown.map((s) => (
-        <div key={s.id} className="aspect-square overflow-hidden rounded-md bg-emerald-100/70 dark:bg-[#14302a]">
+        <div key={s.id} className="aspect-square overflow-hidden rounded-md bg-emerald-100/70 [.dark_&]:bg-[#14302a]">
           <FocusTree progress={s.status === "completed" ? 1 : Math.max(0.2, s.focusedSeconds / s.plannedSeconds)} species={s.species} withered={s.status === "withered"} animate={false} className="h-full w-full" />
         </div>
       ))}
