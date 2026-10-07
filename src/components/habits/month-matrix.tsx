@@ -110,6 +110,9 @@ export function MonthMatrix({
   );
   const [, startTransition] = useTransition();
   const [adjusting, setAdjusting] = useState<{ rowId: number; date: string } | null>(null);
+  // Sort by category (grouped under headings) and/or show a single category.
+  const [sort, setSort] = useState<"default" | "category">("default");
+  const [category, setCategory] = useState<string | null>(null);
 
   function send(row: WeekRow, date: string, status: "done" | "slipped" | "missed" | "skipped" | "clear", state: DayState, value: number, checked?: string[]) {
     startTransition(async () => {
@@ -133,6 +136,32 @@ export function MonthMatrix({
   const adjustRow = adjusting ? rows.find((r) => r.id === adjusting.rowId) : undefined;
   const adjustCell = adjustRow?.cells.find((c) => c.date === adjusting?.date);
 
+  // "" stands for "no category"; named categories sort A to Z with "no category" last.
+  const catOf = (r: WeekRow) => r.categoryName ?? "";
+  const categoryChips = (() => {
+    const counts = new Map<string, number>();
+    for (const r of rows) counts.set(catOf(r), (counts.get(catOf(r)) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => (a[0] === "" ? 1 : b[0] === "" ? -1 : a[0].localeCompare(b[0])));
+  })();
+  const activeCategory = category !== null && categoryChips.some(([n]) => n === category) ? category : null;
+  const shown = rows
+    .filter((r) => activeCategory === null || catOf(r) === activeCategory)
+    .map((r, i) => ({ r, i }))
+    .sort((a, b) => {
+      if (sort !== "category") return a.i - b.i;
+      const ca = catOf(a.r);
+      const cb = catOf(b.r);
+      if (ca !== cb) return ca === "" ? 1 : cb === "" ? -1 : ca.localeCompare(cb);
+      return a.i - b.i;
+    })
+    .map((x) => x.r);
+  type Item = { kind: "group"; name: string } | { kind: "row"; r: WeekRow };
+  const items: Item[] = [];
+  shown.forEach((r, i) => {
+    if (sort === "category" && activeCategory === null && (i === 0 || catOf(shown[i - 1]) !== catOf(r))) items.push({ kind: "group", name: catOf(r) || "No category" });
+    items.push({ kind: "row", r });
+  });
+
   const dayNumbers = Array.from({ length: days }, (_, i) => i + 1);
   const dateOf = (d: number) => `${month}-${String(d).padStart(2, "0")}`;
 
@@ -141,7 +170,7 @@ export function MonthMatrix({
     const i = d - 1;
     let completed = 0;
     let counted = 0;
-    for (const r of rows) {
+    for (const r of shown) {
       const s = r.cells[i].state;
       if (s === "done") completed += 1;
       if (COUNTED.includes(s)) counted += 1;
@@ -153,15 +182,58 @@ export function MonthMatrix({
   // What the month asks of a habit: its scheduled days, or its period target spread over the month.
   const goalOf = (r: WeekRow) =>
     r.isPeriod ? Math.max(1, Math.round((r.periodTarget * days) / PERIOD_DAYS[r.periodUnit])) : r.cells.filter((c) => c.state !== "off" && c.state !== "prestart" && c.state !== "skipped").length;
-  const total = rows.reduce((n, r) => n + doneOf(r), 0);
+  const total = shown.reduce((n, r) => n + doneOf(r), 0);
 
   const columns = `minmax(6.5rem,12rem) repeat(${days}, minmax(0,1fr)) 2.5rem 2.5rem minmax(5.5rem,8rem)`;
   // Habit rows share whatever height is left (down to nothing), and text and squares scale with the row.
-  const rowTemplate = `1.5rem repeat(${rows.length}, minmax(0.9rem,1fr)) 1.25rem 1.25rem 1.5rem`;
-  const summaryRow = rows.length + 3; // the header is row 1, habits follow, then the three summary rows
+  const rowTemplate = `1.5rem ${items.map((it) => (it.kind === "group" ? "1.15rem" : "minmax(0.9rem,1fr)")).join(" ")} 1.25rem 1.25rem 1.5rem`;
+  const summaryRow = items.length + 3; // the header is row 1, habits follow, then the three summary rows
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2">
+        <div role="tablist" aria-label="Sort habits" className="flex rounded-full border border-h-border bg-h-surface p-0.5 shadow-sm">
+          {(
+            [
+              { key: "default", label: "Default order" },
+              { key: "category", label: "By category" },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              role="tab"
+              aria-selected={sort === o.key}
+              onClick={() => setSort(o.key)}
+              className={cn("rounded-full px-3 py-1 text-xs font-bold transition-colors", sort === o.key ? "bg-h-brand text-h-brand-fg shadow-sm" : "text-h-muted hover:text-h-fg")}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+        {categoryChips.length > 1 && (
+          <div className="scrollbar-hide flex min-w-0 flex-1 gap-1.5 overflow-x-auto" aria-label="Filter by category">
+            <button
+              type="button"
+              onClick={() => setCategory(null)}
+              className={cn("shrink-0 rounded-full border px-3 py-1 text-xs font-bold", activeCategory === null ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border bg-h-surface text-h-muted hover:text-h-fg")}
+            >
+              All <span className="opacity-60">{rows.length}</span>
+            </button>
+            {categoryChips.map(([name, n]) => (
+              <button
+                key={name || "none"}
+                type="button"
+                onClick={() => setCategory(activeCategory === name ? null : name)}
+                className={cn("shrink-0 rounded-full border px-3 py-1 text-xs font-bold", activeCategory === name ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border bg-h-surface text-h-muted hover:text-h-fg")}
+              >
+                {name || "No category"} <span className="opacity-60">{n}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="h-card min-h-0 flex-1 overflow-x-auto p-3 lg:overflow-y-auto">
         <div className="grid h-full min-h-[22rem] min-w-[58rem] gap-y-px lg:min-w-0" style={{ gridTemplateColumns: columns, gridTemplateRows: rowTemplate }}>
           {/* Header */}
@@ -176,7 +248,16 @@ export function MonthMatrix({
           <Cell row={1} className={cn(label, "justify-start px-3")}>Progress</Cell>
 
           {/* Habit rows */}
-          {rows.map((r, ri) => {
+          {items.map((it, ii) => {
+            if (it.kind === "group") {
+              return (
+                <Cell key={`g-${it.name}`} row={ii + 2} className={cn(label, "justify-start border-t border-h-border bg-h-surface2/60 px-2 max-lg:sticky max-lg:left-0")} style={{ gridColumn: "1 / -1" }}>
+                  {it.name}
+                </Cell>
+              );
+            }
+            const r = it.r;
+            const ri = ii;
             const hex = colorHex(r.color);
             const done = doneOf(r);
             const goal = goalOf(r);
