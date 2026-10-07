@@ -8,7 +8,7 @@ import { localDateFrom } from "@/lib/focus";
 import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
-import { completeFocusSession, createFocusSession, deleteFocusSession, getFocusSession, getFocusSessionsInRange, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
+import { attachHabitToSession, completeFocusSession, createFocusSession, deleteFocusSession, getFocusSession, getFocusSessionsInRange, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
 import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
@@ -78,6 +78,26 @@ export async function finishFocusAction(id: number): Promise<FocusResult<FinishS
     await completeFocusSession(row);
     refresh();
     return { ok: true, data: await summaryFor(profileId, row.date) };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Counts a finished session's minutes towards a timer habit it was not started for. */
+export async function attachFocusHabitAction(input: { sessionId: number; habitId: number }): Promise<FocusResult<{ habitName: string }>> {
+  try {
+    const v = z.object({ sessionId: z.number().int().positive(), habitId: z.number().int().positive() }).parse(input);
+    const profileId = await ownProfile();
+    const row = await getFocusSession(v.sessionId);
+    if (!row || row.profileId !== profileId) throw new Error("Session not found.");
+    if (row.status !== "completed") throw new Error("Only a finished session can be added to a habit.");
+    if (row.habitId !== null) throw new Error("This session already counts towards a habit.");
+    const habit = await getHabit(v.habitId);
+    if (!habit || habit.profileId !== profileId) throw new Error("Habit not found.");
+    if (habit.evalType !== "timer" || habit.systemKey) throw new Error("Only timer habits can take focus time.");
+    await attachHabitToSession(row, habit.id);
+    refresh();
+    return { ok: true, data: { habitName: habit.name } };
   } catch (err) {
     return fail(err);
   }

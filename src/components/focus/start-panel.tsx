@@ -243,7 +243,11 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
                 );
               })}
             </div>
-            {habitId !== null && <p className="mt-1 text-[11px] text-h-muted">When the tree is grown, these minutes are added to the habit&apos;s day.</p>}
+            {habitId !== null ? (
+              <p className="mt-1 text-[11px] text-h-muted">When the tree is grown, these minutes are added to the habit&apos;s day.</p>
+            ) : (
+              <p className="mt-1 text-[11px] font-semibold text-amber-600 [.dark_&]:text-amber-300">Not linked to a habit, so the time won&apos;t be added to one. Pick a habit above to count it.</p>
+            )}
           </div>
         )}
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Clock, Coffee, Flame, Home, Loader2, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
-import { cancelFocusAction, finishFocusAction, type FinishSummary } from "@/lib/focus-actions";
+import { attachFocusHabitAction, cancelFocusAction, finishFocusAction, type FinishSummary } from "@/lib/focus-actions";
 import { GRACE_SECONDS, clock, formatFocus, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
@@ -57,17 +57,28 @@ function notify(title: string, body: string) {
 
 type Outcome = { kind: "done" } | { kind: "withered" } | null;
 
-/** The full-screen forest backdrop: layered greens, soft light from above, and a glowing patch of ground. */
-function Scene({ resting, children }: { resting?: boolean; children: React.ReactNode }) {
+/** The full-screen forest backdrop: layered greens and soft light from above. The content scrolls if a screen is short. */
+function Scene({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-40 overflow-hidden bg-gradient-to-b from-[#38b583] via-[#1f9468] to-[#0b5a43] text-white">
       <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-lime-200/25 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 top-1/3 h-80 w-80 rounded-full bg-emerald-100/20 blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#06402f]/70 to-transparent" />
-      {/* the island the tree stands on */}
-      <div className={cn("pointer-events-none absolute left-1/2 top-[52%] h-44 w-[22rem] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-[50%] blur-xl transition-colors duration-1000", resting ? "bg-amber-200/70" : "bg-lime-200/75")} />
-      <div className={cn("pointer-events-none absolute left-1/2 top-[52%] h-32 w-72 max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-[50%] transition-colors duration-1000", resting ? "bg-amber-200/55" : "bg-lime-300/60")} />
-      <div className="relative flex h-full flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">{children}</div>
+      <div className="relative flex h-full flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * A tree standing on its own glowing patch of ground. The ground belongs to the tree (it moves with it),
+ * so the tree is always on the green base, wherever the rest of the screen puts it.
+ */
+function TreeOnIsland({ children, resting, className }: { children: React.ReactNode; resting?: boolean; className?: string }) {
+  return (
+    <div className={cn("relative flex shrink-0 items-end justify-center", className)}>
+      <div className={cn("pointer-events-none absolute left-1/2 top-[88%] h-[44%] w-[165%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] blur-xl transition-colors duration-1000", resting ? "bg-amber-200/70" : "bg-lime-200/75")} />
+      <div className={cn("pointer-events-none absolute left-1/2 top-[88%] h-[30%] w-[135%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] transition-colors duration-1000", resting ? "bg-amber-200/55" : "bg-lime-300/60")} />
+      {children}
     </div>
   );
 }
@@ -77,7 +88,7 @@ function Scene({ resting, children }: { resting?: boolean; children: React.React
  * clock. The time comes from the session's start time, so a reload (or a phone that slept) lands on
  * exactly the right moment.
  */
-export function SessionRunner({ session, serverNow, initialOutcome }: { session: RunningSession; serverNow: number; initialOutcome?: "done" | "withered" }) {
+export function SessionRunner({ session, serverNow, initialOutcome, timerHabits = [] }: { session: RunningSession; serverNow: number; initialOutcome?: "done" | "withered"; timerHabits?: { id: number; name: string }[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // The server's clock and this device's can differ a little; the gap is measured once and kept.
@@ -169,18 +180,20 @@ export function SessionRunner({ session, serverNow, initialOutcome }: { session:
   // --- Finished or given up ------------------------------------------------------------------
   if (outcome) {
     if (outcome.kind === "done") {
-      return <Celebration session={session} tier={tier} saved={saved} summary={summary} error={error} onRetry={() => void save()} />;
+      return <Celebration session={session} tier={tier} saved={saved} summary={summary} error={error} onRetry={() => void save()} timerHabits={timerHabits} />;
     }
     return (
       <Scene>
-        <div className="flex flex-1 flex-col items-center justify-between pt-10 text-center">
+        <div className="flex min-h-full flex-1 flex-col items-center justify-between gap-3 pt-6 text-center">
           <div className="fx-rise">
             <p className="text-sm font-semibold text-white/80">Not this time</p>
             <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Your tree withered</h1>
             <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">You gave up before the end. The stump stays in today&apos;s grove, and the time you did put in is kept.</p>
             {error && <p className="mt-2 text-xs font-bold text-red-200">{error}</p>}
           </div>
-          <FocusTree progress={Math.max(0.3, session.focusedSeconds ? session.focusedSeconds / session.plannedSeconds : tl.progress)} species={session.species} tier={tier} withered className="relative z-10 h-72 w-60" />
+          <TreeOnIsland className="my-4">
+            <FocusTree progress={Math.max(0.3, session.focusedSeconds ? session.focusedSeconds / session.plannedSeconds : tl.progress)} species={session.species} tier={tier} withered className="relative z-10 h-[30svh] max-h-72 min-h-40 w-auto" />
+          </TreeOnIsland>
           <div className="fx-rise grid w-full max-w-sm gap-2">
             <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-sm font-extrabold text-[#0b5a43] shadow-lg">
               <Home className="h-4 w-4" />
@@ -201,7 +214,7 @@ export function SessionRunner({ session, serverNow, initialOutcome }: { session:
   const grace = tl.wallElapsed < GRACE_SECONDS;
 
   return (
-    <Scene resting={resting}>
+    <Scene>
       <div className="flex items-start justify-between">
         <div>
           <p className="flex items-center gap-2 text-lg font-bold leading-tight">
@@ -217,8 +230,10 @@ export function SessionRunner({ session, serverNow, initialOutcome }: { session:
         </button>
       </div>
 
-      <div className="flex flex-1 items-center justify-center">
-        <FocusTree progress={tl.progress} species={session.species} tier={tier} className="relative z-10 h-80 w-64" />
+      <div className="flex flex-1 items-center justify-center py-3">
+        <TreeOnIsland resting={resting}>
+          <FocusTree progress={tl.progress} species={session.species} tier={tier} className="relative z-10 h-[34svh] max-h-80 min-h-44 w-auto" />
+        </TreeOnIsland>
       </div>
 
       <div className="flex flex-col items-center gap-4 text-center">
@@ -312,6 +327,7 @@ function Celebration({
   summary,
   error,
   onRetry,
+  timerHabits,
 }: {
   session: RunningSession;
   tier: TreeTier;
@@ -319,32 +335,46 @@ function Celebration({
   summary: FinishSummary | null;
   error: string | null;
   onRetry: () => void;
+  timerHabits: { id: number; name: string }[];
 }) {
   const cheer = CHEERS[tier];
+  // A session started with no habit can be counted towards one after the fact.
+  const [linked, setLinked] = useState<string | null>(null);
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linking, startLink] = useTransition();
+  const habitName = session.habitName ?? linked;
+  function attach(habitId: number) {
+    setLinkError(null);
+    startLink(async () => {
+      const res = await attachFocusHabitAction({ sessionId: session.id, habitId });
+      if (res.ok) setLinked(res.data.habitName);
+      else setLinkError(res.error);
+    });
+  }
   return (
     <Scene>
       <Confetti />
-      <div className="relative flex flex-1 flex-col items-center justify-between pt-8 text-center">
+      <div className="relative flex min-h-full flex-1 flex-col items-center justify-between gap-3 pt-4 text-center">
         <div className="fx-rise">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm">
             <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
             Session complete
           </span>
-          <h1 className="mt-3 text-4xl font-extrabold tracking-tight">{cheer.title}</h1>
+          <h1 className="mt-2 text-4xl font-extrabold tracking-tight">{cheer.title}</h1>
           <p className="mx-auto mt-2 max-w-xs text-base font-semibold text-white">
             You focused for <span className="rounded-md bg-white/20 px-1.5 py-0.5 font-extrabold tabular-nums">{formatFocus(session.plannedSeconds)}</span>
-            {session.habitName ? <> on {session.habitName}</> : null}.
+            {habitName ? <> on {habitName}</> : null}.
           </p>
           <p className="mx-auto mt-1.5 max-w-xs text-sm text-white/80">
             {cheer.line} Your {tierInfo(tier).name.toLowerCase()} is fully grown and now part of your grove.
           </p>
         </div>
 
-        <div className="relative my-2 flex items-center justify-center">
-          <span className="fx-ring h-56 w-56 border-2 border-white/60" />
-          <span className="fx-ring h-56 w-56 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
-          <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-72 w-60" />
-        </div>
+        <TreeOnIsland className="my-3">
+          <span className="fx-ring h-52 w-52 border-2 border-white/60" />
+          <span className="fx-ring h-52 w-52 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
+          <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-[28svh] max-h-64 min-h-36 w-auto" />
+        </TreeOnIsland>
 
         <div className="flex w-full max-w-sm flex-col gap-3">
           <div className="fx-rise grid grid-cols-3 gap-2" style={{ animationDelay: "0.35s" }}>
@@ -361,7 +391,7 @@ function Celebration({
             )}
             {saved === "saved" && (
               <>
-                <Check className="h-3.5 w-3.5 text-lime-200" strokeWidth={3} /> Saved to your grove{session.habitName ? `, and added to ${session.habitName}` : ""}
+                <Check className="h-3.5 w-3.5 text-lime-200" strokeWidth={3} /> Saved to your grove{habitName ? `, and added to ${habitName}` : ""}
               </>
             )}
             {saved === "error" && (
@@ -371,12 +401,26 @@ function Celebration({
             )}
           </p>
 
+          {!habitName && timerHabits.length > 0 && saved === "saved" && (
+            <div className="fx-rise rounded-2xl bg-white/15 p-3 text-left backdrop-blur-md" style={{ animationDelay: "0.55s" }}>
+              <p className="text-xs font-bold">Count these {formatFocus(session.plannedSeconds)} towards a habit?</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {timerHabits.map((h) => (
+                  <button key={h.id} type="button" disabled={linking} onClick={() => attach(h.id)} className="rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold hover:bg-white/30 disabled:opacity-60">
+                    {h.name}
+                  </button>
+                ))}
+              </div>
+              {linkError && <p className="mt-1.5 text-[11px] font-bold text-red-200">{linkError}</p>}
+            </div>
+          )}
+
           <div className="fx-rise grid gap-2" style={{ animationDelay: "0.6s" }}>
-            <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-4 text-base font-extrabold text-[#0b5a43] shadow-lg transition-transform active:scale-[0.98]">
+            <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-base font-extrabold text-[#0b5a43] shadow-lg transition-transform active:scale-[0.98]">
               <Home className="h-5 w-5" />
               Back to home
             </Link>
-            <Link href="/focus/grove" className="flex items-center justify-center gap-1.5 rounded-full bg-white/15 py-3.5 text-sm font-bold backdrop-blur-sm">
+            <Link href="/focus/grove" className="flex items-center justify-center gap-1.5 rounded-full bg-white/15 py-3 text-sm font-bold backdrop-blur-sm">
               <Trees className="h-4 w-4" />
               See my grove
             </Link>

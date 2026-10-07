@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, gte, lte, ne } from "drizzle-orm";
+import { and, desc, eq, gte, isNull, lte, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { focusSessions, habitLogs } from "@/lib/db/schema";
 import { upsertHabitLog } from "@/lib/db/repo-habits";
@@ -59,12 +59,35 @@ export async function getFocusSessionsInRange(profileId: number, from: string, t
  * that habit's day (so a 25 minute session is 25 more minutes on the habit).
  */
 export async function completeFocusSession(row: FocusSessionRow) {
-  await db
+  // Only the call that actually ends the session credits the habit, so two calls at once can't count it twice.
+  const ended = await db
     .update(focusSessions)
     .set({ status: "completed", focusedSeconds: row.plannedSeconds, endedAt: Date.now() })
-    .where(and(eq(focusSessions.id, row.id), eq(focusSessions.status, "active")));
-  if (row.habitId === null) return;
-  const habit = await getHabit(row.habitId);
+    .where(and(eq(focusSessions.id, row.id), eq(focusSessions.status, "active")))
+    .returning({ id: focusSessions.id });
+  if (ended.length === 0) return;
+  await creditHabit(row, row.habitId);
+}
+
+/**
+ * A finished session that was started without a habit can be counted towards one afterwards: the
+ * session is linked to it and its minutes go onto the habit's day, exactly once.
+ */
+export async function attachHabitToSession(row: FocusSessionRow, habitId: number): Promise<boolean> {
+  const linked = await db
+    .update(focusSessions)
+    .set({ habitId })
+    .where(and(eq(focusSessions.id, row.id), eq(focusSessions.status, "completed"), isNull(focusSessions.habitId)))
+    .returning({ id: focusSessions.id });
+  if (linked.length === 0) return false;
+  await creditHabit(row, habitId);
+  return true;
+}
+
+/** Adds a finished session's focused time to a timer habit's day. */
+async function creditHabit(row: FocusSessionRow, habitId: number | null) {
+  if (habitId === null) return;
+  const habit = await getHabit(habitId);
   if (!habit || habit.evalType !== "timer" || habit.systemKey) return;
   // The Habits module counts days in the server's own zone, so the time goes onto the day it calls that.
   const habitDay = isoDate(new Date(row.startedAt));

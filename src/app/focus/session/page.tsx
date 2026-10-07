@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getOwnProfileId } from "@/lib/auth";
-import { getHabit } from "@/lib/db/repo-habits";
+import { getHabit, getHabits } from "@/lib/db/repo-habits";
 import { getRecentEndedSession, settleActiveSession } from "@/lib/db/repo-focus";
 import { nowMs } from "@/lib/now";
 import { SessionRunner } from "@/components/focus/session-runner";
@@ -18,10 +18,13 @@ export default async function FocusSessionPage() {
   const row = active ?? ended;
   if (!row) redirect("/focus");
   const habit = row.habitId ? await getHabit(row.habitId) : null;
+  // A finished session with no habit can still be counted towards one of these.
+  const timerHabits = row.habitId === null && ended ? (await getHabits(profileId)).filter((h) => h.evalType === "timer" && !h.systemKey).map((h) => ({ id: h.id, name: h.name })) : [];
 
   return (
     <SessionRunner
       serverNow={nowMs()}
+      timerHabits={timerHabits}
       initialOutcome={ended ? (ended.status === "completed" ? "done" : "withered") : undefined}
       session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds }}
     />
