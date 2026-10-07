@@ -9,8 +9,8 @@ export function ScienceLink() {
         <FlaskConical className="h-5 w-5" />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-extrabold">Habit science</span>
-        <span className="block text-xs text-h-muted">Research-backed tips, and popular claims fact-checked</span>
+        <span className="block text-sm font-extrabold">How to start</span>
+        <span className="block text-xs text-h-muted">20 science-backed ways to stop procrastinating and start</span>
       </span>
       <ChevronRight className="h-5 w-5 shrink-0 text-h-muted" />
     </Link>
