@@ -171,13 +171,13 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           />
           <span className="w-9 shrink-0 text-right text-xs font-extrabold tabular-nums text-h-muted">{Math.round(demo * 100)}%</span>
         </div>
-        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">
+        <div className="mt-2 flex flex-wrap justify-center gap-1.5">
           {TREE_TIERS.map((t) => (
             <button
               key={t.tier}
               type="button"
               onClick={() => set(t.minMinutes)}
-              className={cn("shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors", tier === t.tier ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted hover:text-h-fg")}
+              className={cn("rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors", tier === t.tier ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted hover:text-h-fg")}
             >
               {t.minMinutes}m · {t.name.replace(" tree", "")}
             </button>
