@@ -41,11 +41,47 @@ export const HABIT_COLORS = {
   fuchsia: "#d946ef",
   brown: "#a16207",
   graphite: "#334155",
+  // More choices, grouped roughly warm to cool, then neutrals.
+  scarlet: "#dc2626",
+  ruby: "#be123c",
+  maroon: "#9f1239",
+  blush: "#f9a8d4",
+  peach: "#fdba74",
+  tangerine: "#ea580c",
+  terracotta: "#c2410c",
+  copper: "#b45309",
+  chocolate: "#78350f",
+  lemon: "#facc15",
+  mustard: "#ca8a04",
+  sand: "#d6b98c",
+  chartreuse: "#a3e635",
+  olive: "#65a30d",
+  forest: "#166534",
+  jade: "#059669",
+  turquoise: "#0d9488",
+  aqua: "#22d3ee",
+  azure: "#38bdf8",
+  ocean: "#0369a1",
+  cobalt: "#1d4ed8",
+  navy: "#1e3a8a",
+  midnight: "#312e81",
+  lavender: "#a78bfa",
+  plum: "#86198f",
+  magenta: "#c026d3",
+  steel: "#475569",
+  silver: "#94a3b8",
+  stone: "#78716c",
+  charcoal: "#1f2937",
 } as const;
 export type HabitColor = keyof typeof HABIT_COLORS;
 export const HABIT_COLOR_KEYS = Object.keys(HABIT_COLORS) as HabitColor[];
 
+/** A colour picked freely instead of from the list, stored as "#rrggbb". */
+export const CUSTOM_COLOR = /^#[0-9a-fA-F]{6}$/;
+export const isCustomColor = (key: string) => CUSTOM_COLOR.test(key);
+
 export function colorHex(key: string): string {
+  if (isCustomColor(key)) return key.toLowerCase();
   return HABIT_COLORS[key as HabitColor] ?? HABIT_COLORS.indigo;
 }
 

@@ -11,7 +11,7 @@ import {
   GOAL_TRACKING,
   GOAL_VISIBILITY,
 } from "@/lib/db/schema";
-import { HABIT_COLOR_KEYS } from "@/lib/habits";
+import { CUSTOM_COLOR, HABIT_COLOR_KEYS } from "@/lib/habits";
 import { HABIT_ICON_KEYS } from "@/lib/habit-icons";
 import { GOAL_TEMPLATES } from "@/lib/goals";
 import { createHabit, getHabit } from "@/lib/db/repo-habits";
@@ -47,7 +47,7 @@ export type GoalActionResult<T = undefined> =
   | { ok: false; error: string };
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const colorSchema = z.enum(HABIT_COLOR_KEYS as [string, ...string[]]);
+const colorSchema = z.union([z.enum(HABIT_COLOR_KEYS as [string, ...string[]]), z.string().regex(CUSTOM_COLOR)]);
 const iconSchema = z.enum(HABIT_ICON_KEYS as [string, ...string[]]);
 
 function refresh() {

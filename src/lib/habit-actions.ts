@@ -17,6 +17,7 @@ import {
   TASK_RECURRENCES,
 } from "@/lib/db/schema";
 import {
+  CUSTOM_COLOR,
   HABIT_COLOR_KEYS,
   PERIOD_MAX,
   parseChecklist,
@@ -60,7 +61,8 @@ export type ActionResult<T = undefined> =
 const MAX_BACKFILL_DAYS = 730;
 
 const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const colorSchema = z.enum(HABIT_COLOR_KEYS as [string, ...string[]]);
+// A named colour from the palette, or any "#rrggbb" the user picked.
+const colorSchema = z.union([z.enum(HABIT_COLOR_KEYS as [string, ...string[]]), z.string().regex(CUSTOM_COLOR)]);
 const iconSchema = z.enum(HABIT_ICON_KEYS as [string, ...string[]]);
 
 function refresh() {

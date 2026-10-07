@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { HABIT_COLOR_KEYS, HABIT_COLORS, WEEKDAY_INITIAL, WEEKDAY_SHORT } from "@/lib/habits";
+import { HABIT_COLOR_KEYS, HABIT_COLORS, WEEKDAY_INITIAL, WEEKDAY_SHORT, colorHex, isCustomColor } from "@/lib/habits";
 import { HABIT_ICON_KEYS, habitIcon } from "@/lib/habit-icons";
 import { Check } from "lucide-react";
 
@@ -72,6 +72,24 @@ export function ColorPicker({ value, onChange }: { value: string; onChange: (v: 
           {value === key && <Check className="h-4 w-4 text-white" strokeWidth={3} />}
         </button>
       ))}
+      {/* Any colour you like: the browser's own picker, stored as #rrggbb. */}
+      <label
+        title="Pick any colour"
+        className={cn(
+          "relative flex h-8 w-8 cursor-pointer items-center justify-center overflow-hidden rounded-full ring-offset-2 ring-offset-h-surface transition-transform",
+          isCustomColor(value) ? "scale-110 ring-2 ring-h-fg" : "hover:scale-105"
+        )}
+        style={{ background: isCustomColor(value) ? colorHex(value) : "conic-gradient(#ef4444, #f59e0b, #22c55e, #06b6d4, #6366f1, #d946ef, #ef4444)" }}
+      >
+        {isCustomColor(value) ? <Check className="h-4 w-4 text-white" strokeWidth={3} /> : <span className="rounded-full bg-white/90 px-1 text-[10px] font-extrabold leading-none text-neutral-700">+</span>}
+        <input
+          type="color"
+          aria-label="Custom colour"
+          value={colorHex(value)}
+          onChange={(e) => onChange(e.target.value)}
+          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+        />
+      </label>
     </div>
   );
 }
