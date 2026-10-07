@@ -698,3 +698,31 @@ html:has(.habits-app) {
   --h-break-soft: #3a2d10;
   --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
 }
+
+/* Focus: the finish celebration. All of it stands still for people who prefer reduced motion. */
+@keyframes fx-confetti {
+  0% { transform: translate3d(0, -12vh, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  100% { transform: translate3d(var(--fx-drift, 0px), 112vh, 0) rotate(var(--fx-spin, 540deg)); opacity: 1; }
+}
+@keyframes fx-pop {
+  0% { transform: scale(0.2) translateY(30px); opacity: 0; }
+  60% { transform: scale(1.12) translateY(-4px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes fx-rise {
+  0% { transform: translateY(18px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@keyframes fx-ring {
+  0% { transform: translate(-50%, -50%) scale(0.35); opacity: 0.7; }
+  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}
+.fx-confetti { position: absolute; top: 0; animation: fx-confetti linear infinite; }
+.fx-pop { animation: fx-pop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.fx-rise { animation: fx-rise 0.7s ease-out both; }
+.fx-ring { position: absolute; left: 50%; top: 50%; border-radius: 9999px; animation: fx-ring 2.6s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .fx-confetti, .fx-ring { display: none; }
+  .fx-pop, .fx-rise { animation: none; }
+}

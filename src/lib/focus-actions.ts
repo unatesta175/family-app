@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getOwnProfileId } from "@/lib/auth";
-import { todayIso } from "@/lib/date";
+import { addDays, todayIso } from "@/lib/date";
 import { getHabit } from "@/lib/db/repo-habits";
-import { completeFocusSession, createFocusSession, deleteFocusSession, getFocusSession, settleActiveSession, witherFocusSession } from "@/lib/db/repo-focus";
-import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, timeline } from "@/lib/focus";
+import { completeFocusSession, createFocusSession, deleteFocusSession, getFocusSession, getFocusSessionsInRange, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
+import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
 
@@ -52,20 +52,29 @@ export async function startFocusAction(input: z.input<typeof startSchema>): Prom
   }
 }
 
+export type FinishSummary = { treesToday: number; secondsToday: number; streak: number };
+
+/** The day's totals after a session, for the celebration screen. */
+async function summaryFor(profileId: number, date: string): Promise<FinishSummary> {
+  const days = byDay((await getFocusSessionsInRange(profileId, addDays(date, -60), date)).map(toLite));
+  const d = days.get(date);
+  return { treesToday: d?.trees ?? 0, secondsToday: d?.seconds ?? 0, streak: focusStreak(days, date, addDays) };
+}
+
 /** The timer reached the end: the tree is fully grown and goes into the Grove. */
-export async function finishFocusAction(id: number): Promise<FocusResult> {
+export async function finishFocusAction(id: number): Promise<FocusResult<FinishSummary>> {
   try {
     const profileId = await ownProfile();
     const row = await getFocusSession(id);
     if (!row || row.profileId !== profileId) throw new Error("Session not found.");
-    if (row.status === "completed") return { ok: true };
+    if (row.status === "completed") return { ok: true, data: await summaryFor(profileId, row.date) };
     if (row.status !== "active") throw new Error("This session already ended.");
     // The server's own clock decides: a small slack covers the browser's clock running a touch ahead.
     const tl = timeline(row.startedAt, row.plannedSeconds, row.mode, Date.now() + 3000);
     if (!tl.done) throw new Error("This session isn't finished yet.");
     await completeFocusSession(row);
     refresh();
-    return { ok: true };
+    return { ok: true, data: await summaryFor(profileId, row.date) };
   } catch (err) {
     return fail(err);
   }

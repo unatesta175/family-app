@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Coffee, Square, Trees, Volume2, VolumeX } from "lucide-react";
-import { cancelFocusAction, finishFocusAction } from "@/lib/focus-actions";
-import { GRACE_SECONDS, clock, formatFocus, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies } from "@/lib/focus";
+import { Check, Clock, Coffee, Flame, Home, Loader2, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
+import { cancelFocusAction, finishFocusAction, type FinishSummary } from "@/lib/focus-actions";
+import { GRACE_SECONDS, clock, formatFocus, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,8 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
   const [confirming, setConfirming] = useState(false);
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<"saving" | "saved" | "error">("saving");
+  const [summary, setSummary] = useState<FinishSummary | null>(null);
   const lastPhase = useRef<string | null>(null);
   const finishing = useRef(false);
 
@@ -115,13 +117,32 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
       finishing.current = true;
       if (!muted) chime("done");
       notify("Your tree is fully grown", `${formatFocus(session.plannedSeconds)} of focus done. It has joined your grove.`);
-      void finishFocusAction(session.id).then((res) => {
-        if (!res.ok) setError(res.error);
-        setOutcome({ kind: "done" });
-        router.refresh();
-      });
+      // Celebrate right away; saving to the grove happens in the background, and can be retried.
+      setOutcome({ kind: "done" });
+      void save();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tl.phase, tl.done, outcome, muted, session.id, session.plannedSeconds, router]);
+
+  /** Tells the server the tree is grown. If the connection fails the celebration stays and can retry. */
+  async function save() {
+    setSaved("saving");
+    setError(null);
+    try {
+      const res = await finishFocusAction(session.id);
+      if (res.ok) {
+        setSummary(res.data);
+        setSaved("saved");
+        router.refresh();
+      } else {
+        setSaved("error");
+        setError(res.error);
+      }
+    } catch {
+      setSaved("error");
+      setError("Couldn't reach the server. Your tree is safe and will be saved when you are back online.");
+    }
+  }
 
   useEffect(() => {
     document.title = outcome ? "Focus" : `${clock(tl.phaseRemaining)} · ${tl.phase === "break" ? "Break" : "Focus"}`;
@@ -140,25 +161,23 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
 
   // --- Finished or given up ------------------------------------------------------------------
   if (outcome) {
-    const grown = outcome.kind === "done";
+    if (outcome.kind === "done") {
+      return <Celebration session={session} tier={tier} saved={saved} summary={summary} error={error} onRetry={() => void save()} />;
+    }
     return (
       <Scene>
         <div className="flex flex-1 flex-col items-center justify-between pt-10 text-center">
-          <div>
-            <p className="text-sm font-semibold text-white/80">{grown ? "Well done" : "Not this time"}</p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{grown ? `Your ${tierInfo(tier).name.toLowerCase()} is fully grown` : "Your tree withered"}</h1>
-            <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">
-              {grown
-                ? `${formatFocus(session.plannedSeconds)} of focus${session.habitName ? ` on ${session.habitName}` : ""} are now part of your grove.`
-                : "You gave up before the end. The stump stays in today's grove, and the time you did put in is kept."}
-            </p>
-            {grown && session.habitName && <p className="mt-1 text-xs font-semibold text-lime-200">The time was added to {session.habitName}.</p>}
+          <div className="fx-rise">
+            <p className="text-sm font-semibold text-white/80">Not this time</p>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Your tree withered</h1>
+            <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">You gave up before the end. The stump stays in today&apos;s grove, and the time you did put in is kept.</p>
             {error && <p className="mt-2 text-xs font-bold text-red-200">{error}</p>}
           </div>
-          <FocusTree progress={grown ? 1 : Math.max(0.3, tl.progress)} species={session.species} tier={tier} withered={!grown} className="relative z-10 h-72 w-60" />
-          <div className="grid w-full max-w-sm gap-2">
-            <Link href="/focus" className="rounded-full bg-white py-3.5 text-center text-sm font-extrabold text-[#0b5a43] shadow-lg">
-              {grown ? "Plant another tree" : "Try again"}
+          <FocusTree progress={Math.max(0.3, tl.progress)} species={session.species} tier={tier} withered className="relative z-10 h-72 w-60" />
+          <div className="fx-rise grid w-full max-w-sm gap-2">
+            <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-sm font-extrabold text-[#0b5a43] shadow-lg">
+              <Home className="h-4 w-4" />
+              Back to home
             </Link>
             <Link href="/focus/grove" className="flex items-center justify-center gap-1.5 rounded-full bg-white/15 py-3.5 text-sm font-bold backdrop-blur-sm">
               <Trees className="h-4 w-4" />
@@ -232,5 +251,141 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
         />
       )}
     </Scene>
+  );
+}
+
+const CONFETTI = ["#fde047", "#86efac", "#a7f3d0", "#ffffff", "#fbbf24", "#f9a8d4", "#93c5fd", "#fca5a5"];
+
+/** Falling confetti: deterministic pieces, so the screen is the same on every render. */
+function Confetti() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+      {Array.from({ length: 44 }, (_, i) => {
+        const left = (i * 37) % 100;
+        const size = 6 + ((i * 7) % 6);
+        return (
+          <span
+            key={i}
+            className="fx-confetti"
+            style={
+              {
+                left: `${left}%`,
+                width: size,
+                height: i % 3 === 0 ? size : size * 1.6,
+                borderRadius: i % 3 === 0 ? 9999 : 2,
+                background: CONFETTI[i % CONFETTI.length],
+                animationDelay: `${(i % 11) * 0.28}s`,
+                animationDuration: `${3.4 + (i % 6) * 0.45}s`,
+                "--fx-drift": `${((i % 7) - 3) * 22}px`,
+                "--fx-spin": `${360 + (i % 5) * 120}deg`,
+              } as React.CSSProperties
+            }
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/** What to say, by how big a tree the session grew. */
+const CHEERS: Record<TreeTier, { title: string; line: string }> = {
+  1: { title: "Nicely done!", line: "Every focused minute counts. A small tree today, a forest in time." },
+  2: { title: "Great focus!", line: "You stayed with it and your tree grew full and leafy." },
+  3: { title: "Beautifully done!", line: "Steady, deep focus, and it is in bloom." },
+  4: { title: "Outstanding focus!", line: "A long stretch of real work. Your grand tree stands tall." },
+  5: { title: "Remarkable discipline!", line: "This is what deep focus looks like. Your ancient tree is glowing." },
+  6: { title: "Legendary focus!", line: "Hours of undivided attention. Very few people ever do this." },
+};
+
+/** The finish: confetti, the tree growing into place, a cheer that fits the session, and today's totals. */
+function Celebration({
+  session,
+  tier,
+  saved,
+  summary,
+  error,
+  onRetry,
+}: {
+  session: RunningSession;
+  tier: TreeTier;
+  saved: "saving" | "saved" | "error";
+  summary: FinishSummary | null;
+  error: string | null;
+  onRetry: () => void;
+}) {
+  const cheer = CHEERS[tier];
+  return (
+    <Scene>
+      <Confetti />
+      <div className="relative flex flex-1 flex-col items-center justify-between pt-8 text-center">
+        <div className="fx-rise">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-wider backdrop-blur-sm">
+            <Check className="h-3.5 w-3.5" strokeWidth={3.5} />
+            Session complete
+          </span>
+          <h1 className="mt-3 text-4xl font-extrabold tracking-tight">{cheer.title}</h1>
+          <p className="mx-auto mt-2 max-w-xs text-base font-semibold text-white">
+            You focused for <span className="rounded-md bg-white/20 px-1.5 py-0.5 font-extrabold tabular-nums">{formatFocus(session.plannedSeconds)}</span>
+            {session.habitName ? <> on {session.habitName}</> : null}.
+          </p>
+          <p className="mx-auto mt-1.5 max-w-xs text-sm text-white/80">
+            {cheer.line} Your {tierInfo(tier).name.toLowerCase()} is fully grown and now part of your grove.
+          </p>
+        </div>
+
+        <div className="relative my-2 flex items-center justify-center">
+          <span className="fx-ring h-56 w-56 border-2 border-white/60" />
+          <span className="fx-ring h-56 w-56 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
+          <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-72 w-60" />
+        </div>
+
+        <div className="flex w-full max-w-sm flex-col gap-3">
+          <div className="fx-rise grid grid-cols-3 gap-2" style={{ animationDelay: "0.35s" }}>
+            <Stat icon={Sprout} value={summary ? String(summary.treesToday) : "–"} label="Trees today" />
+            <Stat icon={Clock} value={summary ? formatFocus(summary.secondsToday) : "–"} label="Focused today" />
+            <Stat icon={Flame} value={summary ? `${summary.streak}d` : "–"} label="Focus streak" />
+          </div>
+
+          <p className="fx-rise flex items-center justify-center gap-1.5 text-xs font-semibold text-white/80" style={{ animationDelay: "0.5s" }} aria-live="polite">
+            {saved === "saving" && (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Adding it to your grove…
+              </>
+            )}
+            {saved === "saved" && (
+              <>
+                <Check className="h-3.5 w-3.5 text-lime-200" strokeWidth={3} /> Saved to your grove{session.habitName ? `, and added to ${session.habitName}` : ""}
+              </>
+            )}
+            {saved === "error" && (
+              <button type="button" onClick={onRetry} className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1 font-bold">
+                <RotateCw className="h-3.5 w-3.5" /> {error ?? "Couldn't save yet."} Try again
+              </button>
+            )}
+          </p>
+
+          <div className="fx-rise grid gap-2" style={{ animationDelay: "0.6s" }}>
+            <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-4 text-base font-extrabold text-[#0b5a43] shadow-lg transition-transform active:scale-[0.98]">
+              <Home className="h-5 w-5" />
+              Back to home
+            </Link>
+            <Link href="/focus/grove" className="flex items-center justify-center gap-1.5 rounded-full bg-white/15 py-3.5 text-sm font-bold backdrop-blur-sm">
+              <Trees className="h-4 w-4" />
+              See my grove
+            </Link>
+          </div>
+        </div>
+      </div>
+    </Scene>
+  );
+}
+
+function Stat({ icon: Icon, value, label }: { icon: React.ComponentType<{ className?: string }>; value: string; label: string }) {
+  return (
+    <div className="rounded-2xl bg-white/15 px-2 py-3 backdrop-blur-md">
+      <Icon className="mx-auto h-4 w-4 text-lime-200" />
+      <p className="mt-1 text-xl font-extrabold leading-none tabular-nums">{value}</p>
+      <p className="mt-1 text-[10px] font-semibold text-white/75">{label}</p>
+    </div>
   );
 }
