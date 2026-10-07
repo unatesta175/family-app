@@ -112,7 +112,7 @@ export default async function HabitsWeekPage({
 
   const bestStreak = habits.reduce((max, h) => Math.max(max, computeStreak(h, logsByHabit[h.id] ?? {}, today).current), 0);
   // Month view: one row per habit, one column per day.
-  const monthKey = rawMonth && /^d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) ? rawMonth : today.slice(0, 7);
+  const monthKey = rawMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(rawMonth) ? rawMonth : today.slice(0, 7);
   const monthFirst = `${monthKey}-01`;
   const monthDays = new Date(Number(monthKey.slice(0, 4)), Number(monthKey.slice(5)), 0).getDate();
   const monthDates = Array.from({ length: monthDays }, (_, i) => `${monthKey}-${String(i + 1).padStart(2, "0")}`);
