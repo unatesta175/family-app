@@ -64,6 +64,10 @@ function Scene({ children }: { children: React.ReactNode }) {
       <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-lime-200/25 blur-3xl" />
       <div className="pointer-events-none absolute -right-16 top-1/3 h-80 w-80 rounded-full bg-emerald-100/20 blur-3xl" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#06402f]/70 to-transparent" />
+      {/* slow rays of light turning behind the scene */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="nrg-rays h-[170vmax] w-[170vmax] opacity-[0.16]" style={{ background: "repeating-conic-gradient(from 0deg, rgba(255,255,255,0.9) 0deg 6deg, transparent 6deg 24deg)", maskImage: "radial-gradient(circle, black 0%, transparent 62%)", WebkitMaskImage: "radial-gradient(circle, black 0%, transparent 62%)" }} />
+      </div>
       <div className="relative flex h-full flex-col overflow-y-auto px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))]">{children}</div>
     </div>
   );
@@ -73,12 +77,96 @@ function Scene({ children }: { children: React.ReactNode }) {
  * A tree standing on its own glowing patch of ground. The ground belongs to the tree (it moves with it),
  * so the tree is always on the green base, wherever the rest of the screen puts it.
  */
-function TreeOnIsland({ children, resting, className }: { children: React.ReactNode; resting?: boolean; className?: string }) {
+function TreeOnIsland({ children, resting, className, aura }: { children: React.ReactNode; resting?: boolean; className?: string; aura?: React.ReactNode }) {
   return (
     <div className={cn("relative flex shrink-0 items-end justify-center", className)}>
+      {aura}
       <div className={cn("pointer-events-none absolute left-1/2 top-[88%] h-[44%] w-[165%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] blur-xl transition-colors duration-1000", resting ? "bg-amber-200/70" : "bg-lime-200/75")} />
       <div className={cn("pointer-events-none absolute left-1/2 top-[88%] h-[30%] w-[135%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] transition-colors duration-1000", resting ? "bg-amber-200/55" : "bg-lime-300/60")} />
       {children}
+    </div>
+  );
+}
+
+/**
+ * "Gathering nature energy": a breathing aura around the tree, motes of light streaming in from the
+ * ground and rising into the crown, pulses spreading from the soil, a halo that fills with the session's
+ * progress, and leaves drifting past. It grows stronger as the tree grows and richer with the tier
+ * (gold from the grand trees up), and turns amber and slow during a Pomodoro break.
+ */
+function NatureAura({ progress, tier, resting }: { progress: number; tier: TreeTier; resting: boolean }) {
+  const gold = tier >= 5;
+  const tint = resting ? "#fbbf24" : gold ? "#fde047" : "#bef264";
+  const tint2 = resting ? "#fcd34d" : gold ? "#fff3a3" : "#86efac";
+  const motes = resting ? 10 : 12 + tier * 3;
+  const speed = resting ? 1.7 : 1;
+
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-visible" aria-hidden>
+      {/* the aura: two soft layers that breathe at different speeds, stronger as the tree grows */}
+      <div className="nrg-breathe h-[150%] w-[190%] blur-2xl" style={{ background: `radial-gradient(circle, ${tint}88 0%, ${tint}33 40%, transparent 70%)`, ["--nrg-o" as string]: 0.28 + progress * 0.45 }} />
+      <div className="nrg-breathe h-[105%] w-[125%] blur-xl" style={{ background: `radial-gradient(circle, ${tint2}aa 0%, transparent 68%)`, animationDelay: "-2.2s", ["--nrg-o" as string]: 0.22 + progress * 0.4 }} />
+
+      {/* a halo that fills as the session goes on */}
+      <svg viewBox="0 0 100 100" className="absolute left-1/2 top-[52%] h-[122%] -translate-x-1/2 -translate-y-1/2 overflow-visible" style={{ aspectRatio: "1 / 1", filter: `drop-shadow(0 0 6px ${tint})` }}>
+        <circle cx="50" cy="50" r="47" fill="none" stroke="#ffffff" strokeOpacity="0.14" strokeWidth="0.8" strokeDasharray="0.8 2.4" />
+        <circle cx="50" cy="50" r="47" fill="none" stroke={tint} strokeWidth="1.4" strokeLinecap="round" pathLength={100} strokeDasharray="100" strokeDashoffset={100 - progress * 100} transform="rotate(-90 50 50)" style={{ transition: "stroke-dashoffset 1s linear" }} />
+      </svg>
+
+      {/* pulses spreading out from the soil */}
+      {[0, 2, 4].map((d) => (
+        <span key={d} className="nrg-ring h-[26%] w-[120%] border" style={{ borderColor: `${tint}99`, animationDelay: `${d / speed}s`, animationDuration: `${6 * speed}s` }} />
+      ))}
+
+      {/* energy streaming in from the ground and up into the crown */}
+      {Array.from({ length: motes }, (_, i) => {
+        const a = (i / motes) * Math.PI * 2 + (i % 3) * 0.4;
+        const r = 105 + (i % 5) * 26;
+        const size = 3 + (i % 4);
+        return (
+          <span
+            key={i}
+            className="nrg-mote"
+            style={
+              {
+                width: size,
+                height: size,
+                background: i % 3 === 0 ? tint2 : tint,
+                boxShadow: `0 0 ${6 + size * 2}px ${i % 3 === 0 ? tint2 : tint}`,
+                "--sx": `${Math.cos(a) * r}px`,
+                "--sy": `${Math.sin(a) * r * 0.22 + 6}px`,
+                "--ex": `${Math.cos(a) * r * 0.1}px`,
+                "--ey": `-${130 + (i % 6) * 26}px`,
+                "--dur": `${(3.8 + (i % 7) * 0.6) * speed}s`,
+                "--delay": `-${(i * 0.53) % 6}s`,
+              } as React.CSSProperties
+            }
+          />
+        );
+      })}
+
+      {/* a few leaves drifting down past the tree */}
+      {!resting &&
+        [0, 1, 2, 3, 4].map((i) => (
+          <span
+            key={i}
+            className="nrg-leaf"
+            style={
+              {
+                left: `${22 + i * 14}%`,
+                width: 9,
+                height: 5,
+                borderRadius: "9999px 0 9999px 0",
+                background: i % 2 ? "#86efac" : "#bef264",
+                "--sx": "0px",
+                "--dx": `${(i % 2 ? 1 : -1) * (24 + i * 8)}px`,
+                "--rot": `${(i % 2 ? 1 : -1) * 320}deg`,
+                "--dur": `${11 + i * 2.2}s`,
+                "--delay": `-${i * 3.1}s`,
+              } as React.CSSProperties
+            }
+          />
+        ))}
     </div>
   );
 }
@@ -231,13 +319,18 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
       </div>
 
       <div className="flex flex-1 items-center justify-center py-3">
-        <TreeOnIsland resting={resting}>
+        <TreeOnIsland resting={resting} aura={<NatureAura progress={tl.progress} tier={tier} resting={resting} />}>
           <FocusTree progress={tl.progress} species={session.species} tier={tier} className="relative z-10 h-[34svh] max-h-80 min-h-44 w-auto" />
         </TreeOnIsland>
       </div>
 
       <div className="flex flex-col items-center gap-4 text-center">
         <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(tl.phaseRemaining)}</p>
+        <p className="flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md" aria-live="off">
+          <span className="nrg-dot h-2 w-2 rounded-full" style={{ background: resting ? "#fbbf24" : "#bef264", boxShadow: `0 0 10px ${resting ? "#fbbf24" : "#bef264"}` }} />
+          {resting ? "Resting. Your tree is soaking in the calm" : "Gathering nature energy"}
+          {!resting && <span className="tabular-nums text-lime-200">{Math.round(tl.progress * 100)}%</span>}
+        </p>
         <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
           {resting && <Coffee className="h-3.5 w-3.5" />}
           {tierInfo(tier).name} · {stageName(tl.progress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}

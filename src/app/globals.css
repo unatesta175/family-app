@@ -726,3 +726,42 @@ html:has(.habits-app) {
   .fx-confetti, .fx-ring { display: none; }
   .fx-pop, .fx-rise { animation: none; }
 }
+
+/* Focus session: "gathering nature energy". Only transform and opacity move, so it runs on the GPU. */
+@keyframes nrg-breathe {
+  0%, 100% { transform: translate(-50%, -50%) scale(0.9); opacity: var(--nrg-o, 0.5); }
+  50% { transform: translate(-50%, -50%) scale(1.1); opacity: calc(var(--nrg-o, 0.5) + 0.2); }
+}
+@keyframes nrg-mote {
+  0% { transform: translate(var(--sx), var(--sy)) scale(0.3); opacity: 0; }
+  14% { opacity: 1; }
+  72% { opacity: 0.85; }
+  100% { transform: translate(var(--ex), var(--ey)) scale(1); opacity: 0; }
+}
+@keyframes nrg-ring {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0.5; }
+  100% { transform: translate(-50%, -50%) scale(1.45); opacity: 0; }
+}
+@keyframes nrg-rays {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+@keyframes nrg-leaf {
+  0% { transform: translate(var(--sx), -30px) rotate(0deg); opacity: 0; }
+  12% { opacity: 0.85; }
+  100% { transform: translate(calc(var(--sx) + var(--dx)), 320px) rotate(var(--rot)); opacity: 0; }
+}
+@keyframes nrg-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.7); opacity: 0.45; }
+}
+.nrg-breathe { position: absolute; left: 50%; top: 52%; border-radius: 9999px; animation: nrg-breathe 4.6s ease-in-out infinite; will-change: transform, opacity; }
+.nrg-mote { position: absolute; left: 50%; top: 88%; border-radius: 9999px; animation: nrg-mote var(--dur, 5s) cubic-bezier(0.3, 0.1, 0.2, 1) var(--delay, 0s) infinite; will-change: transform, opacity; }
+.nrg-ring { position: absolute; left: 50%; top: 88%; border-radius: 50%; animation: nrg-ring 6s ease-out infinite; will-change: transform, opacity; }
+.nrg-rays { position: absolute; left: 50%; top: 40%; animation: nrg-rays 90s linear infinite; will-change: transform; }
+.nrg-leaf { position: absolute; top: 0; animation: nrg-leaf var(--dur, 12s) ease-in var(--delay, 0s) infinite; will-change: transform, opacity; }
+.nrg-dot { animation: nrg-dot 1.8s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .nrg-mote, .nrg-ring, .nrg-leaf, .nrg-rays { display: none; }
+  .nrg-breathe, .nrg-dot { animation: none; }
+}
