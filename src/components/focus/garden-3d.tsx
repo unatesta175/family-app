@@ -3,7 +3,7 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Sparkles } from "@react-three/drei";
-import { Color, CubicBezierCurve3, DoubleSide, InstancedMesh, Object3D, QuadraticBezierCurve3, Vector3 } from "three";
+import { Color, CubicBezierCurve3, DoubleSide, InstancedMesh, Object3D, QuadraticBezierCurve3, Quaternion, Vector3 } from "three";
 import { treeTier, type FocusSpecies, type SessionLite, type TreeTier } from "@/lib/focus";
 import { treeSpec, type Curve } from "@/lib/focus-tree";
 import { hash, layoutGarden } from "@/lib/focus-layout";
@@ -29,6 +29,75 @@ function Tube({ curve, radius, color }: { curve: CubicBezierCurve3 | QuadraticBe
 
 function branchCurve(b: Curve, zOff: number) {
   return new QuadraticBezierCurve3(new Vector3(wx(b.from[0]), wy(b.from[1]), 0), new Vector3(wx(b.ctrl[0]), wy(b.ctrl[1]), zOff * 0.5), new Vector3(wx(b.to[0]), wy(b.to[1]), zOff));
+}
+
+/** Each dead branch is turned about the trunk by its own angle, so the flat drawing gets depth. */
+const DEAD_YAW = [0.3, 3.4, 1.2, 4.3, 2.1, 5.2];
+
+/** A straight limb between two points (a cylinder laid along the line from a to b). */
+function Limb({ a, b, r1, r2, color }: { a: Vector3; b: Vector3; r1: number; r2: number; color: string }) {
+  const { pos, quat, len } = useMemo(() => {
+    const dir = b.clone().sub(a);
+    const len = dir.length();
+    return { pos: a.clone().add(b).multiplyScalar(0.5), quat: new Quaternion().setFromUnitVectors(new Vector3(0, 1, 0), dir.normalize()), len };
+  }, [a, b]);
+  return (
+    <mesh position={pos} quaternion={quat}>
+      <cylinderGeometry args={[r2, r1, len, 6]} />
+      <meshStandardMaterial color={color} flatShading />
+    </mesh>
+  );
+}
+
+/** The dead tree, from the same description as the 2.5D one: tapering trunk, bare branches with forks, knots, litter. */
+function DeadBody({ s }: { s: ReturnType<typeof treeSpec> }) {
+  const d = s.dead!;
+  const limbs = useMemo(
+    () =>
+      d.branches.map((b, i) => {
+        const rad = (x: number) => Math.abs(x - 50) * K;
+        const at = (r: number, y: number) => new Vector3(Math.cos(DEAD_YAW[i]) * r, wy(y), Math.sin(DEAD_YAW[i]) * r);
+        const start = at(rad(b.x0), b.y0);
+        const end = at(rad(b.x1), b.y1);
+        const twigEnd = at(rad(b.twig.x) + 0.04, b.twig.y);
+        const mid = start.clone().lerp(end, 0.6);
+        return { b, start, end, mid, twigEnd };
+      }),
+    [d.branches]
+  );
+  return (
+    <group>
+      {/* trunk: wide at the foot, a point at the top */}
+      <mesh position={[0, (d.h * K) / 2, 0]}>
+        <cylinderGeometry args={[(d.topW * K) / 2, (d.baseW * K) / 2, d.h * K, 9]} />
+        <meshStandardMaterial color={d.colors.trunk} flatShading />
+      </mesh>
+      {limbs.map(({ b, start, end, mid, twigEnd }, i) => (
+        <group key={i}>
+          <Limb a={start} b={end} r1={(b.w * K) / 2} r2={(b.w * K) / 4} color={d.colors.branch} />
+          <Limb a={mid} b={twigEnd} r1={(Math.max(0.8, b.w * 0.55) * K) / 2} r2={(0.5 * K) / 2} color={d.colors.branch} />
+        </group>
+      ))}
+      {d.knots.map(([, y], i) => (
+        <mesh key={i} position={[Math.cos(i * 2.1) * (d.baseW * K * 0.3), wy(y), Math.sin(i * 2.1) * (d.baseW * K * 0.3)]} scale={[1, 1.3, 0.6]}>
+          <sphereGeometry args={[1.6 * K, 6, 6]} />
+          <meshStandardMaterial color={d.colors.shade} flatShading />
+        </mesh>
+      ))}
+      {/* dry needles and twigs lying on the ground */}
+      {d.litter.map(([x], i) => {
+        const dx = (x - 50) * K;
+        const dz = ((hash(i, 4) % 100) / 100 - 0.5) * 0.18;
+        const len = Math.hypot(dx, dz);
+        return (
+          <mesh key={i} position={[dx / 2, 0.015, dz / 2]} rotation={[Math.PI / 2, 0, -Math.atan2(dz, dx) + Math.PI / 2]}>
+            <cylinderGeometry args={[0.006, 0.006, len, 4]} />
+            <meshStandardMaterial color={d.colors.litter} />
+          </mesh>
+        );
+      })}
+    </group>
+  );
 }
 
 /**
@@ -94,7 +163,9 @@ export function Tree3D({ species, tier, withered, progress }: { species: FocusSp
         <Tube key={i} curve={c} radius={(s.roots!.width * K) / 2} color={s.col.trunkDark} />
       ))}
 
-      {s.kind === "pine" ? (
+      {s.kind === "dead" ? (
+        <DeadBody s={s} />
+      ) : s.kind === "pine" ? (
         <PineBody s={s} />
       ) : (
         <>

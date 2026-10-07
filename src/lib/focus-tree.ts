@@ -87,6 +87,10 @@ export type LeafSpec = { x: number; y: number; rot: number; size: number; fill: 
 export type BloomSpec = { x: number; y: number; scale: number; r: number; color: string; fruit: boolean; pulse: boolean };
 export type PineLayer = { baseY: number; w: number; h: number; color: string; scale: number; tip: boolean; baubles: boolean; bauble: [[number, number, string], [number, number, string]] };
 
+export type DeadBranch = { x0: number; y0: number; x1: number; y1: number; w: number; twig: { x: number; y: number } };
+/** A dead tree: a thick bare trunk tapering to a point, angular branches with forks, knots, and dry litter at the foot. */
+export type DeadSpec = { h: number; baseW: number; topW: number; branches: DeadBranch[]; knots: [number, number][]; litter: [number, number][]; colors: { trunk: string; shade: string; branch: string; litter: string } };
+
 export type TreeSpec = {
   species: FocusSpecies;
   tier: TreeTier;
@@ -103,7 +107,9 @@ export type TreeSpec = {
   roots: { width: number; deep: boolean } | null;
   foot: { tier: TreeTier } | null;
   sparks: { tier: TreeTier; fx: number } | null;
-  kind: "leafy" | "pine";
+  kind: "leafy" | "pine" | "dead";
+  /** Set when the tree is withered. */
+  dead: DeadSpec | null;
   // leafy
   trunk: { x0: number; y0: number; c1: [number, number]; c2: [number, number]; x1: number; y1: number; width: number };
   branches: Curve[];
@@ -139,8 +145,8 @@ export function treeSpec({ progress, species, tier, withered }: { progress: numb
   }
 
   const leaves: LeafSpec[] = [];
-  if (!pine) {
-    const list = withered ? INNER : leavesFor(tier);
+  if (!pine && !withered) {
+    const list = leavesFor(tier);
     list.forEach((l, i) => {
       if (withered && i % 3 !== 0) return; // a withered tree keeps only a few dry leaves
       const k = clamp01((p - l.at) / 0.08);
@@ -174,6 +180,51 @@ export function treeSpec({ progress, species, tier, withered }: { progress: numb
         pulse: tier >= 6 && fruit,
       });
     }
+  }
+
+  // ---- a withered tree is a bare dead one, not a greyed leafy tree
+  let dead: DeadSpec | null = null;
+  if (withered) {
+    const pp = Math.max(0.3, p); // even a tree that died early was a real tree
+    const h = lerp(44, 66, easeOut(pp));
+    const baseW = lerp(9, 13, easeOut(pp));
+    const topW = 1.4;
+    const widthAt = (f: number) => lerp(baseW, topW, f);
+    // [height along the trunk, side, length, angle up in degrees]
+    const limbs: [number, 1 | -1, number, number][] = [
+      [0.3, -1, 17, 38],
+      [0.42, 1, 19, 32],
+      [0.55, -1, 15, 42],
+      [0.66, 1, 13, 40],
+      [0.78, -1, 9, 48],
+      [0.86, 1, 8, 50],
+    ];
+    const branches: DeadBranch[] = limbs.map(([f, side, len, ang], i) => {
+      const y0 = 105 - h * f;
+      const x0 = 50 + side * (widthAt(f) / 2) * 0.85;
+      const L = len * lerp(0.7, 1, pp);
+      const a = (ang * Math.PI) / 180;
+      const x1 = x0 + side * L * Math.cos(a);
+      const y1 = y0 - L * Math.sin(a);
+      return { x0, y0, x1, y1, w: lerp(2.6, 1.1, f) , twig: { x: x0 + (x1 - x0) * 0.62 + side * (4 + (i % 2)), y: y0 + (y1 - y0) * 0.62 - 6.5 } };
+    });
+    const knots: [number, number][] = [
+      [49.5, 105 - h * 0.2],
+      [51, 105 - h * 0.5],
+      [49, 105 - h * 0.72],
+    ];
+    // dry needles and twigs lying around the foot of the trunk
+    const litter: [number, number][] = [
+      [38, 108],
+      [41, 110.5],
+      [45, 111],
+      [57, 111],
+      [61, 110],
+      [64, 107.5],
+      [36, 105.5],
+      [66, 105],
+    ];
+    dead = { h, baseW, topW, branches, knots, litter, colors: { trunk: "#8f7455", shade: "#6e553c", branch: "#7d6347", litter: "#4f3d2b" } };
   }
 
   // ---- conifers
@@ -227,7 +278,8 @@ export function treeSpec({ progress, species, tier, withered }: { progress: numb
     roots: !withered && tier >= 4 && p > 0.35 ? { width: lerp(1.2, 3.2, g), deep: tier >= 6 } : null,
     foot: !withered && tier >= 4 && p > 0.5 ? { tier } : null,
     sparks: !withered && tier >= 5 && fx > 0 ? { tier, fx } : null,
-    kind: pine ? "pine" : "leafy",
+    kind: pine ? "pine" : withered ? "dead" : "leafy",
+    dead,
     trunk: { x0: 50, y0: 105, c1: [50 + (withered ? 2 : -1), 105 - trunkH * 0.45], c2: [tx + 1, ty + trunkH * 0.3], x1: tx, y1: ty, width: sw },
     branches,
     leaves,

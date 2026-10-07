@@ -76,6 +76,8 @@ eq("glow from tier 5, rays only at 6", [specs[3].halo !== null, specs[4].halo !=
 eq("roots from tier 4", specs.map((sp) => sp.roots !== null), [false, false, false, true, true, true]);
 const pines = tiers.map((t) => treeSpec({ progress: 1, species: "pine", tier: t, withered: false }));
 eq("pine layers grow with the tier and a star crowns tier 6", [pines.map((sp) => sp.pine!.layers.length), pines[5].pine!.star !== null, pines[4].pine!.star !== null], [[4, 4, 5, 5, 6, 7], true, false]);
+const dead = treeSpec({ progress: 0.5, species: "oak", tier: 4, withered: true });
+eq("a withered tree is a bare dead tree: no leaves, no blossoms, branches and litter", [dead.kind, dead.leaves.length, dead.blooms.length, dead.dead!.branches.length >= 5, dead.dead!.litter.length >= 6, dead.halo], ["dead", 0, 0, true, true, null]);
 const sprout = treeSpec({ progress: 0.05, species: "oak", tier: 3, withered: false });
 eq("a barely started tree is a short stem with few leaves", [sprout.leaves.length <= 3, sprout.trunk.y1 > 80], [true, true]);
 

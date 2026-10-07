@@ -74,7 +74,7 @@ export function FocusTree({
         </g>
       )}
 
-      {s.kind === "pine" ? <Pine s={s} tr={tr} /> : <Leafy s={s} tr={tr} animate={animate} />}
+      {s.kind === "dead" ? <DeadTree s={s} /> : s.kind === "pine" ? <Pine s={s} tr={tr} /> : <Leafy s={s} tr={tr} animate={animate} />}
 
       {/* fireflies and falling petals */}
       {s.sparks && <Sparks tier={s.sparks.tier} fx={s.sparks.fx} animate={animate} species={species} />}
@@ -94,14 +94,44 @@ export function FocusTree({
         </g>
       )}
 
-      {withered && (
-        <g fill={s.col.leaf[1]} opacity="0.9">
-          <ellipse cx="33" cy="107" rx="3.6" ry="1.5" transform="rotate(-20 33 107)" />
-          <ellipse cx="68" cy="108" rx="3.6" ry="1.5" transform="rotate(25 68 108)" />
-          <ellipse cx="56" cy="110" rx="3" ry="1.3" />
-        </g>
-      )}
     </svg>
+  );
+}
+
+/** A dead tree: thick bare trunk narrowing to a point, angular branches with forks, knots and dry litter. */
+function DeadTree({ s }: { s: TreeSpec }) {
+  const d = s.dead!;
+  const top = 105 - d.h;
+  const hw = d.baseW / 2;
+  return (
+    <g>
+      {/* dry needles and twigs on the ground */}
+      <g stroke={d.colors.litter} strokeWidth="1.1" strokeLinecap="round" fill="none">
+        {d.litter.map(([x, y], i) => (
+          <path key={i} d={`M50 107 L${x} ${y}`} />
+        ))}
+        <path d="M44 108.5 l-2 -1.4 M58 108.8 l2.6 -1.2 M52 110.6 l1.4 1.2" />
+      </g>
+
+      {/* branches, with a fork near the end of each */}
+      <g stroke={d.colors.branch} strokeLinecap="round" fill="none">
+        {d.branches.map((b, i) => (
+          <g key={i}>
+            <path d={`M${b.x0} ${b.y0 + 1.2} L${b.x1} ${b.y1}`} strokeWidth={b.w} />
+            <path d={`M${b.x0 + (b.x1 - b.x0) * 0.6} ${b.y0 + (b.y1 - b.y0) * 0.6} L${b.twig.x} ${b.twig.y}`} strokeWidth={Math.max(0.8, b.w * 0.55)} />
+          </g>
+        ))}
+      </g>
+
+      {/* the trunk: wide at the foot, a jagged point at the top, lit on the left and shaded on the right */}
+      <path d={`M${50 - hw} 105 C ${50 - hw * 0.8} ${105 - d.h * 0.4}, 49.4 ${top + 18}, 49.2 ${top + 3} L50.4 ${top - 3} L51 ${top + 5} C 51.2 ${top + 20}, ${50 + hw * 0.8} ${105 - d.h * 0.4}, ${50 + hw} 105 Z`} fill={d.colors.trunk} />
+      <path d={`M50.2 ${top - 2} L51 ${top + 5} C 51.2 ${top + 20}, ${50 + hw * 0.8} ${105 - d.h * 0.4}, ${50 + hw} 105 L50.4 105 C 51 ${105 - d.h * 0.4}, 50.6 ${top + 20}, 50.2 ${top - 2} Z`} fill={d.colors.shade} opacity="0.8" />
+      {/* knots and a few cracks */}
+      {d.knots.map(([x, y], i) => (
+        <ellipse key={i} cx={x} cy={y} rx="1.6" ry="2.1" fill={d.colors.shade} />
+      ))}
+      <path d={`M48 ${105 - d.h * 0.12} l1.2 -7 M52.6 ${105 - d.h * 0.3} l-1 -6`} stroke={d.colors.shade} strokeWidth="0.7" strokeLinecap="round" opacity="0.7" />
+    </g>
   );
 }
 
