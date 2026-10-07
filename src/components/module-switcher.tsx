@@ -38,7 +38,7 @@ const MODULES = [
     hint: "Grow trees while you focus",
     href: "/focus",
     icon: Sprout,
-    tile: "bg-teal-100 text-teal-700",
+    tile: "bg-green-100 text-green-700",
   },
 ] as const;
 

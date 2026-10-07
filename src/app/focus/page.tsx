@@ -5,7 +5,8 @@ import { addDays, todayIso } from "@/lib/date";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
 import { byDay, focusStreak, formatFocus } from "@/lib/focus";
-import { DayGarden, SessionList } from "@/components/focus/grove-views";
+import { SessionList } from "@/components/focus/grove-views";
+import { IsoGarden } from "@/components/focus/iso-garden";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { StartPanel } from "@/components/focus/start-panel";
 
@@ -62,7 +63,9 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
             Open grove
           </Link>
         </div>
-        <DayGarden day={todayTotals} names={names} />
+        <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-[#1c5a45] to-[#123f31] p-4 shadow-md">
+          <IsoGarden sessions={todayTotals?.sessions ?? []} className="mx-auto w-full max-w-sm" />
+        </div>
         <SessionList sessions={todayTotals?.sessions ?? []} names={names} />
       </section>
     </div>

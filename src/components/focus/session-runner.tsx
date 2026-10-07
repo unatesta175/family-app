@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Coffee, Flag, Leaf, Trees, X } from "lucide-react";
+import { Coffee, Square, Trees, Volume2, VolumeX } from "lucide-react";
 import { cancelFocusAction, finishFocusAction } from "@/lib/focus-actions";
 import { GRACE_SECONDS, SPECIES_LABEL, clock, formatFocus, stageName, timeline, type FocusMode, type FocusSpecies } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
@@ -55,9 +55,25 @@ function notify(title: string, body: string) {
 
 type Outcome = { kind: "done" } | { kind: "withered" } | null;
 
+/** The full-screen forest backdrop: layered greens, soft light from above, and a glowing patch of ground. */
+function Scene({ resting, children }: { resting?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-40 overflow-hidden bg-gradient-to-b from-[#38b583] via-[#1f9468] to-[#0b5a43] text-white">
+      <div className="pointer-events-none absolute -left-24 top-10 h-72 w-72 rounded-full bg-lime-200/25 blur-3xl" />
+      <div className="pointer-events-none absolute -right-16 top-1/3 h-80 w-80 rounded-full bg-emerald-100/20 blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-[#06402f]/70 to-transparent" />
+      {/* the island the tree stands on */}
+      <div className={cn("pointer-events-none absolute left-1/2 top-[52%] h-44 w-[22rem] max-w-[92vw] -translate-x-1/2 -translate-y-1/2 rounded-[50%] blur-xl transition-colors duration-1000", resting ? "bg-amber-200/70" : "bg-lime-200/75")} />
+      <div className={cn("pointer-events-none absolute left-1/2 top-[52%] h-32 w-72 max-w-[80vw] -translate-x-1/2 -translate-y-1/2 rounded-[50%] transition-colors duration-1000", resting ? "bg-amber-200/55" : "bg-lime-300/60")} />
+      <div className="relative flex h-full flex-col px-6 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(1.5rem,env(safe-area-inset-top))]">{children}</div>
+    </div>
+  );
+}
+
 /**
- * The running session: a clock, the tree growing a little every second, and a way out. The time comes
- * from the session's start time, so a reload (or a phone that slept) lands on exactly the right moment.
+ * The running session: a quiet full-screen forest, the tree growing a little every second, and a big
+ * clock. The time comes from the session's start time, so a reload (or a phone that slept) lands on
+ * exactly the right moment.
  */
 export function SessionRunner({ session, serverNow }: { session: RunningSession; serverNow: number }) {
   const router = useRouter();
@@ -67,6 +83,7 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
   const [now, setNow] = useState(serverNow);
   const [outcome, setOutcome] = useState<Outcome>(null);
   const [confirming, setConfirming] = useState(false);
+  const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastPhase = useRef<string | null>(null);
   const finishing = useRef(false);
@@ -89,13 +106,13 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
   useEffect(() => {
     if (outcome) return;
     if (lastPhase.current && lastPhase.current !== tl.phase && tl.phase !== "done") {
-      chime("phase");
+      if (!muted) chime("phase");
       notify(tl.phase === "break" ? "Break time" : "Back to focus", tl.phase === "break" ? "Your tree is resting. Stretch for a few minutes." : "Your tree is growing again.");
     }
     lastPhase.current = tl.phase;
     if (tl.done && !finishing.current) {
       finishing.current = true;
-      chime("done");
+      if (!muted) chime("done");
       notify("Your tree is fully grown", `${formatFocus(session.plannedSeconds)} of focus done. It has joined your grove.`);
       void finishFocusAction(session.id).then((res) => {
         if (!res.ok) setError(res.error);
@@ -103,7 +120,7 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
         router.refresh();
       });
     }
-  }, [tl.phase, tl.done, outcome, session.id, session.plannedSeconds, router]);
+  }, [tl.phase, tl.done, outcome, muted, session.id, session.plannedSeconds, router]);
 
   useEffect(() => {
     document.title = outcome ? "Focus" : `${clock(tl.phaseRemaining)} · ${tl.phase === "break" ? "Break" : "Focus"}`;
@@ -124,80 +141,85 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
   if (outcome) {
     const grown = outcome.kind === "done";
     return (
-      <div className="flex flex-col items-center gap-5 pt-4 text-center md:mx-auto md:max-w-md">
-        <div className="relative w-full overflow-hidden rounded-3xl bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 p-6 [.dark_&]:from-[#12302b] [.dark_&]:via-[#0f2723] [.dark_&]:to-[#0d201c]">
-          <FocusTree progress={grown ? 1 : Math.max(0.3, tl.progress)} species={session.species} withered={!grown} className="mx-auto h-56 w-56" />
-          <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-emerald-300/50 to-transparent [.dark_&]:from-emerald-900/50" />
+      <Scene>
+        <div className="flex flex-1 flex-col items-center justify-between pt-10 text-center">
+          <div>
+            <p className="text-sm font-semibold text-white/80">{grown ? "Well done" : "Not this time"}</p>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{grown ? "Your tree is fully grown" : "Your tree withered"}</h1>
+            <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">
+              {grown
+                ? `${formatFocus(session.plannedSeconds)} of focus${session.habitName ? ` on ${session.habitName}` : ""} are now part of your grove.`
+                : "You gave up before the end. The stump stays in today's grove, and the time you did put in is kept."}
+            </p>
+            {grown && session.habitName && <p className="mt-1 text-xs font-semibold text-lime-200">The time was added to {session.habitName}.</p>}
+            {error && <p className="mt-2 text-xs font-bold text-red-200">{error}</p>}
+          </div>
+          <FocusTree progress={grown ? 1 : Math.max(0.3, tl.progress)} species={session.species} withered={!grown} className="relative z-10 h-72 w-60" />
+          <div className="grid w-full max-w-sm gap-2">
+            <Link href="/focus" className="rounded-full bg-white py-3.5 text-center text-sm font-extrabold text-[#0b5a43] shadow-lg">
+              {grown ? "Plant another tree" : "Try again"}
+            </Link>
+            <Link href="/focus/grove" className="flex items-center justify-center gap-1.5 rounded-full bg-white/15 py-3.5 text-sm font-bold backdrop-blur-sm">
+              <Trees className="h-4 w-4" />
+              See my grove
+            </Link>
+          </div>
         </div>
-        <div>
-          <p className="text-2xl font-extrabold tracking-tight">{grown ? "Tree planted" : "The tree withered"}</p>
-          <p className="mt-1 text-sm text-h-muted">
-            {grown
-              ? `${formatFocus(session.plannedSeconds)} of focus${session.habitName ? ` on ${session.habitName}` : ""}. It is now part of your grove.`
-              : "You gave up before the end. The stump stays in today's grove, and the time you did put in is kept."}
-          </p>
-          {grown && session.habitName && <p className="mt-1 text-xs font-semibold text-h-brand">The time was added to {session.habitName}.</p>}
-          {error && <p className="mt-2 text-xs font-bold text-h-bad">{error}</p>}
-        </div>
-        <div className="grid w-full gap-2 sm:grid-cols-2">
-          <Link href="/focus" className="rounded-2xl bg-h-brand py-3 text-sm font-extrabold text-h-brand-fg">
-            {grown ? "Plant another" : "Try again"}
-          </Link>
-          <Link href="/focus/grove" className="flex items-center justify-center gap-1.5 rounded-2xl border border-h-border bg-h-surface py-3 text-sm font-bold">
-            <Trees className="h-4 w-4" />
-            See my grove
-          </Link>
-        </div>
-      </div>
+      </Scene>
     );
   }
 
   // --- Running ---------------------------------------------------------------------------------
   const resting = tl.phase === "break";
   const grace = tl.wallElapsed < GRACE_SECONDS;
-  const stage = stageName(tl.progress);
 
   return (
-    <div className="flex flex-col items-center gap-5 pt-2 md:mx-auto md:max-w-md">
-      <div className="text-center">
-        <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{session.habitName ?? "Focus session"}</p>
-        <p className="mt-0.5 flex items-center justify-center gap-1.5 text-sm font-bold text-h-brand">
-          {resting ? <Coffee className="h-4 w-4" /> : <Leaf className="h-4 w-4" />}
-          {resting ? "Break: your tree is resting" : tl.blocks > 1 ? `Focus ${tl.block} of ${tl.blocks}` : "Focusing"}
-        </p>
+    <Scene resting={resting}>
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-lg font-bold leading-tight">
+            <span className={cn("h-2 w-2 rounded-full", resting ? "bg-amber-300" : "bg-lime-300")} />
+            {session.habitName ?? "Focus session"}
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-white/75">
+            {resting ? "Break: your tree is resting" : tl.blocks > 1 ? `Focus ${tl.block} of ${tl.blocks}` : "I'm focusing on…"}
+          </p>
+        </div>
+        <button type="button" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Sound on" : "Mute"} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+        </button>
       </div>
 
-      <div className={cn("relative w-full overflow-hidden rounded-3xl p-6 transition-colors duration-700", resting ? "bg-gradient-to-b from-amber-100 via-orange-50 to-emerald-100 [.dark_&]:from-[#2e2410] [.dark_&]:via-[#241d10] [.dark_&]:to-[#0d201c]" : "bg-gradient-to-b from-sky-200 via-sky-100 to-emerald-100 [.dark_&]:from-[#12302b] [.dark_&]:via-[#0f2723] [.dark_&]:to-[#0d201c]")}>
-        <FocusTree progress={tl.progress} species={session.species} className="mx-auto h-60 w-60" />
-        <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-emerald-300/50 to-transparent [.dark_&]:from-emerald-900/50" />
-        <span className="absolute left-3 top-3 rounded-full bg-black/10 px-2.5 py-1 text-[11px] font-bold backdrop-blur-sm [.dark_&]:bg-white/10">
-          {SPECIES_LABEL[session.species]} · {stage}
-        </span>
+      <div className="flex flex-1 items-center justify-center">
+        <FocusTree progress={tl.progress} species={session.species} className="relative z-10 h-80 w-64" />
       </div>
 
-      <div className="text-center">
-        <p className="text-7xl font-extrabold leading-none tabular-nums tracking-tight">{clock(tl.phaseRemaining)}</p>
-        <p className="mt-2 text-xs font-semibold text-h-muted">
-          {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)} focused
+      <div className="flex flex-col items-center gap-4 text-center">
+        <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(tl.phaseRemaining)}</p>
+        <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
+          {resting && <Coffee className="h-3.5 w-3.5" />}
+          {SPECIES_LABEL[session.species]} · {stageName(tl.progress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}
           {tl.blocks > 1 && ` · ${clock(tl.wallTotal - tl.wallElapsed)} left in all`}
         </p>
+        {tl.blocks > 1 && (
+          <div className="flex gap-1.5" aria-hidden>
+            {Array.from({ length: tl.blocks }, (_, i) => (
+              <span key={i} className={cn("h-1.5 w-7 rounded-full", i + 1 < tl.block || tl.done ? "bg-white" : i + 1 === tl.block ? "bg-white/70" : "bg-white/25")} />
+            ))}
+          </div>
+        )}
+        {error && <p className="text-xs font-bold text-red-200">{error}</p>}
+        <button
+          type="button"
+          onClick={() => setConfirming(true)}
+          disabled={pending}
+          aria-label={grace ? "Cancel session" : "Give up"}
+          className="mt-1 flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
+        >
+          <Square className="h-5 w-5" fill="currentColor" />
+        </button>
+        <p className="text-[11px] font-medium text-white/65">{grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}</p>
       </div>
-
-      <div className="h-2 w-full overflow-hidden rounded-full bg-h-surface2">
-        <div className="h-full rounded-full bg-h-brand transition-all duration-1000 ease-linear" style={{ width: `${Math.round(tl.progress * 1000) / 10}%` }} />
-      </div>
-
-      {error && <p className="text-xs font-bold text-h-bad">{error}</p>}
-
-      <button
-        type="button"
-        onClick={() => setConfirming(true)}
-        disabled={pending}
-        className="flex items-center gap-1.5 rounded-full border border-h-border bg-h-surface px-4 py-2 text-xs font-bold text-h-muted hover:text-h-bad disabled:opacity-60"
-      >
-        {grace ? <X className="h-3.5 w-3.5" /> : <Flag className="h-3.5 w-3.5" />}
-        {grace ? "Cancel (no penalty yet)" : "Give up"}
-      </button>
 
       {confirming && (
         <ConfirmDialog
@@ -208,6 +230,6 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
           onConfirm={giveUp}
         />
       )}
-    </div>
+    </Scene>
   );
 }
