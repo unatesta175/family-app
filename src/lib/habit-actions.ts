@@ -71,6 +71,8 @@ async function ownHabit(habitId: number) {
   const habit = await getHabit(habitId);
   if (!habit) throw new Error("Habit not found.");
   await assertOwnProfile(habit.profileId);
+  // The prayer habits belong to the Prayer module: nothing here may edit, log, archive or delete them.
+  if (habit.systemKey) throw new Error("Prayer habits are tracked in the Prayer module and can't be changed here.");
   return habit;
 }
 

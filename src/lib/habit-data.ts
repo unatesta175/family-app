@@ -2,6 +2,7 @@ import "server-only";
 import { getActiveProfileId } from "@/lib/session";
 import { getOwnProfileId } from "@/lib/auth";
 import {
+  ensurePrayerHabits,
   getCategories,
   getHabitLogsInRange,
   getHabits,
@@ -19,6 +20,9 @@ export async function loadHabitData() {
   const profileId = await getActiveProfileId();
   const ownProfileId = await getOwnProfileId();
   const readOnly = ownProfileId === null || profileId !== ownProfileId;
+
+  // Everyone has their five prayers as habits from the start.
+  await ensurePrayerHabits(profileId);
 
   const [profile, habits, categories, logsByHabit, tasks, completions, skips] = await Promise.all([
     getProfile(profileId),

@@ -34,6 +34,7 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "habits", column: "checklist", ddl: "ALTER TABLE habits ADD COLUMN checklist TEXT NOT NULL DEFAULT '[]'" },
   { table: "habits", column: "goals", ddl: "ALTER TABLE habits ADD COLUMN goals TEXT NOT NULL DEFAULT '[]'" },
   { table: "habit_logs", column: "detail", ddl: "ALTER TABLE habit_logs ADD COLUMN detail TEXT" },
+  { table: "habits", column: "system_key", ddl: "ALTER TABLE habits ADD COLUMN system_key TEXT" },
   { table: "habit_task_completions", column: "status", ddl: "ALTER TABLE habit_task_completions ADD COLUMN status TEXT NOT NULL DEFAULT 'done'" },
 ];
 
@@ -339,6 +340,9 @@ export async function runStartupMigrations() {
         console.log(`[migrate] added missing column ${table}.${column}`);
       }
     }
+
+    // One of each system habit (the prayers) per profile, so racing page loads can't create duplicates.
+    await client.execute(`CREATE UNIQUE INDEX IF NOT EXISTS habits_profile_system_key_unique ON habits (profile_id, system_key) WHERE system_key IS NOT NULL`);
 
     const profileInfo = await client.execute(`PRAGMA table_info(profiles)`);
     if (!profileInfo.rows.some((row) => row.name === "user_id")) {

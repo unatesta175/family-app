@@ -1,15 +1,17 @@
 import "server-only";
-import { and, asc, eq, inArray, isNull, gte, lte, sql, desc } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, isNotNull, gte, lte, sql, desc } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   profiles,
   habitCategories,
   habits,
   habitLogs,
+  prayerLogs,
   habitTasks,
   habitTaskCompletions,
 } from "@/lib/db/schema";
 import type {
+  Status,
   HabitEvalType,
   HabitKind,
   HabitSchedule,
@@ -157,6 +159,104 @@ function toLog(r: { status: HabitLogStatus; value: number; detail: string | null
   return log;
 }
 
+// --- Prayer habits ----------------------------------------------------------------------------
+// Every profile has the five daily prayers as habits. They are read-only here: each day comes straight
+// from the Prayer module's log (see prayerToLog), so the two can never disagree and every habit
+// screen (streaks, statistics, calendar, tower, world standing) works for them with no extra code.
+
+export const PRAYER_HABITS = [
+  { key: "fajr", name: "Fajr", icon: "sunrise" },
+  { key: "dhuhr", name: "Dhuhr", icon: "sun" },
+  { key: "asr", name: "Asr", icon: "sun" },
+  { key: "maghrib", name: "Maghrib", icon: "sunrise" },
+  { key: "isha", name: "Isha", icon: "moon" },
+] as const;
+
+/** A habit's `systemKey` for a prayer, e.g. "prayer:fajr". */
+export const prayerSystemKey = (prayer: string) => `prayer:${prayer}`;
+
+/** How a prayer's status shows up as a habit day: prayed = done, excused = skipped, missed = missed. */
+function prayerToLog(status: Status): { status: HabitLogStatus; value: number } | null {
+  switch (status) {
+    case "on_time_jamaah":
+    case "on_time":
+    case "jamaah":
+    case "late":
+    case "qada":
+      return { status: "done", value: 1 };
+    case "excused":
+      return { status: "skipped", value: 0 };
+    case "missed":
+      return { status: "missed", value: 0 };
+    default:
+      return null; // not_yet
+  }
+}
+
+/** Makes sure the profile has its five prayer habits (and a "Prayer" category for them). */
+export async function ensurePrayerHabits(profileId: number): Promise<void> {
+  const existing = await db
+    .select({ key: habits.systemKey })
+    .from(habits)
+    .where(and(eq(habits.profileId, profileId), isNotNull(habits.systemKey)));
+  const have = new Set(existing.map((e) => e.key));
+  const missing = PRAYER_HABITS.filter((p) => !have.has(prayerSystemKey(p.key)));
+  if (missing.length === 0) return;
+
+  const cats = await getCategories(profileId);
+  const cat = cats.find((c) => c.name.toLowerCase() === "prayer") ?? (await createCategory(profileId, { name: "Prayer", color: "emerald", icon: "moon" }));
+  // The habit starts on the day of the earliest prayer on record, so no old day is left out.
+  const [first] = await db.select({ d: sql<string | null>`min(${prayerLogs.date})` }).from(prayerLogs).where(eq(prayerLogs.profileId, profileId));
+  const startDate = first?.d ?? todayIso();
+
+  const [maxRow] = await db
+    .select({ max: sql<number>`coalesce(max(${habits.sortOrder}), -1)` })
+    .from(habits)
+    .where(eq(habits.profileId, profileId));
+  let order = (maxRow?.max ?? -1) + 1;
+  for (const p of missing) {
+    await db
+      .insert(habits)
+      .values({
+        profileId,
+        categoryId: cat.id,
+        name: p.name,
+        description: "Tracked in the Prayer module. Log it there and it shows up here.",
+        kind: "build",
+        icon: p.icon,
+        color: "emerald",
+        schedule: "daily",
+        startDate,
+        systemKey: prayerSystemKey(p.key),
+        sortOrder: order++,
+      })
+      .onConflictDoNothing();
+  }
+}
+
+/** Prayer-derived logs for the profile's prayer habits: habitId -> date -> log. */
+async function prayerHabitLogs(profileId: number, from: string, to: string): Promise<Record<number, HabitLogMap>> {
+  const sys = await db
+    .select({ id: habits.id, key: habits.systemKey })
+    .from(habits)
+    .where(and(eq(habits.profileId, profileId), isNotNull(habits.systemKey)));
+  const byPrayer = new Map<string, number>();
+  for (const h of sys) if (h.key?.startsWith("prayer:")) byPrayer.set(h.key.slice(7), h.id);
+  if (byPrayer.size === 0) return {};
+
+  const rows = await db
+    .select({ date: prayerLogs.date, prayer: prayerLogs.prayer, status: prayerLogs.status })
+    .from(prayerLogs)
+    .where(and(eq(prayerLogs.profileId, profileId), gte(prayerLogs.date, from), lte(prayerLogs.date, to)));
+  const out: Record<number, HabitLogMap> = {};
+  for (const r of rows) {
+    const id = byPrayer.get(r.prayer);
+    const log = prayerToLog(r.status);
+    if (id !== undefined && log) (out[id] ??= {})[r.date] = log;
+  }
+  return out;
+}
+
 /** All logs for a profile's habits inside [from, to], grouped habitId -> date -> log. */
 export async function getHabitLogsInRange(
   profileId: number,
@@ -179,11 +279,17 @@ export async function getHabitLogsInRange(
   for (const r of rows) {
     (out[r.habitId] ??= {})[r.date] = toLog(r);
   }
+  // The prayer habits read their days from the Prayer module.
+  Object.assign(out, await prayerHabitLogs(profileId, from, to));
   return out;
 }
 
 /** Every log a single habit has ever received (used for streaks and its detail page). */
 export async function getAllLogsForHabit(habitId: number): Promise<HabitLogMap> {
+  const habit = await getHabit(habitId);
+  if (habit?.systemKey?.startsWith("prayer:")) {
+    return (await prayerHabitLogs(habit.profileId, "0000-01-01", "9999-12-31"))[habit.id] ?? {};
+  }
   const rows = await db.select().from(habitLogs).where(eq(habitLogs.habitId, habitId));
   const out: HabitLogMap = {};
   for (const r of rows) out[r.date] = toLog(r);

@@ -284,6 +284,9 @@ export const habits = sqliteTable("habits", {
   checklist: text("checklist").notNull().default("[]"), // JSON [{id,title}]
   goals: text("goals").notNull().default("[]"), // JSON [{period,op,value}]
   archivedAt: text("archived_at"),
+  // Habits the app keeps for you (the five daily prayers, "prayer:fajr" ...). Their days come from the
+  // Prayer module, so they cannot be edited, deleted or logged from the Habits module.
+  systemKey: text("system_key"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at")
     .notNull()

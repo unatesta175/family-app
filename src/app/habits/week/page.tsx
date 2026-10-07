@@ -60,6 +60,7 @@ export default async function HabitsWeekPage({
     const logs = logsByHabit[h.id] ?? {};
     return {
       id: h.id,
+      locked: !!h.systemKey,
       rank: ranks.get(h.id),
       name: h.name,
       kind: h.kind,

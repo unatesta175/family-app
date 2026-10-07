@@ -25,6 +25,7 @@ export default async function HabitsManagePage() {
     return {
       ...habitToFormValues(h, goalChips.get(h.id)?.goalId ?? null),
       id: h.id,
+      locked: !!h.systemKey,
       scheduleLabel: scheduleLabel(h),
       targetLabel: targetLabel(h),
       archived: h.archivedAt !== null,

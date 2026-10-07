@@ -38,6 +38,7 @@ export async function setPrayerStatus(input: {
   revalidatePath("/stats");
   revalidatePath("/garden");
   revalidatePath("/history");
+  revalidatePath("/habits", "layout"); // the prayer habits read their days from the prayer log
 }
 
 const updateProfileSchema = z.object({
@@ -104,6 +105,7 @@ export async function createTagAction(profileId: number, label: string) {
   const tag = await createTag(profileId, parsed);
   revalidatePath("/");
   revalidatePath("/history");
+  revalidatePath("/habits", "layout"); // the prayer habits read their days from the prayer log
   return tag;
 }
 
@@ -112,6 +114,7 @@ export async function deleteTagAction(profileId: number, tagId: number) {
   await deleteTag(profileId, tagId);
   revalidatePath("/");
   revalidatePath("/history");
+  revalidatePath("/habits", "layout"); // the prayer habits read their days from the prayer log
 }
 
 export async function toggleLogTagAction(input: {
@@ -132,6 +135,7 @@ export async function toggleLogTagAction(input: {
   await toggleLogTag(parsed.profileId, parsed.date, parsed.prayer, parsed.tagId);
   revalidatePath("/");
   revalidatePath("/history");
+  revalidatePath("/habits", "layout"); // the prayer habits read their days from the prayer log
 }
 
 export async function createAndAttachTagAction(input: {
@@ -146,6 +150,7 @@ export async function createAndAttachTagAction(input: {
   await toggleLogTag(input.profileId, input.date, input.prayer, tag.id);
   revalidatePath("/");
   revalidatePath("/history");
+  revalidatePath("/habits", "layout"); // the prayer habits read their days from the prayer log
   return tag;
 }
 
@@ -206,6 +211,7 @@ export async function setDayStatusesAction(input: {
   revalidatePath("/stats");
   revalidatePath("/garden");
   revalidatePath("/history");
+  revalidatePath("/habits", "layout"); // the prayer habits read their days from the prayer log
 }
 
 const setBulkStatusesSchema = z.object({
@@ -237,4 +243,5 @@ export async function setBulkStatusesAction(input: {
   revalidatePath("/stats");
   revalidatePath("/garden");
   revalidatePath("/history");
+  revalidatePath("/habits", "layout"); // the prayer habits read their days from the prayer log
 }

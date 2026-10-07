@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, BarChart3, Blocks, CalendarDays } from "lucide-react";
+import { ArrowLeft, BarChart3, Blocks, CalendarDays, Moon } from "lucide-react";
 import { requireAuth, getOwnProfileId } from "@/lib/auth";
 import { getProfile, getProfilesInHousehold } from "@/lib/db/repo";
 import { getAllLogsForHabit, getCategories, getHabit, getHabitNotesInRange } from "@/lib/db/repo-habits";
@@ -55,6 +55,8 @@ export default async function HabitDetailPage({
   if (!household.some((p) => p.id === habit.profileId)) notFound();
   const ownProfileId = await getOwnProfileId();
   const readOnly = ownProfileId !== habit.profileId;
+  // The five prayers are habits too, but their days are set in the Prayer module.
+  const locked = !!habit.systemKey;
 
   const today = todayIso();
 
@@ -112,7 +114,19 @@ export default async function HabitDetailPage({
         </div>
       </div>
 
-      {!readOnly && (
+      {locked && (
+        <Link href="/" className="h-card flex items-center gap-3 p-3 hover:bg-h-surface2">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-h-brand-soft text-h-brand">
+            <Moon className="h-4 w-4" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-extrabold leading-tight">Tracked in the Prayer module</span>
+            <span className="block text-[11px] text-h-muted">Log it there and it shows up here, with its streaks and statistics. It can&apos;t be edited or deleted from Habits.</span>
+          </span>
+        </Link>
+      )}
+
+      {!readOnly && !locked && (
         <HabitDetailActions
           archived={habit.archivedAt !== null}
           categories={categories.map((c) => ({ id: c.id, name: c.name, color: c.color, icon: c.icon }))}
@@ -149,7 +163,7 @@ export default async function HabitDetailPage({
       ) : tab === "tower" ? (
         <HabitTowerPanel name={habit.name} color={habit.color} days={buildStatDays(habit, logs, today)} startDate={habit.startDate} today={today} evalType={habit.evalType} unit={habit.unit} />
       ) : (
-        <CalendarTab habit={habit} logs={logs} notes={notes} today={today} rawMonth={rawMonth} readOnly={readOnly} hex={hex} />
+        <CalendarTab habit={habit} logs={logs} notes={notes} today={today} rawMonth={rawMonth} readOnly={readOnly || locked} hex={hex} />
       )}
     </div>
   );

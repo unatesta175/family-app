@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 
 export type ManageHabit = HabitFormValues & {
   id: number;
+  /** A prayer habit: managed in the Prayer module, so no edit, archive or delete. */
+  locked?: boolean;
   scheduleLabel: string;
   targetLabel: string | null;
   archived: boolean;
@@ -85,7 +87,7 @@ export function HabitManager({
             </span>
           </span>
         </Link>
-        {!readOnly &&
+        {!readOnly && !h.locked &&
           (confirm === `h${h.id}` ? (
             <div className="flex shrink-0 items-center gap-1">
               <button

@@ -23,6 +23,8 @@ import type { HabitEvalType, HabitKind, HabitSchedule, PeriodUnit, TargetOp, Tas
 /** Serialisable rows the Today board renders. Built on the server, consumed by a client component. */
 export type BoardHabit = {
   id: number;
+  /** A prayer habit: its days come from the Prayer module and cannot be changed here. */
+  locked?: boolean;
   /** Estimated world standing for this habit (top %, tier). */
   rank?: { top: number; tier: string };
   name: string;
@@ -118,6 +120,7 @@ export function buildBoardHabits(
     });
     out.push({
       id: h.id,
+      locked: !!h.systemKey,
       name: h.name,
       kind: h.kind,
       icon: h.icon,

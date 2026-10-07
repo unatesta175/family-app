@@ -514,7 +514,7 @@ function HabitRow({
   habit: h,
   date,
   today,
-  canEdit,
+  canEdit: canEditHere,
   onLog,
   upcoming,
 }: {
@@ -525,6 +525,8 @@ function HabitRow({
   onLog: LogFn;
   upcoming?: boolean;
 }) {
+  // Prayer habits are logged in the Prayer module, never from here.
+  const canEdit = canEditHere && !h.locked;
   const hex = colorHex(h.color);
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -672,6 +674,11 @@ function HabitRow({
               {isBreak ? "Break" : "Build"}
             </span>
             {h.rank && <RankChip rank={h.rank} />}
+            {h.locked && (
+              <Link href="/" className="rounded-md bg-h-surface2 px-1.5 py-px font-bold text-h-muted hover:text-h-fg" title="Log it in the Prayer module">
+                Prayer module
+              </Link>
+            )}
             {h.priority > 0 && (
               <span className="rounded-md bg-h-surface2 px-1.5 py-px font-bold text-h-fg" title={`Priority ${h.priority}`}>
                 P{h.priority}

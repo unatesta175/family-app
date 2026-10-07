@@ -124,7 +124,7 @@ export function MonthMatrix({
 
   /** Same tap as the Week grid: plain habits cycle done, slipped, missed, skipped, empty; the rest open a dialog. */
   function onCell(row: WeekRow, cell: WeekRow["cells"][number]) {
-    if (readOnly || cell.date > today || cell.state === "off") return;
+    if (readOnly || row.locked || cell.date > today || cell.state === "off") return;
     if (row.evalType !== "yes_no") {
       setAdjusting({ rowId: row.id, date: cell.date });
       return;
@@ -276,7 +276,7 @@ export function MonthMatrix({
                   </Link>
                 </Cell>
                 {r.cells.map((c) => {
-                  const tappable = !readOnly && c.date <= today && c.state !== "off";
+                  const tappable = !readOnly && !r.locked && c.date <= today && c.state !== "off";
                   return (
                     <Cell key={c.date} row={ri + 2} className={edge}>
                       {tappable ? (

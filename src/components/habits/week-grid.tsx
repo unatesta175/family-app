@@ -18,6 +18,8 @@ import { RankChip } from "@/components/habits/rank-chip";
 export type WeekCell = { date: string; state: DayState; value: number; checked: string[]; logged: boolean };
 export type WeekRow = {
   id: number;
+  /** A prayer habit: read-only here, its days come from the Prayer module. */
+  locked?: boolean;
   name: string;
   kind: "build" | "break";
   color: string;
@@ -142,7 +144,7 @@ export function WeekGrid({
   }
 
   function onCell(row: WeekRow, cell: WeekCell) {
-    if (readOnly || cell.date > today) return;
+    if (readOnly || row.locked || cell.date > today) return;
     // Numeric, timer and checklist habits: adjust the amount in a dialog.
     if (row.evalType !== "yes_no") {
       setAdjusting({ rowId: row.id, date: cell.date });
@@ -309,7 +311,7 @@ export function WeekGrid({
                           </span>
                         </span>
                       </Link>
-                      {!readOnly && (
+                      {!readOnly && !row.locked && (
                         <button
                           type="button"
                           aria-label={`Options for ${row.name}`}
@@ -326,7 +328,7 @@ export function WeekGrid({
                       <CellButton
                         cell={cell}
                         row={row}
-                        disabled={readOnly || cell.date > today}
+                        disabled={readOnly || row.locked || cell.date > today}
                         onClick={() => onCell(row, cell)}
                       />
                     </td>
@@ -417,7 +419,7 @@ export function WeekGrid({
                 {shownDone}/{dueCount}
                 {suffix}
               </span>
-              {!readOnly && (
+              {!readOnly && !row.locked && (
                 <button
                   type="button"
                   aria-label={`Options for ${row.name}`}
@@ -445,7 +447,7 @@ export function WeekGrid({
                     <CellButton
                       cell={cell}
                       row={row}
-                      disabled={readOnly || cell.date > today}
+                      disabled={readOnly || row.locked || cell.date > today}
                       onClick={() => onCell(row, cell)}
                     />
                     <span
