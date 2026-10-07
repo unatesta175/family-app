@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Award, Clock, Flame, Percent, Timer, Trees } from "lucide-react";
 import { getOwnProfileId } from "@/lib/auth";
-import { addDays, parseIso, todayIso } from "@/lib/date";
+import { addDays, parseIso } from "@/lib/date";
+import { focusToday, tzOffset } from "@/lib/focus-date";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
 import { byDay, focusStreak, formatFocus, hourDistribution, summarize } from "@/lib/focus";
@@ -26,7 +27,8 @@ export default async function FocusStatsPage({ searchParams }: { searchParams: P
   if (profileId === null) return <p className="h-card p-6 text-center text-sm text-h-muted">No profile for this account.</p>;
   await settleActiveSession(profileId);
 
-  const today = todayIso();
+  const today = await focusToday();
+  const tz = await tzOffset();
   const from = addDays(today, -(range - 1));
   const [sessions, habits] = await Promise.all([getFocusSessionsInRange(profileId, from, today), getHabits(profileId, { includeArchived: true })]);
   const names = new Map(habits.map((h) => [h.id, h.name]));
@@ -72,7 +74,7 @@ export default async function FocusStatsPage({ searchParams }: { searchParams: P
   }
   const maxBar = Math.max(1, ...bars.map((b) => b.seconds));
 
-  const hours = hourDistribution(lite);
+  const hours = hourDistribution(lite, tz);
   const maxHour = Math.max(1, ...hours);
   const bestHour = hours.some((h) => h > 0) ? hours.indexOf(Math.max(...hours)) : -1;
   const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? "am" : "pm"}`;

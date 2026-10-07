@@ -1,12 +1,10 @@
 import { FocusTree } from "@/components/focus/focus-tree";
-import { formatFocus, tierInfo, treeTier, type SessionLite } from "@/lib/focus";
+import { formatClockTime, formatFocus, tierInfo, treeTier, type SessionLite } from "@/lib/focus";
 
 export type HabitNames = Map<number, string>;
 
-const clockLabel = (ms: number) => new Date(ms).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-
 /** Sessions in the order they were started, with their length, what they were for and whether the tree grew. */
-export function SessionList({ sessions, names }: { sessions: SessionLite[]; names: HabitNames }) {
+export function SessionList({ sessions, names, tz }: { sessions: SessionLite[]; names: HabitNames; tz: number }) {
   const done = sessions.filter((s) => s.status !== "active");
   if (done.length === 0) return null;
   return (
@@ -19,7 +17,7 @@ export function SessionList({ sessions, names }: { sessions: SessionLite[]; name
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-bold leading-tight">{s.habitId ? (names.get(s.habitId) ?? "Habit") : "Focus session"}</p>
             <p className="text-[11px] text-h-muted">
-              {new Date(s.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {clockLabel(s.startedAt)} · {s.status === "completed" ? tierInfo(treeTier(s.plannedSeconds)).name.toLowerCase() : `withered after ${formatFocus(s.focusedSeconds)}`}
+              {new Date(s.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })} · {formatClockTime(s.startedAt, tz)} · {s.status === "completed" ? tierInfo(treeTier(s.plannedSeconds)).name.toLowerCase() : `withered after ${formatFocus(s.focusedSeconds)}`}
             </p>
           </div>
           <span className="shrink-0 text-sm font-extrabold tabular-nums">{formatFocus(s.status === "completed" ? s.plannedSeconds : s.focusedSeconds)}</span>

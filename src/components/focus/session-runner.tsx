@@ -17,6 +17,8 @@ export type RunningSession = {
   mode: FocusMode;
   species: FocusSpecies;
   habitName: string | null;
+  /** Seconds focused so far (known once a session has ended). */
+  focusedSeconds?: number;
 };
 
 /** A short, soft chime made in the browser (no sound files): a rising triad, or one low note for a break. */
@@ -75,20 +77,21 @@ function Scene({ resting, children }: { resting?: boolean; children: React.React
  * clock. The time comes from the session's start time, so a reload (or a phone that slept) lands on
  * exactly the right moment.
  */
-export function SessionRunner({ session, serverNow }: { session: RunningSession; serverNow: number }) {
+export function SessionRunner({ session, serverNow, initialOutcome }: { session: RunningSession; serverNow: number; initialOutcome?: "done" | "withered" }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // The server's clock and this device's can differ a little; the gap is measured once and kept.
   const [offset] = useState(() => serverNow - Date.now());
   const [now, setNow] = useState(serverNow);
-  const [outcome, setOutcome] = useState<Outcome>(null);
+  const [outcome, setOutcome] = useState<Outcome>(initialOutcome ? { kind: initialOutcome } : null);
   const [confirming, setConfirming] = useState(false);
   const [muted, setMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<"saving" | "saved" | "error">("saving");
   const [summary, setSummary] = useState<FinishSummary | null>(null);
   const lastPhase = useRef<string | null>(null);
-  const finishing = useRef(false);
+  // A session that has already ended (shown again after a reload) must not be finished a second time.
+  const finishing = useRef(initialOutcome !== undefined);
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now() + offset), 250);
@@ -133,7 +136,6 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
       if (res.ok) {
         setSummary(res.data);
         setSaved("saved");
-        router.refresh();
       } else {
         setSaved("error");
         setError(res.error);
@@ -143,6 +145,12 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
       setError("Couldn't reach the server. Your tree is safe and will be saved when you are back online.");
     }
   }
+
+  // Shown again after a reload: fetch today's totals for the celebration.
+  useEffect(() => {
+    if (initialOutcome === "done") void save();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     document.title = outcome ? "Focus" : `${clock(tl.phaseRemaining)} · ${tl.phase === "break" ? "Break" : "Focus"}`;
@@ -155,7 +163,6 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
       if (!res.ok) return setError(res.error);
       if (res.data.withered) setOutcome({ kind: "withered" });
       else router.push("/focus");
-      router.refresh();
     });
   }
 
@@ -173,7 +180,7 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
             <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">You gave up before the end. The stump stays in today&apos;s grove, and the time you did put in is kept.</p>
             {error && <p className="mt-2 text-xs font-bold text-red-200">{error}</p>}
           </div>
-          <FocusTree progress={Math.max(0.3, tl.progress)} species={session.species} tier={tier} withered className="relative z-10 h-72 w-60" />
+          <FocusTree progress={Math.max(0.3, session.focusedSeconds ? session.focusedSeconds / session.plannedSeconds : tl.progress)} species={session.species} tier={tier} withered className="relative z-10 h-72 w-60" />
           <div className="fx-rise grid w-full max-w-sm gap-2">
             <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-sm font-extrabold text-[#0b5a43] shadow-lg">
               <Home className="h-4 w-4" />

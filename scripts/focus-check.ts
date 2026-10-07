@@ -1,6 +1,6 @@
 /* Sanity checks for the Focus module's timing and totals. Run: npx tsx scripts/focus-check.ts */
 import { addDays } from "../src/lib/date";
-import { treeTier, byDay, clock, focusStreak, formatFocus, hourDistribution, segmentsFor, stageName, summarize, timeline, type SessionLite } from "../src/lib/focus";
+import { formatClockTime, localDateFrom, treeTier, byDay, clock, focusStreak, formatFocus, hourDistribution, segmentsFor, stageName, summarize, timeline, type SessionLite } from "../src/lib/focus";
 
 import { treeSpec } from "../src/lib/focus-tree";
 
@@ -38,6 +38,10 @@ eq("pomodoro: finished at the end of the clock", timeline(t0, 100 * 60, "pomodor
 eq("pomodoro: a short last block is folded in", segmentsFor(52 * 60, "pomodoro").filter((x) => x.kind === "focus").map((x) => x.seconds / 60), [25, 27]);
 
 eq("tree tiers by session length", [5, 14, 15, 29, 30, 59, 60, 89, 90, 134, 135, 180].map((m) => treeTier(m * 60)), [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6]);
+// A user in Malaysia (UTC+8, offset -480): 06:53 UTC is 2:53 PM there, and just before midnight UTC is already tomorrow.
+const utc = Date.UTC(2026, 9, 7, 6, 53);
+eq("clock time in the user's own zone", [formatClockTime(utc, -480), formatClockTime(utc, 0), formatClockTime(Date.UTC(2026, 9, 7, 15, 5), -480)], ["2:53 PM", "6:53 AM", "11:05 PM"]);
+eq("the day follows the user's zone", [localDateFrom(Date.UTC(2026, 9, 7, 17, 0), -480), localDateFrom(Date.UTC(2026, 9, 7, 17, 0), 0)], ["2026-10-08", "2026-10-07"]);
 eq("stage names", [stageName(0), stageName(0.5), stageName(1)], ["Seed", "Sapling", "Full tree"]);
 eq("formatting", [formatFocus(5025), formatFocus(2700), clock(3725), clock(90)], ["1h 24m", "45m", "1:02:05", "1:30"]);
 

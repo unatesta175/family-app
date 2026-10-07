@@ -3,6 +3,7 @@ import { ModuleSwitcher } from "@/components/module-switcher";
 import { FocusBottomNav, FocusSidebar } from "@/components/focus/focus-nav";
 import { HabitLogout, HabitThemeToggle } from "@/components/habits/habit-header-controls";
 import { requireAuth } from "@/lib/auth";
+import { TimezoneCookie } from "@/components/focus/timezone-cookie";
 
 export const metadata: Metadata = {
   title: { default: "Focus · Istiqamahly", template: "%s · Focus" },
@@ -32,6 +33,7 @@ export default async function FocusLayout({ children }: { children: React.ReactN
             </div>
           </header>
           <main className="flex-1 px-4 pb-28 pt-2 md:px-8 md:pb-12">{children}</main>
+          <TimezoneCookie />
           <FocusBottomNav />
         </div>
       </div>

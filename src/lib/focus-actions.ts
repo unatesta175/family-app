@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getOwnProfileId } from "@/lib/auth";
-import { addDays, todayIso } from "@/lib/date";
+import { addDays } from "@/lib/date";
+import { localDateFrom } from "@/lib/focus";
+import { tzOffset } from "@/lib/focus-date";
+import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
 import { completeFocusSession, createFocusSession, deleteFocusSession, getFocusSession, getFocusSessionsInRange, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
 import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline } from "@/lib/focus";
@@ -44,7 +47,7 @@ export async function startFocusAction(input: z.input<typeof startSchema>): Prom
       if (!habit || habit.profileId !== profileId) throw new Error("Habit not found.");
       if (habit.evalType !== "timer") throw new Error("Only timer habits can start a focus session.");
     }
-    const row = await createFocusSession({ profileId, habitId: v.habitId, date: todayIso(), startedAt: Date.now(), plannedSeconds: v.minutes * 60, mode: v.mode, species: v.species });
+    const row = await createFocusSession({ profileId, habitId: v.habitId, date: localDateFrom(nowMs(), await tzOffset()), startedAt: nowMs(), plannedSeconds: v.minutes * 60, mode: v.mode, species: v.species });
     refresh();
     return { ok: true, data: { id: row.id } };
   } catch (err) {

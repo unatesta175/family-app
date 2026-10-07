@@ -115,6 +115,22 @@ export function treeTier(plannedSeconds: number): TreeTier {
 
 export const tierInfo = (tier: TreeTier) => TREE_TIERS[tier - 1];
 
+// --- The user's own time zone --------------------------------------------------------------
+// The server may run in another zone (UTC), so days and clock times are worked out from the
+// browser's offset (minutes, as `Date.getTimezoneOffset()` gives it: UTC+8 is -480).
+
+/** The calendar day (yyyy-mm-dd) it is at `ms` for someone with this offset. */
+export function localDateFrom(ms: number, tzOffsetMin: number): string {
+  return new Date(ms - tzOffsetMin * 60000).toISOString().slice(0, 10);
+}
+
+/** "2:58 PM" for a moment, in the user's zone. */
+export function formatClockTime(ms: number, tzOffsetMin: number): string {
+  const d = new Date(ms - tzOffsetMin * 60000);
+  const h = d.getUTCHours();
+  return `${h % 12 === 0 ? 12 : h % 12}:${String(d.getUTCMinutes()).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+}
+
 export const STAGES = ["Seed", "Sprout", "Sapling", "Young tree", "Grown tree", "Full tree"] as const;
 /** A name for how far the tree has grown. */
 export function stageName(progress: number): string {
@@ -185,8 +201,8 @@ export function summarize(sessions: SessionLite[]) {
   };
 }
 
-/** Focused seconds for each hour of the day (0-23), by when sessions started. */
-export function hourDistribution(sessions: SessionLite[]): number[] {
+/** Focused seconds for each hour of the day (0-23) in the user's zone, by when the time was spent. */
+export function hourDistribution(sessions: SessionLite[], tzOffsetMin: number = new Date().getTimezoneOffset()): number[] {
   const hours = Array(24).fill(0) as number[];
   for (const s of sessions) {
     if (s.status === "active" || s.focusedSeconds <= 0) continue;
@@ -194,11 +210,10 @@ export function hourDistribution(sessions: SessionLite[]): number[] {
     let t = s.startedAt;
     let left = s.focusedSeconds;
     while (left > 0) {
-      const d = new Date(t);
-      const next = new Date(t);
-      next.setMinutes(60, 0, 0);
-      const chunk = Math.min(left, Math.max(1, (next.getTime() - t) / 1000));
-      hours[d.getHours()] += chunk;
+      const d = new Date(t - tzOffsetMin * 60000);
+      const toNextHour = 3600 - (d.getUTCMinutes() * 60 + d.getUTCSeconds());
+      const chunk = Math.min(left, Math.max(1, toNextHour));
+      hours[d.getUTCHours()] += chunk;
       left -= chunk;
       t += chunk * 1000;
     }

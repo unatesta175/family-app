@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Leaf, Sprout } from "lucide-react";
 import { getOwnProfileId } from "@/lib/auth";
-import { addDays, addMonths, parseIso, todayIso } from "@/lib/date";
+import { addDays, addMonths, parseIso } from "@/lib/date";
+import { focusToday, tzOffset } from "@/lib/focus-date";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
-import { byDay, hourDistribution, summarize } from "@/lib/focus";
+import { byDay, formatFocus, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT, WEEKDAY_SHORT, weekDates } from "@/lib/habits";
 import { Distribution, type DistBar } from "@/components/focus/distribution";
 import { GardenView } from "@/components/focus/garden-view";
@@ -24,7 +25,8 @@ type View = (typeof VIEWS)[number]["key"];
 export default async function GrovePage({ searchParams }: { searchParams: Promise<{ view?: string; date?: string }> }) {
   const { view: rawView, date: rawDate } = await searchParams;
   const view: View = VIEWS.some((v) => v.key === rawView) ? (rawView as View) : "day";
-  const today = todayIso();
+  const today = await focusToday();
+  const tz = await tzOffset();
   const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
 
   const profileId = await getOwnProfileId();
@@ -74,7 +76,7 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
   const chartTitle = "Focused Time Distribution";
   const chartSub = view === "day" ? "Hour by hour" : view === "week" ? "Day by day this week" : view === "month" ? "Day by day this month" : "Month by month this year";
   if (view === "day") {
-    bars = hourDistribution(lite).map((s, h) => ({ label: `${String(h).padStart(2, "0")}`, seconds: s, title: `${String(h).padStart(2, "0")}:00`, showLabel: h % 6 === 0 }));
+    bars = hourDistribution(lite, tz).map((s, h) => ({ label: `${String(h).padStart(2, "0")}`, seconds: s, title: `${String(h).padStart(2, "0")}:00`, showLabel: h % 6 === 0 }));
   } else if (view === "week") {
     bars = weekDates(date).map((d) => ({ label: WEEKDAY_SHORT[parseIso(d).getDay()], seconds: days.get(d)?.seconds ?? 0, title: d }));
   } else if (view === "month") {
@@ -153,11 +155,14 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
       </section>
 
       <div className="flex flex-col gap-4 px-4 md:px-0">
+        <p className="-mt-1 px-1 text-center text-xs font-semibold text-h-muted">
+          {view === "day" ? "This day" : view === "week" ? "This week" : view === "month" ? "This month" : "This year"}: <b className="text-h-fg">{sum.trees}</b> tree{sum.trees === 1 ? "" : "s"} grown{sum.withered ? `, ${sum.withered} withered` : ""}, <b className="text-h-fg">{formatFocus(sum.seconds)}</b> focused
+        </p>
         <Distribution title={chartTitle} subtitle={chartSub} bars={bars} />
         {sum.sessions > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Sessions</h2>
-            <SessionList sessions={lite} names={names} />
+            <SessionList sessions={lite} names={names} tz={tz} />
           </section>
         )}
         {sum.sessions === 0 && <p className="rounded-2xl border border-dashed border-h-border p-6 text-center text-sm text-h-muted">No trees in this {view === "day" ? "day" : view}. Start a session and the first one is planted here.</p>}

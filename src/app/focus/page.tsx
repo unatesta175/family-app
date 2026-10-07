@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { Flame, Leaf, Timer, Trees } from "lucide-react";
 import { getOwnProfileId } from "@/lib/auth";
-import { addDays, todayIso } from "@/lib/date";
+import { addDays } from "@/lib/date";
+import { focusToday, tzOffset } from "@/lib/focus-date";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
 import { byDay, focusStreak, formatFocus } from "@/lib/focus";
@@ -17,7 +18,8 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
   const profileId = await getOwnProfileId();
   if (profileId === null) return <p className="h-card p-6 text-center text-sm text-h-muted">No profile for this account.</p>;
 
-  const today = todayIso();
+  const today = await focusToday();
+  const tz = await tzOffset();
   const active = await settleActiveSession(profileId);
   const [habits, recent] = await Promise.all([getHabits(profileId), getFocusSessionsInRange(profileId, addDays(today, -60), today)]);
   const names = new Map(habits.map((h) => [h.id, h.name]));
@@ -66,7 +68,7 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
         <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-[#1c5a45] to-[#123f31] p-4 shadow-md">
           <GardenView sessions={todayTotals?.sessions ?? []} className="mx-auto w-full max-w-sm" />
         </div>
-        <SessionList sessions={todayTotals?.sessions ?? []} names={names} />
+        <SessionList sessions={todayTotals?.sessions ?? []} names={names} tz={tz} />
       </section>
     </div>
   );

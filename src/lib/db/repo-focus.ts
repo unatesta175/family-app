@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq, gte, lte } from "drizzle-orm";
+import { and, desc, eq, gte, lte, ne } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { focusSessions, habitLogs } from "@/lib/db/schema";
 import { upsertHabitLog } from "@/lib/db/repo-habits";
+import { isoDate } from "@/lib/date";
 import { getHabit } from "@/lib/db/repo-habits";
 import { timeline, type FocusMode, type FocusSpecies, type SessionLite } from "@/lib/focus";
 
@@ -65,9 +66,11 @@ export async function completeFocusSession(row: FocusSessionRow) {
   if (row.habitId === null) return;
   const habit = await getHabit(row.habitId);
   if (!habit || habit.evalType !== "timer" || habit.systemKey) return;
-  const [log] = await db.select().from(habitLogs).where(and(eq(habitLogs.habitId, habit.id), eq(habitLogs.date, row.date)));
+  // The Habits module counts days in the server's own zone, so the time goes onto the day it calls that.
+  const habitDay = isoDate(new Date(row.startedAt));
+  const [log] = await db.select().from(habitLogs).where(and(eq(habitLogs.habitId, habit.id), eq(habitLogs.date, habitDay)));
   const before = log && log.status === "done" ? log.value : 0;
-  await upsertHabitLog(habit.id, row.date, "done", before + row.plannedSeconds);
+  await upsertHabitLog(habit.id, habitDay, "done", before + row.plannedSeconds);
 }
 
 /** A session given up part way: the tree withers and the time put in is still kept. */
@@ -76,6 +79,17 @@ export async function witherFocusSession(id: number, focusedSeconds: number) {
     .update(focusSessions)
     .set({ status: "withered", focusedSeconds: Math.max(0, Math.round(focusedSeconds)), endedAt: Date.now() })
     .where(and(eq(focusSessions.id, id), eq(focusSessions.status, "active")));
+}
+
+/** The session that ended most recently, if it ended within `withinMs` (to show its end screen again after a reload). */
+export async function getRecentEndedSession(profileId: number, withinMs: number): Promise<FocusSessionRow | null> {
+  const [row] = await db
+    .select()
+    .from(focusSessions)
+    .where(and(eq(focusSessions.profileId, profileId), ne(focusSessions.status, "active")))
+    .orderBy(desc(focusSessions.endedAt))
+    .limit(1);
+  return row && row.endedAt !== null && Date.now() - row.endedAt <= withinMs ? row : null;
 }
 
 /**
