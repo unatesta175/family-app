@@ -94,7 +94,7 @@ export function GardenView({ sessions, overlay, className }: { sessions: Session
         </div>
       </div>
       {mode === "3d" ? (
-        <div className="aspect-[4/3] w-full">
+        <div className="aspect-[4/3] w-full rounded-3xl bg-[radial-gradient(ellipse_at_50%_55%,rgba(196,240,150,0.38),rgba(196,240,150,0.12)_45%,transparent_72%)]">
           <Garden3D sessions={sessions} />
         </div>
       ) : (

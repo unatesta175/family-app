@@ -276,20 +276,20 @@ function Ground({ n }: { n: number }) {
     <group position={[0, -0.1, 0]}>
       <instancedMesh ref={tiles} args={[undefined, undefined, n * n]}>
         <boxGeometry args={[0.99, 0.2, 0.99]} />
-        <meshStandardMaterial flatShading />
+        <meshStandardMaterial flatShading emissive="#6f9e2c" emissiveIntensity={0.35} />
       </instancedMesh>
       <instancedMesh ref={tufts} args={[undefined, undefined, n * n * 2]}>
         <coneGeometry args={[0.035, 0.12, 4]} />
-        <meshStandardMaterial color="#6fa334" flatShading />
+        <meshStandardMaterial color="#7db83a" emissive="#4d7a1c" emissiveIntensity={0.3} flatShading />
       </instancedMesh>
       {/* soil, in two layers so it reads as earth */}
       <mesh position={[0, -0.42, 0]}>
         <boxGeometry args={[n, 0.5, n]} />
-        <meshStandardMaterial color="#7a4f2b" flatShading />
+        <meshStandardMaterial color="#9a6a3c" emissive="#3a2210" emissiveIntensity={0.25} flatShading />
       </mesh>
       <mesh position={[0, -0.82, 0]}>
         <boxGeometry args={[n * 0.97, 0.34, n * 0.97]} />
-        <meshStandardMaterial color="#5d3a1f" flatShading />
+        <meshStandardMaterial color="#7a4e29" emissive="#2a180a" emissiveIntensity={0.25} flatShading />
       </mesh>
     </group>
   );
@@ -305,10 +305,11 @@ export default function Garden3D({ sessions }: { sessions: SessionLite[] }) {
   const d = n * 0.95 + 3.4;
 
   return (
-    <Canvas camera={{ position: [d, d * 0.8, d], fov: 32 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }}>
-      <ambientLight intensity={0.85} />
-      <hemisphereLight args={["#e8ffd0", "#3b2a14", 0.55]} />
-      <directionalLight position={[n, n * 1.4, n * 0.6]} intensity={1.7} color="#fff6dc" />
+    <Canvas flat camera={{ position: [d, d * 0.8, d], fov: 32 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }}>
+      <ambientLight intensity={1.35} />
+      <hemisphereLight args={["#f3ffe0", "#9ac56a", 1.0]} />
+      <directionalLight position={[n, n * 1.4, n * 0.6]} intensity={1.5} color="#fff3d0" />
+      <directionalLight position={[-n, n * 0.8, -n * 0.4]} intensity={0.55} color="#d8f5ff" />
       <Ground n={n} />
       {placed.map(({ s, i, j }) => (
         <group key={s.id} position={[i - n / 2 + 0.5, 0.1, j - n / 2 + 0.5]}>
