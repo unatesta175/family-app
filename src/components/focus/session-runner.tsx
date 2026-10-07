@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Coffee, Square, Trees, Volume2, VolumeX } from "lucide-react";
 import { cancelFocusAction, finishFocusAction } from "@/lib/focus-actions";
-import { GRACE_SECONDS, SPECIES_LABEL, clock, formatFocus, stageName, timeline, type FocusMode, type FocusSpecies } from "@/lib/focus";
+import { GRACE_SECONDS, clock, formatFocus, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -102,6 +102,7 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
   }, []);
 
   const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, now);
+  const tier = treeTier(session.plannedSeconds);
 
   useEffect(() => {
     if (outcome) return;
@@ -145,7 +146,7 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
         <div className="flex flex-1 flex-col items-center justify-between pt-10 text-center">
           <div>
             <p className="text-sm font-semibold text-white/80">{grown ? "Well done" : "Not this time"}</p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{grown ? "Your tree is fully grown" : "Your tree withered"}</h1>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{grown ? `Your ${tierInfo(tier).name.toLowerCase()} is fully grown` : "Your tree withered"}</h1>
             <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">
               {grown
                 ? `${formatFocus(session.plannedSeconds)} of focus${session.habitName ? ` on ${session.habitName}` : ""} are now part of your grove.`
@@ -154,7 +155,7 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
             {grown && session.habitName && <p className="mt-1 text-xs font-semibold text-lime-200">The time was added to {session.habitName}.</p>}
             {error && <p className="mt-2 text-xs font-bold text-red-200">{error}</p>}
           </div>
-          <FocusTree progress={grown ? 1 : Math.max(0.3, tl.progress)} species={session.species} withered={!grown} className="relative z-10 h-72 w-60" />
+          <FocusTree progress={grown ? 1 : Math.max(0.3, tl.progress)} species={session.species} tier={tier} withered={!grown} className="relative z-10 h-72 w-60" />
           <div className="grid w-full max-w-sm gap-2">
             <Link href="/focus" className="rounded-full bg-white py-3.5 text-center text-sm font-extrabold text-[#0b5a43] shadow-lg">
               {grown ? "Plant another tree" : "Try again"}
@@ -191,14 +192,14 @@ export function SessionRunner({ session, serverNow }: { session: RunningSession;
       </div>
 
       <div className="flex flex-1 items-center justify-center">
-        <FocusTree progress={tl.progress} species={session.species} className="relative z-10 h-80 w-64" />
+        <FocusTree progress={tl.progress} species={session.species} tier={tier} className="relative z-10 h-80 w-64" />
       </div>
 
       <div className="flex flex-col items-center gap-4 text-center">
         <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(tl.phaseRemaining)}</p>
         <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
           {resting && <Coffee className="h-3.5 w-3.5" />}
-          {SPECIES_LABEL[session.species]} · {stageName(tl.progress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}
+          {tierInfo(tier).name} · {stageName(tl.progress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}
           {tl.blocks > 1 && ` · ${clock(tl.wallTotal - tl.wallElapsed)} left in all`}
         </p>
         {tl.blocks > 1 && (

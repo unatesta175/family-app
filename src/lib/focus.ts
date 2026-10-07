@@ -89,6 +89,32 @@ export function timeline(startedAtMs: number, plannedSeconds: number, mode: Focu
   return { phase: "done", focusElapsed: plannedSeconds, wallElapsed: wallTotal, wallTotal, phaseRemaining: 0, progress: 1, block: blocks, blocks, done: true };
 }
 
+/**
+ * A longer session grows a better tree. A 5 minute session still ends as a full, healthy tree, but
+ * the design itself gets richer with the time: more leaves and branches, then blossoms, then a roots
+ * and bigger crown, then a glow with fireflies, and at the top of the range a legendary tree with
+ * golden fruit, rays of light and falling petals. The same six tiers apply in the 2.5D and 3D gardens.
+ */
+export type TreeTier = 1 | 2 | 3 | 4 | 5 | 6;
+export const TREE_TIERS: { tier: TreeTier; name: string; minMinutes: number; blurb: string }[] = [
+  { tier: 1, name: "Seedling tree", minMinutes: 5, blurb: "A healthy little tree" },
+  { tier: 2, name: "Leafy tree", minMinutes: 15, blurb: "A fuller crown and branches" },
+  { tier: 3, name: "Blooming tree", minMinutes: 30, blurb: "Blossoms and fruit appear" },
+  { tier: 4, name: "Grand tree", minMinutes: 60, blurb: "A big crown with strong roots" },
+  { tier: 5, name: "Ancient tree", minMinutes: 90, blurb: "A glowing tree with fireflies" },
+  { tier: 6, name: "Legendary tree", minMinutes: 135, blurb: "Golden fruit, rays of light and falling petals" },
+];
+
+/** The tier of tree a session of this length grows. */
+export function treeTier(plannedSeconds: number): TreeTier {
+  const minutes = plannedSeconds / 60;
+  let tier: TreeTier = 1;
+  for (const t of TREE_TIERS) if (minutes >= t.minMinutes) tier = t.tier;
+  return tier;
+}
+
+export const tierInfo = (tier: TreeTier) => TREE_TIERS[tier - 1];
+
 export const STAGES = ["Seed", "Sprout", "Sapling", "Young tree", "Grown tree", "Full tree"] as const;
 /** A name for how far the tree has grown. */
 export function stageName(progress: number): string {

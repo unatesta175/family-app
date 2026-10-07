@@ -7,7 +7,7 @@ import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/r
 import { byDay, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT, WEEKDAY_SHORT, weekDates } from "@/lib/habits";
 import { Distribution, type DistBar } from "@/components/focus/distribution";
-import { IsoGarden } from "@/components/focus/iso-garden";
+import { GardenView } from "@/components/focus/garden-view";
 import { SessionList } from "@/components/focus/grove-views";
 import { cn } from "@/lib/utils";
 
@@ -132,8 +132,10 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
           )}
         </div>
 
-        <div className="relative mx-auto mt-2 max-w-lg">
-          <IsoGarden sessions={lite} className="w-full" />
+        <div className="mx-auto mt-2 max-w-lg">
+          <GardenView
+            sessions={lite}
+            overlay={
           <div className="absolute bottom-1 right-1 flex items-center gap-3 rounded-full bg-black/25 px-3 py-1.5 text-sm font-extrabold backdrop-blur-sm">
             <span className="flex items-center gap-1" title="Trees grown">
               <Sprout className="h-4 w-4 text-lime-300" />
@@ -144,6 +146,8 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
               {sum.withered}
             </span>
           </div>
+            }
+          />
         </div>
       </section>
 

@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Coffee, Play } from "lucide-react";
 import { startFocusAction } from "@/lib/focus-actions";
-import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, SPECIES_LABEL, formatFocus, segmentsFor, type FocusMode, type FocusSpecies } from "@/lib/focus";
+import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, SPECIES_LABEL, TREE_TIERS, formatFocus, segmentsFor, tierInfo, treeTier, type FocusMode, type FocusSpecies } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { Switch } from "@/components/habits/ui/switch";
 import { colorHex, tint } from "@/lib/habits";
@@ -35,6 +35,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
     return () => window.clearInterval(t);
   }, []);
 
+  const tier = treeTier(minutes * 60);
   const mode: FocusMode = pomodoro ? "pomodoro" : "single";
   const set = (n: number) => setMinutes(Math.max(MIN_MINUTES, Math.min(MAX_MINUTES, Math.round(n / 5) * 5)));
   const segs = segmentsFor(minutes * 60, mode);
@@ -62,9 +63,14 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
         <div className="pointer-events-none absolute -right-8 top-10 h-44 w-44 rounded-full bg-emerald-100/20 blur-3xl" />
         <div className="pointer-events-none absolute bottom-6 h-24 w-64 rounded-[50%] bg-lime-200/70 blur-xl" />
         <div className="pointer-events-none absolute bottom-7 h-16 w-52 rounded-[50%] bg-lime-300/60" />
-        <FocusTree progress={demo} species={species} className="relative z-10 mb-3 h-52 w-44" />
+        <FocusTree progress={demo} species={species} tier={tier} className="relative z-10 mb-3 h-52 w-44" />
         <p className="absolute left-5 top-5 text-sm font-bold text-white/90">Plant a tree</p>
-        <p className="absolute right-5 top-5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">{SPECIES_LABEL[species]}</p>
+        <p className="absolute right-5 top-5 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur-sm">{SPECIES_LABEL[species]} · {tierInfo(tier).name}</p>
+        <div className="absolute bottom-3 left-5 flex gap-1" aria-hidden>
+          {TREE_TIERS.map((t) => (
+            <span key={t.tier} className={cn("h-1.5 w-5 rounded-full", t.tier <= tier ? "bg-white" : "bg-white/30")} />
+          ))}
+        </div>
       </div>
 
       {/* the sheet */}
@@ -100,6 +106,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           <span>{MIN_MINUTES} min</span>
           <span>{MAX_MINUTES / 60} h</span>
         </div>
+        <p className="mt-2 text-center text-xs font-semibold text-h-brand">{tierInfo(tier).name}: {tierInfo(tier).blurb}</p>
         <div className="mt-3 flex flex-wrap justify-center gap-1.5">
           {PRESETS.map((m) => (
             <button
@@ -176,7 +183,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
                 aria-pressed={species === s}
                 className={cn("relative flex flex-col items-center rounded-2xl border-2 bg-gradient-to-b from-lime-100/70 to-emerald-100/70 px-1 pb-1.5 pt-2 transition-colors [.dark_&]:from-[#17301f] [.dark_&]:to-[#10261a]", species === s ? "border-h-brand" : "border-transparent hover:border-h-border")}
               >
-                <FocusTree progress={1} species={s} animate={false} className="h-14 w-full" />
+                <FocusTree progress={1} species={s} tier={tier} animate={false} className="h-14 w-full" />
                 <span className="text-[11px] font-bold">{SPECIES_LABEL[s]}</span>
                 {species === s && (
                   <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-h-brand text-h-brand-fg">

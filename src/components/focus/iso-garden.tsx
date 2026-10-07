@@ -1,32 +1,21 @@
 import { FocusTree } from "@/components/focus/focus-tree";
-import type { SessionLite } from "@/lib/focus";
+import { treeTier, type SessionLite } from "@/lib/focus";
+import { hash, layoutGarden } from "@/lib/focus-layout";
 
 const TW = 64; // tile width
 const TH = 32; // tile height (a 2:1 isometric diamond)
 const DEPTH = 26; // how thick the block of earth is
 const TREE_W = 68;
 const TREE_H = TREE_W * 1.2;
-/** More than this are not drawn one by one (a year can hold thousands). */
-const MAX_TREES = 320;
-
-/** A stable pseudo-random number from two small integers, so the layout never jumps between renders. */
-const hash = (a: number, b: number) => (((a * 73856093) ^ (b * 19349663)) >>> 0) % 9973;
-
 /**
  * The garden as an isometric block of earth, drawn in SVG: a grass top made of diamond tiles, soil on
  * two sides, and a tree (or a stump) for every session. The block is always a few tiles bigger than
  * the trees on it, so it keeps growing, one row of tiles at a time, as you plant more.
  */
 export function IsoGarden({ sessions, minSize = 5, className }: { sessions: SessionLite[]; minSize?: number; className?: string }) {
-  const shown = sessions.filter((s) => s.status !== "active").slice(-MAX_TREES);
-  const n = Math.max(minSize, Math.ceil(Math.sqrt(shown.length * 1.9)) + 1);
+  const { n, placed } = layoutGarden(sessions, minSize);
+  const shown = placed;
   const half = (n * TW) / 2;
-
-  // Each tree gets its own tile, picked in a fixed scattered order.
-  const cells: { i: number; j: number; h: number }[] = [];
-  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) cells.push({ i, j, h: hash(i + 1, j + 1) });
-  cells.sort((a, b) => a.h - b.h);
-  const placed = shown.map((s, k) => ({ s, ...cells[k] })).sort((a, b) => a.i + a.j - (b.i + b.j));
 
   const px = (i: number, j: number) => (i - j) * (TW / 2);
   const py = (i: number, j: number) => (i + j) * (TH / 2);
@@ -95,6 +84,7 @@ export function IsoGarden({ sessions, minSize = 5, className }: { sessions: Sess
             height={TREE_H}
             progress={s.status === "completed" ? 1 : Math.max(0.25, s.focusedSeconds / s.plannedSeconds)}
             species={s.species}
+            tier={treeTier(s.plannedSeconds)}
             withered={s.status === "withered"}
             animate={false}
           />
