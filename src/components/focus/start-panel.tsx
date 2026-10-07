@@ -71,10 +71,17 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
       <div className="relative flex h-60 items-end justify-center overflow-hidden">
         <div className="pointer-events-none absolute -left-10 top-4 h-40 w-40 rounded-full bg-lime-200/25 blur-3xl" />
         <div className="pointer-events-none absolute -right-8 top-10 h-44 w-44 rounded-full bg-emerald-100/20 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-6 h-24 w-64 rounded-[50%] bg-lime-200/70 blur-xl" />
-        <div className="pointer-events-none absolute bottom-7 h-16 w-52 rounded-[50%] bg-lime-300/60" />
+        {/* the flat island belongs to the 2.5D view; the 3D scene brings its own ground */}
         {view === "3d" ? (
-          <div className="absolute inset-x-0 bottom-0 top-8 z-10">
+          <div className="pointer-events-none absolute bottom-10 h-28 w-60 rounded-[50%] bg-lime-200/25 blur-2xl" />
+        ) : (
+          <>
+            <div className="pointer-events-none absolute bottom-6 h-24 w-64 rounded-[50%] bg-lime-200/70 blur-xl" />
+            <div className="pointer-events-none absolute bottom-7 h-16 w-52 rounded-[50%] bg-lime-300/60" />
+          </>
+        )}
+        {view === "3d" ? (
+          <div className="absolute inset-x-0 bottom-9 top-14 z-10">
             <Tree3DPreview progress={demo} species={species} tier={tier} />
           </div>
         ) : (

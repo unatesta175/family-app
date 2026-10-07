@@ -11,21 +11,25 @@ import type { FocusSpecies, TreeTier } from "@/lib/focus";
  */
 export default function Tree3DPreview({ progress, species, tier }: { progress: number; species: FocusSpecies; tier: TreeTier }) {
   return (
-    <Canvas camera={{ position: [2.3, 1.7, 2.6], fov: 34 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }}>
+    <Canvas camera={{ position: [2.7, 1.9, 3.1], fov: 30 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }}>
       <ambientLight intensity={0.9} />
       <hemisphereLight args={["#e8ffd0", "#3b2a14", 0.55]} />
       <directionalLight position={[3, 5, 2]} intensity={1.7} color="#fff6dc" />
       {/* a round patch of grass and soil to stand on */}
-      <mesh position={[0, -0.05, 0]}>
-        <cylinderGeometry args={[1.05, 1.05, 0.1, 28]} />
+      <mesh position={[0, -0.04, 0]}>
+        <cylinderGeometry args={[0.8, 0.8, 0.08, 32]} />
         <meshStandardMaterial color="#a4d65c" flatShading />
       </mesh>
-      <mesh position={[0, -0.28, 0]}>
-        <cylinderGeometry args={[1.05, 0.95, 0.36, 28]} />
+      <mesh position={[0, -0.22, 0]}>
+        <cylinderGeometry args={[0.8, 0.68, 0.28, 32]} />
         <meshStandardMaterial color="#7a4f2b" flatShading />
       </mesh>
+      <mesh position={[0, -0.42, 0]}>
+        <cylinderGeometry args={[0.68, 0.5, 0.12, 32]} />
+        <meshStandardMaterial color="#5d3a1f" flatShading />
+      </mesh>
       <Tree3D species={species} tier={tier} withered={false} progress={progress} />
-      <OrbitControls enablePan={false} enableZoom={false} minPolarAngle={0.7} maxPolarAngle={1.45} autoRotate autoRotateSpeed={1.1} target={[0, 0.75, 0]} />
+      <OrbitControls enablePan={false} enableZoom={false} minPolarAngle={0.7} maxPolarAngle={1.45} autoRotate autoRotateSpeed={1.1} target={[0, 0.6, 0]} />
     </Canvas>
   );
 }

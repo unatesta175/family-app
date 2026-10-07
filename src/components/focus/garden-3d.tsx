@@ -117,7 +117,7 @@ export function Tree3D({ species, tier, withered, progress }: { species: FocusSp
                     <meshStandardMaterial color={l.fill} flatShading />
                   </mesh>
                 ) : (
-                  <mesh position={[0, 6 * K * l.size, 0]} scale={[3.9 * K * l.size, 9 * K * l.size, 2.2 * K * l.size]}>
+                  <mesh position={[0, 6 * K * l.size, 0]} scale={[4.4 * K * l.size, 9.4 * K * l.size, 1.1 * K * l.size]}>
                     <sphereGeometry args={[1, 9, 7]} />
                     <meshStandardMaterial color={l.fill} flatShading />
                   </mesh>
