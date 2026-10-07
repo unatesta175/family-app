@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Flame, Target, TrendingUp, Trophy, ListChecks, CheckCircle2 } from "lucide-react";
+import { Flame, Target, TrendingUp, Trophy, ListChecks, CheckCircle2, Globe2, LayoutDashboard } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import { buildBoardHabits, buildBoardTasks } from "@/lib/habit-board";
 import { STREAK_UNIT_SHORT, colorHex, completionRate, computeStreak, tint, totalDone } from "@/lib/habits";
@@ -15,6 +15,8 @@ import { Ring } from "@/components/habits/ring";
 import { cn } from "@/lib/utils";
 
 const RANGES = [7, 30, 90] as const;
+const TABS = ["overview", "habits", "world", "todo"] as const;
+type Tab = (typeof TABS)[number];
 
 function avg(nums: (number | null)[]): number | null {
   const vals = nums.filter((n): n is number => n !== null);
@@ -24,9 +26,10 @@ function avg(nums: (number | null)[]): number | null {
 export default async function HabitsStatsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; tab?: string }>;
 }) {
-  const { range: rawRange } = await searchParams;
+  const { range: rawRange, tab: rawTab } = await searchParams;
+  const tab: Tab = (TABS as readonly string[]).includes(rawTab ?? "") ? (rawTab as Tab) : "overview";
   const range = (RANGES as readonly number[]).includes(Number(rawRange)) ? Number(rawRange) : 30;
   const today = todayIso();
   const from = addDays(today, -(range - 1));
@@ -100,7 +103,7 @@ export default async function HabitsStatsPage({
           {RANGES.map((r) => (
             <Link
               key={r}
-              href={`/habits/stats?range=${r}`}
+              href={`/habits/stats?tab=${tab}&range=${r}`}
               className={cn(
                 "rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
                 r === range ? "bg-h-surface text-h-fg shadow-sm" : "text-h-muted hover:text-h-fg"
@@ -118,11 +121,41 @@ export default async function HabitsStatsPage({
         </p>
       ) : (
         <>
-          <WorldRankList rows={rankRows} />
+          <nav className="grid grid-cols-4 gap-1 rounded-2xl border border-h-border bg-h-surface p-1 shadow-sm" aria-label="Statistics sections">
+            {(
+              [
+                { key: "overview", label: "Overview", icon: LayoutDashboard },
+                { key: "habits", label: "Habits", icon: ListChecks, count: perHabit.length },
+                { key: "world", label: "World", icon: Globe2 },
+                { key: "todo", label: "To do", icon: CheckCircle2, count: boardHabits.length + boardTasks.length },
+              ] as const
+            ).map((t) => (
+              <Link
+                key={t.key}
+                href={`/habits/stats?tab=${t.key}&range=${range}`}
+                aria-current={tab === t.key ? "page" : undefined}
+                className={cn(
+                  "flex flex-col items-center gap-0.5 rounded-xl px-1 py-2 text-[11px] font-bold transition-colors sm:flex-row sm:justify-center sm:gap-1.5 sm:text-xs",
+                  tab === t.key ? "bg-h-brand text-h-brand-fg shadow-sm" : "text-h-muted hover:bg-h-surface2 hover:text-h-fg"
+                )}
+              >
+                <t.icon className="h-4 w-4" />
+                <span className="flex items-center gap-1">
+                  {t.label}
+                  {"count" in t && t.count > 0 && (
+                    <span className={cn("rounded-full px-1.5 text-[10px] tabular-nums", tab === t.key ? "bg-white/25" : "bg-h-surface2")}>{t.count}</span>
+                  )}
+                </span>
+              </Link>
+            ))}
+          </nav>
 
-          {/* Pending today */}
+          {tab === "world" && <WorldRankList rows={rankRows} />}
+
+          {/* To do today */}
+          {tab === "todo" && (
           <section className="flex flex-col gap-2">
-            <h3 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Pending today</h3>
+            <h3 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Still to do today</h3>
             {boardHabits.length + boardTasks.length === 0 ? (
               <div className="h-card flex items-center gap-3 p-4">
                 <CheckCircle2 className="h-5 w-5 text-h-good" />
@@ -132,7 +165,10 @@ export default async function HabitsStatsPage({
               <TodayBoard date={today} today={today} readOnly={readOnly} habits={boardHabits} tasks={boardTasks} compact />
             )}
           </section>
+          )}
 
+          {tab === "overview" && (
+          <>
           {/* Headline numbers */}
           <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
             <div className="h-card col-span-2 flex items-center gap-4 p-4 md:col-span-1 md:flex-col md:items-start">
@@ -194,8 +230,11 @@ export default async function HabitsStatsPage({
               </div>
             </section>
           )}
+          </>
+          )}
 
           {/* Per-habit */}
+          {tab === "habits" && (
           <section className="flex flex-col gap-2">
             <h3 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Every habit</h3>
             {perHabit.map((p) => {
@@ -235,11 +274,14 @@ export default async function HabitsStatsPage({
               );
             })}
           </section>
+          )}
 
+          {(tab === "overview" || tab === "habits") && (
           <p className="flex items-center justify-center gap-1.5 text-center text-[11px] text-h-muted">
             <ListChecks className="h-3 w-3" />
             Rates skip rest days and never count today against you until it is done.
           </p>
+          )}
         </>
       )}
     </div>
