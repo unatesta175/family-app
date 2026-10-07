@@ -523,3 +523,28 @@ export const timeSettings = sqliteTable("time_settings", {
   birthDate: text("birth_date"),
   lifespanYears: integer("lifespan_years").notNull().default(80),
 });
+
+// ---------------------------------------------------------------------------------------------
+// Focus module. A focus session grows one tree: finished = a tree in the Grove, given up = a stump.
+// The timer runs off `startedAt` alone, so a session survives sleep, reloads and closed tabs.
+
+export const FOCUS_STATUSES = ["active", "completed", "withered"] as const;
+export const FOCUS_SPECIES_LIST = ["oak", "pine", "sakura", "maple"] as const;
+export const FOCUS_MODES = ["single", "pomodoro"] as const;
+
+export const focusSessions = sqliteTable("focus_sessions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  // The habit the time is for (a timer-type habit), or null for a plain focus session.
+  habitId: integer("habit_id").references(() => habits.id, { onDelete: "set null" }),
+  date: text("date").notNull(), // yyyy-mm-dd the session started on
+  startedAt: integer("started_at").notNull(), // epoch milliseconds
+  plannedSeconds: integer("planned_seconds").notNull(), // focus time, breaks not included
+  mode: text("mode", { enum: FOCUS_MODES }).notNull().default("single"),
+  species: text("species", { enum: FOCUS_SPECIES_LIST }).notNull().default("oak"),
+  status: text("status", { enum: FOCUS_STATUSES }).notNull().default("active"),
+  focusedSeconds: integer("focused_seconds").notNull().default(0),
+  endedAt: integer("ended_at"),
+});

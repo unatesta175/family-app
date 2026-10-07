@@ -181,6 +181,27 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
     table: "habit_task_completions_idx",
     ddl: `CREATE UNIQUE INDEX IF NOT EXISTS habit_task_completions_unique ON habit_task_completions (task_id, date)`,
   },
+  // --- Focus module -------------------------------------------------------------------------
+  {
+    table: "focus_sessions",
+    ddl: `CREATE TABLE IF NOT EXISTS focus_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      habit_id INTEGER REFERENCES habits(id) ON DELETE SET NULL,
+      date TEXT NOT NULL,
+      started_at INTEGER NOT NULL,
+      planned_seconds INTEGER NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'single',
+      species TEXT NOT NULL DEFAULT 'oak',
+      status TEXT NOT NULL DEFAULT 'active',
+      focused_seconds INTEGER NOT NULL DEFAULT 0,
+      ended_at INTEGER
+    )`,
+  },
+  {
+    table: "focus_sessions_idx",
+    ddl: `CREATE INDEX IF NOT EXISTS focus_sessions_profile_date_idx ON focus_sessions (profile_id, date)`,
+  },
   // --- Goals module -------------------------------------------------------------------------
   {
     table: "goals",

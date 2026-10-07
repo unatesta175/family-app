@@ -663,3 +663,38 @@ html:has(.habits-app) {
   --h-break-soft: #3a2314;
   --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
 }
+
+/*
+ * Focus module theme: deep pine and mist. Calm and low-contrast so it never competes with the work,
+ * and distinct from Habits (indigo), Goals (amber) and Prayer (emerald). Like Goals it sits on top of
+ * the habits tokens, so every shared component works and only the palette changes.
+ */
+.habits-theme.focus-theme {
+  --h-bg: #f1f6f4;
+  --h-surface: #ffffff;
+  --h-surface-2: #e7f0ed;
+  --h-border: #d3e3de;
+  --h-fg: #0f1f1b;
+  --h-muted: #587169;
+  --h-brand: #0f766e;
+  --h-brand-fg: #ffffff;
+  --h-brand-soft: #d2efe8;
+  --h-break: #b45309;
+  --h-break-soft: #fdf0cf;
+  --h-shadow: 0 1px 2px rgb(15 31 27 / 0.04), 0 4px 16px rgb(15 31 27 / 0.06);
+}
+
+.dark .habits-theme.focus-theme {
+  --h-bg: #07110e;
+  --h-surface: #0d1c18;
+  --h-surface-2: #142722;
+  --h-border: #21392f;
+  --h-fg: #e6f4ef;
+  --h-muted: #8db0a5;
+  --h-brand: #2dd4bf;
+  --h-brand-fg: #04201b;
+  --h-brand-soft: #113a33;
+  --h-break: #fbbf24;
+  --h-break-soft: #3a2d10;
+  --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
+}

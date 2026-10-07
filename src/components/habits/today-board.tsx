@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useOptimistic, useState, useSyncExternalStore, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Ban,
   Check,
@@ -20,6 +21,7 @@ import {
   Undo2,
   X,
   PartyPopper,
+  Sprout,
   AlarmClock,
   CornerDownRight,
   Layers,
@@ -527,6 +529,7 @@ function HabitRow({
 }) {
   // Prayer habits are logged in the Prayer module, never from here.
   const canEdit = canEditHere && !h.locked;
+  const router = useRouter();
   const hex = colorHex(h.color);
   const [menu, setMenu] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -859,6 +862,16 @@ function HabitRow({
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setMenu(false)} />
                   <div className="habit-sheet-in absolute right-0 top-9 z-50 w-44 rounded-xl border border-h-border bg-h-surface p-1 shadow-xl">
+                    {isTimer && !h.locked && (
+                      <MenuItem
+                        icon={Sprout}
+                        label="Start focus session"
+                        onClick={() => {
+                          setMenu(false);
+                          router.push(`/focus?habit=${h.id}`);
+                        }}
+                      />
+                    )}
                     {!skipped && (
                       <MenuItem
                         icon={SkipForward}
