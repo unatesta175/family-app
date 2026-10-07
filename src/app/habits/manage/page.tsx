@@ -7,6 +7,7 @@ import { getHabits } from "@/lib/db/repo-habits";
 import { computeStreak, scheduleLabel, targetLabel } from "@/lib/habits";
 import { habitToFormValues } from "@/lib/habit-form-values";
 import { todayIso } from "@/lib/date";
+import { ScienceLink } from "@/components/habits/science-link";
 import { HabitManager, type ManageHabit } from "@/components/habits/habit-manager";
 
 export default async function HabitsManagePage() {
@@ -46,6 +47,7 @@ export default async function HabitsManagePage() {
         circleSize={circleSize}
         goals={goals}
       />
+      <ScienceLink />
     </div>
   );
 }

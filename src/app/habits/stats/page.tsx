@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ScienceLink } from "@/components/habits/science-link";
 import { Flame, Target, TrendingUp, Trophy, ListChecks, CheckCircle2, Globe2, LayoutDashboard } from "lucide-react";
 import { loadHabitData } from "@/lib/habit-data";
 import { buildBoardHabits, buildBoardTasks } from "@/lib/habit-board";
@@ -284,6 +285,7 @@ export default async function HabitsStatsPage({
           )}
         </>
       )}
+      <ScienceLink />
     </div>
   );
 }

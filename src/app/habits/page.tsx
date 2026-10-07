@@ -15,6 +15,7 @@ import { addDays, parseIso, todayIso } from "@/lib/date";
 import { TodayBoard } from "@/components/habits/today-board";
 import { FamilyStrip, type FamilyMember } from "@/components/habits/family-strip";
 import { StarterPackCard } from "@/components/habits/starter-pack-card";
+import { ScienceLink } from "@/components/habits/science-link";
 import { Ring } from "@/components/habits/ring";
 import { cn } from "@/lib/utils";
 
@@ -242,6 +243,8 @@ export default async function HabitsTodayPage({
       )}
 
       {milestoneRows.length > 0 && <TodayMilestones items={milestoneRows} canEdit={!readOnly} />}
+
+      <ScienceLink />
 
       <FamilyStrip members={family} activeId={profileId} />
     </div>
