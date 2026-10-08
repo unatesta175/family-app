@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Clock, Coffee, Flame, Home, Loader2, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
-import { attachFocusHabitAction, cancelFocusAction, finishFocusAction, type FinishSummary } from "@/lib/focus-actions";
+import { Check, Clock, Coffee, Flame, Home, Loader2, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
+import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, type FinishSummary } from "@/lib/focus-actions";
 import { GRACE_SECONDS, clock, formatFocus, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
@@ -20,6 +20,8 @@ export type RunningSession = {
   habitName: string | null;
   /** Seconds focused so far (known once a session has ended). */
   focusedSeconds?: number;
+  /** When the session ended on the server (epoch ms), if it has. */
+  endedAt?: number;
 };
 
 /** A short, soft chime made in the browser (no sound files): a rising triad, or one low note for a break. */
@@ -310,7 +312,20 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
   // --- Finished or given up ------------------------------------------------------------------
   if (outcome) {
     if (outcome.kind === "done") {
-      return <Celebration session={session} trees={grownTrees} saved={saved} summary={summary} error={error} onRetry={() => void save()} timerHabits={timerHabits} />;
+      return (
+        <Celebration
+          session={session}
+          trees={grownTrees}
+          saved={saved}
+          summary={summary}
+          error={error}
+          onRetry={() => void save()}
+          timerHabits={timerHabits}
+          canOvertime={session.mode === "single"}
+          endedAtMs={session.endedAt ?? session.startedAt + tl.wallTotal * 1000}
+          onSummary={setSummary}
+        />
+      );
     }
     const endTrees = sessionTrees({ mode: session.mode, plannedSeconds: session.plannedSeconds, cfg: session.cfg, status: "withered", focusedSeconds: session.focusedSeconds ?? Math.round(tl.focusElapsed) });
     const kept = endTrees.filter((t) => t.grown);
@@ -476,6 +491,9 @@ function Celebration({
   error,
   onRetry,
   timerHabits,
+  canOvertime,
+  endedAtMs,
+  onSummary,
 }: {
   session: RunningSession;
   trees: Tree[];
@@ -484,11 +502,45 @@ function Celebration({
   error: string | null;
   onRetry: () => void;
   timerHabits: { id: number; name: string }[];
+  /** A single session can take time you kept working after it ended. */
+  canOvertime: boolean;
+  /** When the session ended (epoch ms), the overtime counter runs from here. */
+  endedAtMs: number;
+  onSummary: (s: FinishSummary) => void;
 }) {
-  // Each focus block is its own tree; the cheer and the big tree use the block's tier.
-  const tier = trees[0]?.tier ?? 1;
   const count = trees.length;
+  const multiBlock = count > 1;
+  // Overtime folds extra minutes into a single session, so its length (and tree tier) can grow.
+  const [planned, setPlanned] = useState(session.plannedSeconds);
+  // The moment overtime is measured from; it moves forward each time some is added.
+  const [since, setSince] = useState(endedAtMs);
+  const [dismissed, setDismissed] = useState(false);
+  const [adding, startAdd] = useTransition();
+  const [overtimeError, setOvertimeError] = useState<string | null>(null);
+  // Tick once a second so the "since it ended" readout keeps counting up.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!canOvertime || dismissed) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [canOvertime, dismissed]);
+  const overtimeSec = canOvertime ? Math.max(0, Math.floor((now - since) / 1000)) : 0;
+  const addedSec = planned - session.plannedSeconds;
+  // A single session has one tree, whose tier follows its (possibly extended) length.
+  const tier = multiBlock ? trees[0].tier : treeTier(planned);
   const cheer = CHEERS[tier];
+  function addOvertime() {
+    setOvertimeError(null);
+    const seconds = overtimeSec;
+    startAdd(async () => {
+      const res = await addFocusOvertimeAction({ sessionId: session.id, seconds });
+      if (res.ok) {
+        setPlanned(res.data.plannedSeconds);
+        setSince(Date.now());
+        onSummary(res.data.summary);
+      } else setOvertimeError(res.error);
+    });
+  }
   // A session started with no habit can be counted towards one after the fact.
   const [linked, setLinked] = useState<string | null>(null);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -513,7 +565,7 @@ function Celebration({
           </span>
           <h1 className="mt-2 text-4xl font-extrabold tracking-tight">{cheer.title}</h1>
           <p className="mx-auto mt-2 max-w-xs text-base font-semibold text-white">
-            You focused for <span className="rounded-md bg-white/20 px-1.5 py-0.5 font-extrabold tabular-nums">{formatFocus(session.plannedSeconds)}</span>
+            You focused for <span className="rounded-md bg-white/20 px-1.5 py-0.5 font-extrabold tabular-nums">{formatFocus(planned)}</span>
             {habitName ? <> on {habitName}</> : null}.
           </p>
           <p className="mx-auto mt-1.5 max-w-xs text-sm text-white/80">
@@ -571,9 +623,34 @@ function Celebration({
             )}
           </p>
 
+          {canOvertime && saved === "saved" && !dismissed && (overtimeSec >= 30 || addedSec > 0) && (
+            <div className="fx-rise rounded-2xl bg-white/15 p-3 text-left backdrop-blur-md" style={{ animationDelay: "0.5s" }}>
+              <p className="text-xs font-bold">Kept studying after it ended?</p>
+              <p className="mt-0.5 text-[11px] text-white/80">
+                It&apos;s been <span className="font-extrabold tabular-nums">{clock(overtimeSec)}</span> since this session finished. Add that time so it counts.
+                {addedSec > 0 && <> You&apos;ve added {formatFocus(addedSec)} so far.</>}
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={addOvertime}
+                  disabled={adding || overtimeSec < 1}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-[#0b5a43] disabled:opacity-60"
+                >
+                  {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" strokeWidth={3} />}
+                  Add {formatFocus(overtimeSec)}
+                </button>
+                <button type="button" onClick={() => setDismissed(true)} className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold hover:bg-white/25">
+                  No, I stopped
+                </button>
+              </div>
+              {overtimeError && <p className="mt-1.5 text-[11px] font-bold text-red-200">{overtimeError}</p>}
+            </div>
+          )}
+
           {!habitName && timerHabits.length > 0 && saved === "saved" && (
             <div className="fx-rise rounded-2xl bg-white/15 p-3 text-left backdrop-blur-md" style={{ animationDelay: "0.55s" }}>
-              <p className="text-xs font-bold">Count these {formatFocus(session.plannedSeconds)} towards a habit?</p>
+              <p className="text-xs font-bold">Count these {formatFocus(planned)} towards a habit?</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {timerHabits.map((h) => (
                   <button key={h.id} type="button" disabled={linking} onClick={() => attach(h.id)} className="rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold hover:bg-white/30 disabled:opacity-60">

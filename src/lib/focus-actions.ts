@@ -8,7 +8,7 @@ import { localDateFrom } from "@/lib/focus";
 import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
-import { attachHabitToSession, cfgFromRow, completeFocusSession, createFocusSession, deleteFocusSession, getFocusSession, getFocusSessionsInRange, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
+import { attachHabitToSession, cfgFromRow, completeFocusSession, createFocusSession, deleteFocusSession, extendCompletedSession, getFocusSession, getFocusSessionsInRange, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
 import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
@@ -104,6 +104,35 @@ export async function finishFocusAction(id: number): Promise<FocusResult<FinishS
     await completeFocusSession(row);
     refresh();
     return { ok: true, data: await summaryFor(profileId, row.date) };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Overtime can only reach back as far as the end screen stays available, plus a little slack. */
+const MAX_OVERTIME_SECONDS = 2 * 60 * 60;
+
+/**
+ * Folds the time you kept working after a single session's timer ended into that session, for when you
+ * didn't notice it finish. The extra is capped by how long it has actually been since it ended, so it
+ * can't be inflated. Returns today's totals and the session's new length for the celebration to update.
+ */
+export async function addFocusOvertimeAction(input: { sessionId: number; seconds: number }): Promise<FocusResult<{ summary: FinishSummary; plannedSeconds: number; endedAt: number }>> {
+  try {
+    const v = z.object({ sessionId: z.number().int().positive(), seconds: z.number().int().positive() }).parse(input);
+    const profileId = await ownProfile();
+    const row = await getFocusSession(v.sessionId);
+    if (!row || row.profileId !== profileId) throw new Error("Session not found.");
+    if (row.status !== "completed") throw new Error("Only a finished session can take extra time.");
+    if (row.mode !== "single") throw new Error("Only a single session can take extra time.");
+    // Trust the clock, not the client: the most you can add is the time since it ended (plus slack).
+    const sinceEnded = row.endedAt ? Math.floor((Date.now() - row.endedAt) / 1000) + 5 : 0;
+    const extra = Math.min(v.seconds, sinceEnded, MAX_OVERTIME_SECONDS);
+    if (extra <= 0) throw new Error("No extra time to add yet.");
+    const updated = await extendCompletedSession(row, extra);
+    if (!updated) throw new Error("This session can no longer be changed.");
+    refresh();
+    return { ok: true, data: { summary: await summaryFor(profileId, updated.date), plannedSeconds: updated.plannedSeconds, endedAt: updated.endedAt ?? Date.now() } };
   } catch (err) {
     return fail(err);
   }

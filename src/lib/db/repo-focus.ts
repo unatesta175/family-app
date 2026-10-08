@@ -108,14 +108,36 @@ export async function attachHabitToSession(row: FocusSessionRow, habitId: number
 
 /** Adds a finished session's focused time to a timer habit's day. */
 async function creditHabit(row: FocusSessionRow, habitId: number | null) {
-  if (habitId === null) return;
+  await creditHabitSeconds(habitId, row.startedAt, row.plannedSeconds);
+}
+
+/** Adds some seconds of focus to a timer habit's day (the day the session started on, server zone). */
+async function creditHabitSeconds(habitId: number | null, startedAt: number, seconds: number) {
+  if (habitId === null || seconds <= 0) return;
   const habit = await getHabit(habitId);
   if (!habit || habit.evalType !== "timer" || habit.systemKey) return;
-  // The Habits module counts days in the server's own zone, so the time goes onto the day it calls that.
-  const habitDay = isoDate(new Date(row.startedAt));
+  const habitDay = isoDate(new Date(startedAt));
   const [log] = await db.select().from(habitLogs).where(and(eq(habitLogs.habitId, habit.id), eq(habitLogs.date, habitDay)));
   const before = log && log.status === "done" ? log.value : 0;
-  await upsertHabitLog(habit.id, habitDay, "done", before + row.plannedSeconds);
+  await upsertHabitLog(habit.id, habitDay, "done", before + seconds);
+}
+
+/**
+ * Folds extra focus time into an already-finished session — for when you kept working after the timer
+ * ended without noticing. The session grows by `extra` seconds (a bigger tree if it crosses a tier),
+ * its habit gets those minutes, and `endedAt` moves to now so the overtime counter starts fresh.
+ * Returns the updated row, or null if the session was no longer a plain completed one.
+ */
+export async function extendCompletedSession(row: FocusSessionRow, extra: number): Promise<FocusSessionRow | null> {
+  if (extra <= 0) return row;
+  const [updated] = await db
+    .update(focusSessions)
+    .set({ plannedSeconds: row.plannedSeconds + extra, focusedSeconds: row.focusedSeconds + extra, endedAt: Date.now() })
+    .where(and(eq(focusSessions.id, row.id), eq(focusSessions.status, "completed"), eq(focusSessions.mode, "single")))
+    .returning();
+  if (!updated) return null;
+  await creditHabitSeconds(row.habitId, row.startedAt, extra);
+  return updated;
 }
 
 /** A session given up part way: the tree withers and the time put in is still kept. */

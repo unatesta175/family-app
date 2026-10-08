@@ -14,7 +14,7 @@ export default async function FocusSessionPage() {
   const active = await settleActiveSession(profileId);
   // Finishing a session ends it on the server, which refreshes this page. Instead of sending you away,
   // show how it ended for a few minutes, so the celebration is never cut short (and survives a reload).
-  const ended = active ? null : await getRecentEndedSession(profileId, 10 * 60 * 1000);
+  const ended = active ? null : await getRecentEndedSession(profileId, 2 * 60 * 60 * 1000);
   const row = active ?? ended;
   if (!row) redirect("/focus");
   const habit = row.habitId ? await getHabit(row.habitId) : null;
@@ -26,7 +26,7 @@ export default async function FocusSessionPage() {
       serverNow={nowMs()}
       timerHabits={timerHabits}
       initialOutcome={ended ? (ended.status === "completed" ? "done" : "withered") : undefined}
-      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, cfg: cfgFromRow(row), species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds }}
+      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, cfg: cfgFromRow(row), species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds, endedAt: row.endedAt ?? undefined }}
     />
   );
 }
