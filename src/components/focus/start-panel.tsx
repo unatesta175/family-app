@@ -21,7 +21,10 @@ export type TimerHabit = { id: number; name: string; color: string };
 
 const PRESETS = [15, 25, 45, 60, 90, 120];
 
-/** A small −/+ control for a whole-number value (Pomodoro focus, break and cycle counts). */
+/**
+ * A −/+ control for a whole-number value (Pomodoro focus, break and cycle counts). `stack` puts the
+ * label above the controls, so it fits inside a narrow half-width card without the +/− overflowing.
+ */
 function Stepper({
   label,
   value,
@@ -30,6 +33,7 @@ function Stepper({
   max,
   step,
   onChange,
+  stack = false,
 }: {
   label: string;
   value: number;
@@ -38,22 +42,23 @@ function Stepper({
   max: number;
   step: number;
   onChange: (n: number) => void;
+  stack?: boolean;
 }) {
   const clamp = (n: number) => Math.max(min, Math.min(max, n));
   return (
-    <div className="flex items-center justify-between gap-2 rounded-xl bg-h-surface px-3 py-2">
+    <div className={cn("rounded-xl bg-h-surface px-3 py-2", stack ? "flex flex-col gap-1.5" : "flex items-center justify-between gap-2")}>
       <span className="text-xs font-bold text-h-muted">{label}</span>
-      <div className="flex items-center gap-2">
+      <div className={cn("flex items-center gap-1.5", stack && "justify-between")}>
         <button
           type="button"
           aria-label={`Decrease ${label}`}
           onClick={() => onChange(clamp(value - step))}
           disabled={value <= min}
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-h-surface2 text-h-fg disabled:opacity-40"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-h-surface2 text-h-fg disabled:opacity-40"
         >
           <Minus className="h-3.5 w-3.5" />
         </button>
-        <span className="min-w-14 text-center text-sm font-extrabold tabular-nums">
+        <span className="min-w-0 flex-1 text-center text-sm font-extrabold tabular-nums">
           {value} <span className="text-[11px] font-bold text-h-muted">{unit}</span>
         </span>
         <button
@@ -61,7 +66,7 @@ function Stepper({
           aria-label={`Increase ${label}`}
           onClick={() => onChange(clamp(value + step))}
           disabled={value >= max}
-          className="flex h-7 w-7 items-center justify-center rounded-full bg-h-brand-soft text-h-brand disabled:opacity-40"
+          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-h-brand-soft text-h-brand disabled:opacity-40"
         >
           <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
         </button>
@@ -349,8 +354,8 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
 
               {isCustom && (
                 <div className="grid grid-cols-2 gap-2">
-                  <Stepper label="Focus" value={focusMin} unit="min" min={MIN_MINUTES} max={120} step={5} onChange={setFocusMin} />
-                  <Stepper label="Break" value={breakMin} unit="min" min={1} max={60} step={1} onChange={setBreakMin} />
+                  <Stepper label="Focus" value={focusMin} unit="min" min={MIN_MINUTES} max={120} step={5} onChange={setFocusMin} stack />
+                  <Stepper label="Break" value={breakMin} unit="min" min={1} max={60} step={1} onChange={setBreakMin} stack />
                 </div>
               )}
 
