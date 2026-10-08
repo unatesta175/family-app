@@ -1,13 +1,14 @@
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Leaf, Sprout } from "lucide-react";
-import { getOwnProfileId } from "@/lib/auth";
 import { addDays, addMonths, parseIso } from "@/lib/date";
 import { focusToday, tzOffset } from "@/lib/focus-date";
+import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
 import { byDay, formatFocus, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT, WEEKDAY_SHORT, weekDates } from "@/lib/habits";
 import { Distribution, type DistBar } from "@/components/focus/distribution";
+import { FocusViewerBanner } from "@/components/focus/focus-members";
 import { GardenView } from "@/components/focus/garden-view";
 import { SessionList } from "@/components/focus/grove-views";
 import { cn } from "@/lib/utils";
@@ -29,9 +30,9 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
   const tz = await tzOffset();
   const date = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
 
-  const profileId = await getOwnProfileId();
-  if (profileId === null) return <p className="h-card p-6 text-center text-sm text-h-muted">No profile for this account.</p>;
-  await settleActiveSession(profileId);
+  const { ownId, viewedId, readOnly, viewedName } = await focusViewer();
+  const profileId = viewedId;
+  if (!readOnly) await settleActiveSession(profileId);
 
   // The range the view covers, and where the previous / next buttons go.
   let from = date;
@@ -96,6 +97,11 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
 
   return (
     <div className="-mx-4 flex flex-col gap-4 md:mx-auto md:max-w-3xl">
+      {readOnly && (
+        <div className="mx-4 md:mx-0">
+          <FocusViewerBanner name={viewedName} ownId={ownId} />
+        </div>
+      )}
       {/* forest header: range tabs, date, and the garden itself */}
       <section className="overflow-hidden bg-gradient-to-b from-[#1c5a45] via-[#17503d] to-[#123f31] px-4 pb-6 pt-4 text-white shadow-lg md:rounded-[2rem]">
         <div role="tablist" aria-label="Range" className="grid grid-cols-4 gap-1 rounded-2xl bg-black/20 p-1">

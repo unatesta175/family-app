@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { Award, Clock, Flame, Percent, Timer, Trees } from "lucide-react";
-import { getOwnProfileId } from "@/lib/auth";
 import { addDays, parseIso } from "@/lib/date";
 import { focusToday, tzOffset } from "@/lib/focus-date";
+import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
 import { byDay, focusStreak, formatFocus, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT } from "@/lib/habits";
+import { FocusViewerBanner } from "@/components/focus/focus-members";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Focus stats" };
@@ -23,9 +24,9 @@ type Bar = { label: string; seconds: number; trees: number; title: string };
 export default async function FocusStatsPage({ searchParams }: { searchParams: Promise<{ range?: string }> }) {
   const { range: rawRange } = await searchParams;
   const range = RANGES.find((r) => String(r.days) === rawRange)?.days ?? 30;
-  const profileId = await getOwnProfileId();
-  if (profileId === null) return <p className="h-card p-6 text-center text-sm text-h-muted">No profile for this account.</p>;
-  await settleActiveSession(profileId);
+  const { ownId, viewedId, readOnly, viewedName } = await focusViewer();
+  const profileId = viewedId;
+  if (!readOnly) await settleActiveSession(profileId);
 
   const today = await focusToday();
   const tz = await tzOffset();
@@ -94,9 +95,10 @@ export default async function FocusStatsPage({ searchParams }: { searchParams: P
 
   return (
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-3xl">
+      {readOnly && <FocusViewerBanner name={viewedName} ownId={ownId} />}
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Where your focus goes</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{readOnly ? `${viewedName}'s focus` : "Where your focus goes"}</p>
           <h1 className="text-2xl font-extrabold tracking-tight">Focus stats</h1>
         </div>
         <div className="flex gap-1 rounded-xl bg-h-surface2 p-1">
