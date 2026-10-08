@@ -3,9 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Box, Check, Coffee, Layers, Pause, Play } from "lucide-react";
+import { Box, Check, Coffee, Layers, Minus, Pause, Play, Plus } from "lucide-react";
 import { startFocusAction } from "@/lib/focus-actions";
-import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, SPECIES_LABEL, TREE_TIERS, formatFocus, segmentsFor, tierInfo, treeTier, type FocusMode, type FocusSpecies } from "@/lib/focus";
+import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, POMODORO_PRESETS, SPECIES_LABEL, TREE_TIERS, formatFocus, segmentsFor, tierInfo, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { Switch } from "@/components/habits/ui/switch";
 import { useGardenMode } from "@/components/focus/garden-view";
@@ -21,6 +21,55 @@ export type TimerHabit = { id: number; name: string; color: string };
 
 const PRESETS = [15, 25, 45, 60, 90, 120];
 
+/** A small −/+ control for a whole-number value (Pomodoro focus, break and cycle counts). */
+function Stepper({
+  label,
+  value,
+  unit,
+  min,
+  max,
+  step,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  unit: string;
+  min: number;
+  max: number;
+  step: number;
+  onChange: (n: number) => void;
+}) {
+  const clamp = (n: number) => Math.max(min, Math.min(max, n));
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl bg-h-surface px-3 py-2">
+      <span className="text-xs font-bold text-h-muted">{label}</span>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={`Decrease ${label}`}
+          onClick={() => onChange(clamp(value - step))}
+          disabled={value <= min}
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-h-surface2 text-h-fg disabled:opacity-40"
+        >
+          <Minus className="h-3.5 w-3.5" />
+        </button>
+        <span className="min-w-14 text-center text-sm font-extrabold tabular-nums">
+          {value} <span className="text-[11px] font-bold text-h-muted">{unit}</span>
+        </span>
+        <button
+          type="button"
+          aria-label={`Increase ${label}`}
+          onClick={() => onChange(clamp(value + step))}
+          disabled={value >= max}
+          className="flex h-7 w-7 items-center justify-center rounded-full bg-h-brand-soft text-h-brand disabled:opacity-40"
+        >
+          <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Plant a tree: a forest hero with a tree growing on a patch of ground, and a frosted sheet below to
  * choose the length, the style of session, what it is for and which tree to plant.
@@ -30,6 +79,12 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [pending, startTransition] = useTransition();
   const [minutes, setMinutes] = useState(30);
   const [pomodoro, setPomodoro] = useState(false);
+  // The chosen rhythm: a preset key, or "custom" with its own focus/break lengths. `cycles` is how
+  // many focus blocks to run, so a Pomodoro session grows that many trees.
+  const [presetKey, setPresetKey] = useState("classic");
+  const [cycles, setCycles] = useState(4);
+  const [focusMin, setFocusMin] = useState(25);
+  const [breakMin, setBreakMin] = useState(5);
   const [species, setSpecies] = useState<FocusSpecies>("oak");
   const [habitId, setHabitId] = useState<number | null>(defaultHabitId && habits.some((h) => h.id === defaultHabitId) ? defaultHabitId : null);
   const [error, setError] = useState<string | null>(null);
@@ -45,21 +100,52 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
     return () => window.clearInterval(t);
   }, [playing]);
 
-  const tier = treeTier(minutes * 60);
   const mode: FocusMode = pomodoro ? "pomodoro" : "single";
+  const isCustom = presetKey === "custom";
+  // The rhythm the session will run at. A preset fixes the lengths; Custom uses the steppers (no
+  // distinct long break).
+  const cfg: PomodoroConfig = (() => {
+    if (isCustom) return { focus: focusMin * 60, short: breakMin * 60, long: breakMin * 60, every: 99 };
+    const p = POMODORO_PRESETS.find((x) => x.key === presetKey) ?? POMODORO_PRESETS[0];
+    return { focus: p.focus, short: p.short, long: p.long, every: p.every };
+  })();
+  // In Pomodoro mode the session is `cycles` focus blocks; single mode uses the slider's minutes.
+  const pomoFocusSeconds = cfg.focus * cycles;
+  const planned = pomodoro ? pomoFocusSeconds : minutes * 60;
+  const tooLong = pomodoro && pomoFocusSeconds > 12 * 60 * 60;
+  // The tree preview takes the block's tier in Pomodoro mode (each block is its own tree).
+  const tier = treeTier(pomodoro ? cfg.focus : minutes * 60);
   const set = (n: number) => setMinutes(Math.max(MIN_MINUTES, Math.min(MAX_MINUTES, Math.round(n / 5) * 5)));
-  const segs = segmentsFor(minutes * 60, mode);
+  const segs = segmentsFor(planned, mode, cfg);
   const blocks = segs.filter((s) => s.kind === "focus").length;
   const breaks = segs.length - blocks;
   const wall = segs.reduce((n, s) => n + s.seconds, 0);
   const pct = ((minutes - MIN_MINUTES) / (MAX_MINUTES - MIN_MINUTES)) * 100;
+
+  function choosePreset(key: string) {
+    setPresetKey(key);
+    const p = POMODORO_PRESETS.find((x) => x.key === key);
+    if (p) {
+      setCycles(p.cycles);
+      setFocusMin(Math.round(p.focus / 60));
+      setBreakMin(Math.round(p.short / 60));
+    }
+  }
 
   function start() {
     setError(null);
     // Ask for notification permission on this tap, so the end of the session can ping you.
     if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission();
     startTransition(async () => {
-      const res = await startFocusAction({ habitId, minutes, mode, species });
+      const res = await startFocusAction({
+        habitId,
+        minutes: pomodoro ? Math.round(cfg.focus / 60) : minutes,
+        mode,
+        species,
+        pomodoro: pomodoro
+          ? { focusMin: Math.round(cfg.focus / 60), breakMin: Math.round(cfg.short / 60), longBreakMin: Math.round(cfg.long / 60), every: cfg.every, cycles }
+          : undefined,
+      });
       if (!res.ok) return setError(res.error);
       router.push("/focus/session");
     });
@@ -120,14 +206,21 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
       {/* the sheet */}
       <div className="-mt-2 rounded-t-[2rem] bg-white/90 p-5 text-[#0d1f16] backdrop-blur-xl [.dark_&]:bg-[#0e1c14]/92 [.dark_&]:text-[#e6f4ea]">
         <div className="text-center">
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Timer</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{pomodoro ? "Each focus block" : "Timer"}</p>
           <p className="mt-1 text-5xl font-extrabold leading-none tabular-nums tracking-tight">
-            {minutes}
+            {pomodoro ? Math.round(cfg.focus / 60) : minutes}
             <span className="ml-1.5 text-xl font-bold text-h-muted">min</span>
           </p>
+          {pomodoro && (
+            <p className="mt-1 text-xs font-semibold text-h-muted">
+              {cycles} block{cycles === 1 ? "" : "s"} → <span className="font-extrabold text-h-brand">{cycles} tree{cycles === 1 ? "" : "s"}</span> · {formatFocus(wall)} on the clock
+            </p>
+          )}
         </div>
 
-        {/* a ruler to slide along */}
+        {/* a ruler to slide along (single sessions choose a total length here) */}
+        {!pomodoro && (
+        <>
         <div className="relative mt-5 h-10">
           <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-between px-1" aria-hidden>
             {Array.from({ length: 36 }, (_, i) => (
@@ -151,6 +244,8 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           <span>{MAX_MINUTES / 60} h</span>
         </div>
         <p className="mt-2 text-center text-xs font-semibold text-h-brand">{tierInfo(tier).name}: {tierInfo(tier).blurb}</p>
+        </>
+        )}
 
         {/* watch it grow */}
         <div className="mt-3 flex items-center gap-3 rounded-2xl bg-h-surface2/80 px-3 py-2.5">
@@ -171,47 +266,99 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           />
           <span className="w-9 shrink-0 text-right text-xs font-extrabold tabular-nums text-h-muted">{Math.round(demo * 100)}%</span>
         </div>
-        <div className="mt-2 flex flex-wrap justify-center gap-1.5">
-          {TREE_TIERS.map((t) => (
-            <button
-              key={t.tier}
-              type="button"
-              onClick={() => set(t.minMinutes)}
-              className={cn("rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors", tier === t.tier ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted hover:text-h-fg")}
-            >
-              {t.minMinutes}m · {t.name.replace(" tree", "")}
-            </button>
-          ))}
-        </div>
-        <div className="mt-3 flex flex-wrap justify-center gap-1.5">
-          {PRESETS.map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => set(m)}
-              className={cn("rounded-full px-3 py-1 text-xs font-bold transition-colors", minutes === m ? "bg-h-brand text-h-brand-fg" : "bg-h-surface2 text-h-muted hover:text-h-fg")}
-            >
-              {formatFocus(m * 60)}
-            </button>
-          ))}
-        </div>
+        {!pomodoro && (
+          <>
+            <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+              {TREE_TIERS.map((t) => (
+                <button
+                  key={t.tier}
+                  type="button"
+                  onClick={() => set(t.minMinutes)}
+                  className={cn("rounded-full border px-2.5 py-1 text-[11px] font-bold transition-colors", tier === t.tier ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted hover:text-h-fg")}
+                >
+                  {t.minMinutes}m · {t.name.replace(" tree", "")}
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              {PRESETS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => set(m)}
+                  className={cn("rounded-full px-3 py-1 text-xs font-bold transition-colors", minutes === m ? "bg-h-brand text-h-brand-fg" : "bg-h-surface2 text-h-muted hover:text-h-fg")}
+                >
+                  {formatFocus(m * 60)}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Pomodoro */}
-        <div className="mt-4 flex items-start gap-3 rounded-2xl bg-h-surface2/80 p-4">
-          <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-h-brand-soft text-h-brand">
-            <Coffee className="h-4 w-4" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-extrabold leading-tight">Pomodoro breaks</p>
-            <p className="mt-0.5 text-xs leading-snug text-h-muted">
-              {!pomodoro
-                ? "One unbroken stretch. Turn on for rest breaks between 25 minute blocks."
-                : blocks === 1
-                  ? "Under about 30 minutes it stays one block: breaks start with longer sessions."
-                  : `${blocks} blocks and ${breaks} break${breaks === 1 ? "" : "s"}. The tree rests during breaks. ${formatFocus(wall)} on the clock.`}
-            </p>
+        <div className="mt-4 rounded-2xl bg-h-surface2/80 p-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-h-brand-soft text-h-brand">
+              <Coffee className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold leading-tight">Pomodoro breaks</p>
+              <p className="mt-0.5 text-xs leading-snug text-h-muted">
+                {!pomodoro
+                  ? "One unbroken stretch. Turn on to work in blocks with rest breaks — each block grows its own tree."
+                  : `${blocks} block${blocks === 1 ? "" : "s"} and ${breaks} break${breaks === 1 ? "" : "s"}. You'll grow ${blocks} tree${blocks === 1 ? "" : "s"}, resting during the breaks.`}
+              </p>
+            </div>
+            <Switch checked={pomodoro} onCheckedChange={setPomodoro} aria-label="Pomodoro breaks" />
           </div>
-          <Switch checked={pomodoro} onCheckedChange={setPomodoro} aria-label="Pomodoro breaks" />
+
+          {pomodoro && (
+            <div className="mt-4 flex flex-col gap-3">
+              {/* Research-backed rhythms, plus a custom one */}
+              <div className="grid grid-cols-1 gap-1.5">
+                {POMODORO_PRESETS.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => choosePreset(p.key)}
+                    aria-pressed={presetKey === p.key}
+                    className={cn(
+                      "flex items-start gap-2 rounded-xl border px-3 py-2 text-left transition-colors",
+                      presetKey === p.key ? "border-h-brand bg-h-brand-soft" : "border-h-border hover:border-h-brand/50"
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-extrabold leading-tight">{p.name}</p>
+                      <p className="mt-0.5 text-[11px] leading-snug text-h-muted">{p.blurb}</p>
+                    </div>
+                    {presetKey === p.key && <Check className="mt-0.5 h-4 w-4 shrink-0 text-h-brand" strokeWidth={3} />}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setPresetKey("custom")}
+                  aria-pressed={isCustom}
+                  className={cn(
+                    "rounded-xl border px-3 py-2 text-left text-xs font-extrabold transition-colors",
+                    isCustom ? "border-h-brand bg-h-brand-soft" : "border-h-border hover:border-h-brand/50"
+                  )}
+                >
+                  Custom
+                </button>
+              </div>
+
+              {isCustom && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Stepper label="Focus" value={focusMin} unit="min" min={MIN_MINUTES} max={120} step={5} onChange={setFocusMin} />
+                  <Stepper label="Break" value={breakMin} unit="min" min={1} max={60} step={1} onChange={setBreakMin} />
+                </div>
+              )}
+
+              <Stepper label="Cycles" value={cycles} unit={cycles === 1 ? "block" : "blocks"} min={1} max={10} step={1} onChange={setCycles} />
+
+              {tooLong && <p className="text-[11px] font-bold text-amber-600 [.dark_&]:text-amber-300">That&apos;s a very long day of focus — try fewer cycles or shorter blocks.</p>}
+            </div>
+          )}
         </div>
 
         {/* Tag */}
@@ -280,7 +427,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
         <button
           type="button"
           onClick={start}
-          disabled={pending}
+          disabled={pending || tooLong}
           className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-h-brand py-4 text-base font-extrabold text-h-brand-fg shadow-md transition-transform active:scale-[0.98] disabled:opacity-60"
         >
           <Play className="h-5 w-5" fill="currentColor" />

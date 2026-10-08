@@ -1,5 +1,5 @@
 import { FocusTree } from "@/components/focus/focus-tree";
-import { treeTier, type SessionLite } from "@/lib/focus";
+import { type SessionLite } from "@/lib/focus";
 import { hash, layoutGarden } from "@/lib/focus-layout";
 
 const TW = 64; // tile width
@@ -77,14 +77,14 @@ export function IsoGarden({ sessions, minSize = 5, className }: { sessions: Sess
         const cy = py(i + 0.5, j + 0.5);
         return (
           <FocusTree
-            key={s.id}
+            key={s.key}
             x={cx - TREE_W / 2}
             y={cy - TREE_H * 0.875 + 3}
             width={TREE_W}
             height={TREE_H}
-            progress={s.status === "completed" ? 1 : Math.max(0.25, s.focusedSeconds / s.plannedSeconds)}
+            progress={s.progress}
             species={s.species}
-            tier={treeTier(s.plannedSeconds)}
+            tier={s.tier}
             withered={s.status === "withered"}
             animate={false}
           />

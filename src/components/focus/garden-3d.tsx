@@ -4,7 +4,7 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Sparkles } from "@react-three/drei";
 import { Color, CubicBezierCurve3, DoubleSide, InstancedMesh, Object3D, QuadraticBezierCurve3, Quaternion, Vector3 } from "three";
-import { treeTier, type FocusSpecies, type SessionLite, type TreeTier } from "@/lib/focus";
+import { type FocusSpecies, type SessionLite, type TreeTier } from "@/lib/focus";
 import { treeSpec, type Curve } from "@/lib/focus-tree";
 import { hash, layoutGarden } from "@/lib/focus-layout";
 
@@ -383,8 +383,8 @@ export default function Garden3D({ sessions }: { sessions: SessionLite[] }) {
       <directionalLight position={[-n, n * 0.8, -n * 0.4]} intensity={0.55} color="#d8f5ff" />
       <Ground n={n} />
       {placed.map(({ s, i, j }) => (
-        <group key={s.id} position={[i - n / 2 + 0.5, 0.1, j - n / 2 + 0.5]}>
-          <Tree3D species={s.species} tier={treeTier(s.plannedSeconds)} withered={s.status === "withered"} progress={s.status === "completed" ? 1 : Math.max(0.3, s.focusedSeconds / s.plannedSeconds)} />
+        <group key={s.key} position={[i - n / 2 + 0.5, 0.1, j - n / 2 + 0.5]}>
+          <Tree3D species={s.species} tier={s.tier} withered={s.status === "withered"} progress={Math.max(0.3, s.progress)} />
         </group>
       ))}
       <OrbitControls enablePan={false} enableZoom minDistance={d * 0.55} maxDistance={d * 1.5} minPolarAngle={0.55} maxPolarAngle={1.35} autoRotate autoRotateSpeed={0.7} target={[0, 0.7, 0]} />

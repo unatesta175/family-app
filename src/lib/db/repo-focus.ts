@@ -5,12 +5,22 @@ import { focusSessions, habitLogs } from "@/lib/db/schema";
 import { upsertHabitLog } from "@/lib/db/repo-habits";
 import { isoDate } from "@/lib/date";
 import { getHabit } from "@/lib/db/repo-habits";
-import { timeline, type FocusMode, type FocusSpecies, type SessionLite } from "@/lib/focus";
+import { POMODORO, timeline, type FocusMode, type FocusSpecies, type PomodoroConfig, type SessionLite } from "@/lib/focus";
 
 export type FocusSessionRow = typeof focusSessions.$inferSelect;
 
+/** The Pomodoro rhythm a row ran at, falling back to the classic 25/5/15/4 for single or older rows. */
+export function cfgFromRow(r: FocusSessionRow): PomodoroConfig {
+  return {
+    focus: r.focusBlockSeconds ?? POMODORO.focus,
+    short: r.shortBreakSeconds ?? POMODORO.short,
+    long: r.longBreakSeconds ?? POMODORO.long,
+    every: r.cyclesBeforeLong ?? POMODORO.every,
+  };
+}
+
 export function toLite(r: FocusSessionRow): SessionLite {
-  return { id: r.id, date: r.date, startedAt: r.startedAt, habitId: r.habitId, species: r.species, status: r.status, plannedSeconds: r.plannedSeconds, focusedSeconds: r.focusedSeconds };
+  return { id: r.id, date: r.date, startedAt: r.startedAt, habitId: r.habitId, species: r.species, status: r.status, plannedSeconds: r.plannedSeconds, focusedSeconds: r.focusedSeconds, mode: r.mode, cfg: cfgFromRow(r) };
 }
 
 export async function getFocusSession(id: number) {
@@ -36,8 +46,20 @@ export async function createFocusSession(input: {
   plannedSeconds: number;
   mode: FocusMode;
   species: FocusSpecies;
+  cfg?: PomodoroConfig | null;
 }) {
-  const [row] = await db.insert(focusSessions).values({ ...input, status: "active" }).returning();
+  const { cfg, ...rest } = input;
+  const [row] = await db
+    .insert(focusSessions)
+    .values({
+      ...rest,
+      status: "active",
+      focusBlockSeconds: cfg?.focus ?? null,
+      shortBreakSeconds: cfg?.short ?? null,
+      longBreakSeconds: cfg?.long ?? null,
+      cyclesBeforeLong: cfg?.every ?? null,
+    })
+    .returning();
   return row;
 }
 
@@ -122,7 +144,7 @@ export async function getRecentEndedSession(profileId: number, withinMs: number)
 export async function settleActiveSession(profileId: number): Promise<FocusSessionRow | null> {
   const active = await getActiveFocusSession(profileId);
   if (!active) return null;
-  const tl = timeline(active.startedAt, active.plannedSeconds, active.mode, Date.now());
+  const tl = timeline(active.startedAt, active.plannedSeconds, active.mode, Date.now(), cfgFromRow(active));
   if (tl.done) {
     await completeFocusSession(active);
     return null;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Clock, Coffee, Flame, Home, Loader2, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
 import { attachFocusHabitAction, cancelFocusAction, finishFocusAction, type FinishSummary } from "@/lib/focus-actions";
-import { GRACE_SECONDS, clock, formatFocus, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type TreeTier } from "@/lib/focus";
+import { GRACE_SECONDS, clock, formatFocus, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ export type RunningSession = {
   startedAt: number;
   plannedSeconds: number;
   mode: FocusMode;
+  cfg: PomodoroConfig;
   species: FocusSpecies;
   habitName: string | null;
   /** Seconds focused so far (known once a session has ended). */
@@ -243,8 +244,11 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
     return () => void lock?.release().catch(() => undefined);
   }, []);
 
-  const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, now);
-  const tier = treeTier(session.plannedSeconds);
+  const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, now, session.cfg);
+  // Each focus block grows its own tree, so the live tree takes the current block's tier and growth.
+  const tier = treeTier(tl.blockSeconds);
+  // The trees a finished session leaves (one per focus block), for the celebration and notification.
+  const grownTrees = sessionTrees({ mode: session.mode, plannedSeconds: session.plannedSeconds, cfg: session.cfg, status: "completed", focusedSeconds: session.plannedSeconds });
 
   useEffect(() => {
     if (outcome) return;
@@ -256,7 +260,7 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
     if (tl.done && !finishing.current) {
       finishing.current = true;
       if (!muted) chime("done");
-      notify("Your tree is fully grown", `${formatFocus(session.plannedSeconds)} of focus done. It has joined your grove.`);
+      notify(grownTrees.length > 1 ? `Your ${grownTrees.length} trees are grown` : "Your tree is fully grown", `${formatFocus(session.plannedSeconds)} of focus done. ${grownTrees.length > 1 ? "They have" : "It has"} joined your grove.`);
       // Celebrate right away; saving to the grove happens in the background, and can be retried.
       setOutcome({ kind: "done" });
       void save();
@@ -306,19 +310,26 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
   // --- Finished or given up ------------------------------------------------------------------
   if (outcome) {
     if (outcome.kind === "done") {
-      return <Celebration session={session} tier={tier} saved={saved} summary={summary} error={error} onRetry={() => void save()} timerHabits={timerHabits} />;
+      return <Celebration session={session} trees={grownTrees} saved={saved} summary={summary} error={error} onRetry={() => void save()} timerHabits={timerHabits} />;
     }
+    const endTrees = sessionTrees({ mode: session.mode, plannedSeconds: session.plannedSeconds, cfg: session.cfg, status: "withered", focusedSeconds: session.focusedSeconds ?? Math.round(tl.focusElapsed) });
+    const kept = endTrees.filter((t) => t.grown);
+    const stump = endTrees.find((t) => !t.grown) ?? { tier, seconds: session.focusedSeconds ?? 0 };
     return (
       <Scene>
         <div className="flex min-h-full flex-1 flex-col items-center justify-between gap-3 pt-6 text-center">
           <div className="fx-rise">
             <p className="text-sm font-semibold text-white/80">Not this time</p>
-            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">Your tree withered</h1>
-            <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">You gave up before the end. The stump stays in today&apos;s grove, and the time you did put in is kept.</p>
+            <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{kept.length > 0 ? "You stopped early" : "Your tree withered"}</h1>
+            <p className="mx-auto mt-2 max-w-xs text-sm text-white/80">
+              {kept.length > 0
+                ? `You gave up part way, so this block's tree withered. The ${kept.length} ${kept.length === 1 ? "tree" : "trees"} from the blocks you finished stay in your grove, and the time you put in is kept.`
+                : "You gave up before the end. The stump stays in today's grove, and the time you did put in is kept."}
+            </p>
             {error && <p className="mt-2 text-xs font-bold text-red-200">{error}</p>}
           </div>
           <TreeOnIsland className="my-4">
-            <FocusTree progress={Math.max(0.3, session.focusedSeconds ? session.focusedSeconds / session.plannedSeconds : tl.progress)} species={session.species} tier={tier} withered className="relative z-10 h-[30svh] max-h-72 min-h-40 w-auto" />
+            <FocusTree progress={Math.max(0.3, stump.seconds && stump.seconds > 0 ? Math.min(1, stump.seconds / tl.blockSeconds) : 0.3)} species={session.species} tier={stump.tier} withered className="relative z-10 h-[30svh] max-h-72 min-h-40 w-auto" />
           </TreeOnIsland>
           <div className="fx-rise grid w-full max-w-sm gap-2">
             <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-sm font-extrabold text-[#0b5a43] shadow-lg">
@@ -359,9 +370,9 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
       </div>
 
       <div className="flex flex-1 items-center justify-center py-3">
-        <TreeOnIsland resting={resting} aura={<FocusAura progress={tl.progress} tier={tier} resting={resting} />}>
+        <TreeOnIsland resting={resting} aura={<FocusAura progress={tl.blockProgress} tier={tier} resting={resting} />}>
           <div className="nrg-sway relative z-10">
-            <FocusTree progress={tl.progress} species={session.species} tier={tier} className="h-[34svh] max-h-80 min-h-44 w-auto" />
+            <FocusTree progress={tl.blockProgress} species={session.species} tier={tier} className="h-[34svh] max-h-80 min-h-44 w-auto" />
           </div>
         </TreeOnIsland>
       </div>
@@ -373,11 +384,11 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
           <span key={verb} className="nrg-verb">
             {verb}
           </span>
-          {!resting && <span className="tabular-nums text-lime-200">{Math.round(tl.progress * 100)}%</span>}
+          {!resting && <span className="tabular-nums text-lime-200">{Math.round(tl.blockProgress * 100)}%</span>}
         </p>
         <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
           {resting && <Coffee className="h-3.5 w-3.5" />}
-          {tierInfo(tier).name} · {stageName(tl.progress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}
+          {tierInfo(tier).name} · {stageName(tl.blockProgress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}
           {tl.blocks > 1 && ` · ${clock(tl.wallTotal - tl.wallElapsed)} left in all`}
         </p>
         {tl.blocks > 1 && (
@@ -459,7 +470,7 @@ const CHEERS: Record<TreeTier, { title: string; line: string }> = {
 /** The finish: confetti, the tree growing into place, a cheer that fits the session, and today's totals. */
 function Celebration({
   session,
-  tier,
+  trees,
   saved,
   summary,
   error,
@@ -467,13 +478,16 @@ function Celebration({
   timerHabits,
 }: {
   session: RunningSession;
-  tier: TreeTier;
+  trees: Tree[];
   saved: "saving" | "saved" | "error";
   summary: FinishSummary | null;
   error: string | null;
   onRetry: () => void;
   timerHabits: { id: number; name: string }[];
 }) {
+  // Each focus block is its own tree; the cheer and the big tree use the block's tier.
+  const tier = trees[0]?.tier ?? 1;
+  const count = trees.length;
   const cheer = CHEERS[tier];
   // A session started with no habit can be counted towards one after the fact.
   const [linked, setLinked] = useState<string | null>(null);
@@ -503,15 +517,34 @@ function Celebration({
             {habitName ? <> on {habitName}</> : null}.
           </p>
           <p className="mx-auto mt-1.5 max-w-xs text-sm text-white/80">
-            {cheer.line} Your {tierInfo(tier).name.toLowerCase()} is fully grown and now part of your grove.
+            {cheer.line}{" "}
+            {count > 1
+              ? `${count} ${tierInfo(tier).name.toLowerCase()}s are fully grown and now part of your grove.`
+              : `Your ${tierInfo(tier).name.toLowerCase()} is fully grown and now part of your grove.`}
           </p>
         </div>
 
-        <TreeOnIsland className="my-3">
-          <span className="fx-ring h-52 w-52 border-2 border-white/60" />
-          <span className="fx-ring h-52 w-52 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
-          <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-[28svh] max-h-64 min-h-36 w-auto" />
-        </TreeOnIsland>
+        {count > 1 ? (
+          <div className="my-3 flex flex-col items-center gap-2">
+            <TreeOnIsland>
+              <span className="fx-ring h-52 w-52 border-2 border-white/60" />
+              <span className="fx-ring h-52 w-52 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
+              <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-[24svh] max-h-56 min-h-32 w-auto" />
+            </TreeOnIsland>
+            <div className="flex items-end justify-center gap-1">
+              {trees.map((t, i) => (
+                <FocusTree key={i} progress={1} species={session.species} tier={t.tier} animate={false} className="h-9 w-9" />
+              ))}
+            </div>
+            <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-extrabold backdrop-blur-sm">{count} trees grown</span>
+          </div>
+        ) : (
+          <TreeOnIsland className="my-3">
+            <span className="fx-ring h-52 w-52 border-2 border-white/60" />
+            <span className="fx-ring h-52 w-52 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
+            <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-[28svh] max-h-64 min-h-36 w-auto" />
+          </TreeOnIsland>
+        )}
 
         <div className="flex w-full max-w-sm flex-col gap-3">
           <div className="fx-rise grid grid-cols-3 gap-2" style={{ animationDelay: "0.35s" }}>

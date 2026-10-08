@@ -1,6 +1,6 @@
 /* Sanity checks for the Focus module's timing and totals. Run: npx tsx scripts/focus-check.ts */
 import { addDays } from "../src/lib/date";
-import { formatClockTime, localDateFrom, treeTier, byDay, clock, focusStreak, formatFocus, hourDistribution, segmentsFor, stageName, summarize, timeline, type SessionLite } from "../src/lib/focus";
+import { POMODORO, POMODORO_PRESETS, formatClockTime, localDateFrom, treeTier, byDay, clock, focusStreak, formatFocus, hourDistribution, plantedTrees, segmentsFor, sessionTrees, stageName, summarize, timeline, type PomodoroConfig, type SessionLite } from "../src/lib/focus";
 
 import { treeSpec } from "../src/lib/focus-tree";
 
@@ -46,7 +46,7 @@ eq("stage names", [stageName(0), stageName(0.5), stageName(1)], ["Seed", "Saplin
 eq("formatting", [formatFocus(5025), formatFocus(2700), clock(3725), clock(90)], ["1h 24m", "45m", "1:02:05", "1:30"]);
 
 // Totals.
-const mk = (id: number, date: string, status: SessionLite["status"], mins: number, hour = 9): SessionLite => ({
+const mk = (id: number, date: string, status: SessionLite["status"], mins: number, hour = 9, mode: SessionLite["mode"] = "single", cfg: PomodoroConfig = POMODORO): SessionLite => ({
   id,
   date,
   startedAt: new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).getTime(),
@@ -55,6 +55,8 @@ const mk = (id: number, date: string, status: SessionLite["status"], mins: numbe
   status,
   plannedSeconds: mins * 60,
   focusedSeconds: status === "completed" ? mins * 60 : Math.round(mins * 30),
+  mode,
+  cfg,
 });
 const list = [mk(1, "2026-10-06", "completed", 25), mk(2, "2026-10-07", "completed", 50), mk(3, "2026-10-07", "withered", 30, 14), mk(4, "2026-10-07", "active", 25, 20)];
 const days = byDay(list);
@@ -80,6 +82,19 @@ const dead = treeSpec({ progress: 0.5, species: "oak", tier: 4, withered: true }
 eq("a withered tree is a bare dead tree: no leaves, no blossoms, branches and litter", [dead.kind, dead.leaves.length, dead.blooms.length, dead.dead!.branches.length >= 5, dead.dead!.litter.length >= 6, dead.halo], ["dead", 0, 0, true, true, null]);
 const sprout = treeSpec({ progress: 0.05, species: "oak", tier: 3, withered: false });
 eq("a barely started tree is a short stem with few leaves", [sprout.leaves.length <= 3, sprout.trunk.y1 > 80], [true, true]);
+
+// Per-block trees: a Pomodoro session grows one tree per focus block, each at its block's tier.
+const classic = POMODORO_PRESETS[0];
+const classicCfg: PomodoroConfig = { focus: classic.focus, short: classic.short, long: classic.long, every: classic.every };
+const fourBlocks = mk(10, "2026-10-09", "completed", 100, 9, "pomodoro", classicCfg);
+eq("pomodoro completed: one grown tree per block", sessionTrees(fourBlocks).map((t) => [t.grown, t.tier]), [[true, 2], [true, 2], [true, 2], [true, 2]]);
+// Gave up after finishing two 25-minute blocks (50 min of focus): two trees kept, the third withers.
+const gaveUp = { ...fourBlocks, status: "withered" as const, focusedSeconds: 50 * 60 };
+eq("pomodoro withered: finished blocks kept, current block a stump", sessionTrees(gaveUp).map((t) => t.grown), [true, true, false]);
+eq("planted trees expand a session into its blocks", plantedTrees([fourBlocks]).length, 4);
+eq("a Pomodoro day counts a tree per block", byDay([fourBlocks]).get("2026-10-09")?.trees, 4);
+const ultra = POMODORO_PRESETS[2];
+eq("ultradian preset is 90/20 for two cycles", [ultra.focus / 60, ultra.short / 60, ultra.cycles], [90, 20, 2]);
 
 console.log(failed === 0 ? "\nAll checks passed" : `\n${failed} check(s) FAILED`);
 process.exit(failed === 0 ? 0 : 1);

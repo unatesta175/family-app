@@ -543,6 +543,13 @@ export const focusSessions = sqliteTable("focus_sessions", {
   startedAt: integer("started_at").notNull(), // epoch milliseconds
   plannedSeconds: integer("planned_seconds").notNull(), // focus time, breaks not included
   mode: text("mode", { enum: FOCUS_MODES }).notNull().default("single"),
+  // The Pomodoro rhythm the session ran at. Null on single sessions and older rows (read as the
+  // classic 25/5/15/4). Seconds for the lengths; `cyclesBeforeLong` is how many focus blocks fall
+  // between long breaks.
+  focusBlockSeconds: integer("focus_block_seconds"),
+  shortBreakSeconds: integer("short_break_seconds"),
+  longBreakSeconds: integer("long_break_seconds"),
+  cyclesBeforeLong: integer("cycles_before_long"),
   species: text("species", { enum: FOCUS_SPECIES_LIST }).notNull().default("oak"),
   status: text("status", { enum: FOCUS_STATUSES }).notNull().default("active"),
   focusedSeconds: integer("focused_seconds").notNull().default(0),

@@ -36,6 +36,11 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "habit_logs", column: "detail", ddl: "ALTER TABLE habit_logs ADD COLUMN detail TEXT" },
   { table: "habits", column: "system_key", ddl: "ALTER TABLE habits ADD COLUMN system_key TEXT" },
   { table: "habit_task_completions", column: "status", ddl: "ALTER TABLE habit_task_completions ADD COLUMN status TEXT NOT NULL DEFAULT 'done'" },
+  // Per-session Pomodoro rhythm (null on older rows: read as the classic 25/5/15/4).
+  { table: "focus_sessions", column: "focus_block_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN focus_block_seconds INTEGER" },
+  { table: "focus_sessions", column: "short_break_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN short_break_seconds INTEGER" },
+  { table: "focus_sessions", column: "long_break_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN long_break_seconds INTEGER" },
+  { table: "focus_sessions", column: "cycles_before_long", ddl: "ALTER TABLE focus_sessions ADD COLUMN cycles_before_long INTEGER" },
 ];
 
 /**
@@ -192,6 +197,10 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       started_at INTEGER NOT NULL,
       planned_seconds INTEGER NOT NULL,
       mode TEXT NOT NULL DEFAULT 'single',
+      focus_block_seconds INTEGER,
+      short_break_seconds INTEGER,
+      long_break_seconds INTEGER,
+      cycles_before_long INTEGER,
       species TEXT NOT NULL DEFAULT 'oak',
       status TEXT NOT NULL DEFAULT 'active',
       focused_seconds INTEGER NOT NULL DEFAULT 0,

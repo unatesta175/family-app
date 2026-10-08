@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { getOwnProfileId } from "@/lib/auth";
 import { getHabit, getHabits } from "@/lib/db/repo-habits";
-import { getRecentEndedSession, settleActiveSession } from "@/lib/db/repo-focus";
+import { cfgFromRow, getRecentEndedSession, settleActiveSession } from "@/lib/db/repo-focus";
 import { nowMs } from "@/lib/now";
 import { SessionRunner } from "@/components/focus/session-runner";
 
@@ -26,7 +26,7 @@ export default async function FocusSessionPage() {
       serverNow={nowMs()}
       timerHabits={timerHabits}
       initialOutcome={ended ? (ended.status === "completed" ? "done" : "withered") : undefined}
-      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds }}
+      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, cfg: cfgFromRow(row), species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds }}
     />
   );
 }
