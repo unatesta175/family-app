@@ -27,6 +27,7 @@ import { LiveClock } from "@/components/live-clock";
 import { QUOTES } from "@/lib/quotes";
 import { StatusLegendTip } from "@/components/status-legend-tip";
 import { LanternCard } from "@/components/lantern-3d/lantern-card";
+import { IslamicEventsCard } from "@/components/islamic-events-card";
 import { Flame, Trophy } from "lucide-react";
 import type { Status } from "@/lib/db/schema";
 
@@ -180,6 +181,8 @@ export default async function HomePage() {
         goldenFraction={lanternGoldenFraction}
         missedCount={lanternMissedCount}
       />
+
+      <IslamicEventsCard now={now} />
 
       {qadaOwed > 0 && (
         <div className="rounded-xl bg-amber-50 px-3.5 py-2.5 text-xs font-medium text-amber-800">
