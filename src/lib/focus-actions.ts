@@ -8,7 +8,7 @@ import { localDateFrom } from "@/lib/focus";
 import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
-import { attachHabitToSession, cfgFromRow, completeFocusSession, createFocusSession, deleteFocusSession, extendCompletedSession, getFocusSession, getFocusSessionsInRange, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
+import { attachHabitToSession, cfgFromRow, completeFocusSession, createFocusSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
 import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
@@ -99,7 +99,8 @@ export async function finishFocusAction(id: number): Promise<FocusResult<FinishS
     if (row.status === "completed") return { ok: true, data: await summaryFor(profileId, row.date) };
     if (row.status !== "active") throw new Error("This session already ended.");
     // The server's own clock decides: a small slack covers the browser's clock running a touch ahead.
-    const tl = timeline(row.startedAt, row.plannedSeconds, row.mode, Date.now() + 3000, cfgFromRow(row));
+    // effectiveNow holds a paused session's clock still, so it can't be finished while paused.
+    const tl = timeline(row.startedAt, row.plannedSeconds, row.mode, effectiveNow(row, Date.now() + 3000), cfgFromRow(row));
     if (!tl.done) throw new Error("This session isn't finished yet.");
     await completeFocusSession(row);
     refresh();
@@ -165,7 +166,7 @@ export async function cancelFocusAction(id: number): Promise<FocusResult<{ withe
     const row = await getFocusSession(id);
     if (!row || row.profileId !== profileId) throw new Error("Session not found.");
     if (row.status !== "active") return { ok: true, data: { withered: row.status === "withered" } };
-    const tl = timeline(row.startedAt, row.plannedSeconds, row.mode, Date.now(), cfgFromRow(row));
+    const tl = timeline(row.startedAt, row.plannedSeconds, row.mode, effectiveNow(row), cfgFromRow(row));
     if (tl.done) {
       await completeFocusSession(row);
       refresh();
@@ -179,6 +180,37 @@ export async function cancelFocusAction(id: number): Promise<FocusResult<{ withe
     await witherFocusSession(row.id, tl.focusElapsed);
     refresh();
     return { ok: true, data: { withered: true } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Pauses a running session: the timer stops and the tree holds still until you resume. */
+export async function pauseFocusAction(id: number): Promise<FocusResult<{ pausedAt: number }>> {
+  try {
+    const profileId = await ownProfile();
+    const row = await getFocusSession(id);
+    if (!row || row.profileId !== profileId) throw new Error("Session not found.");
+    if (row.status !== "active") throw new Error("This session already ended.");
+    // Already paused: hand back the moment it started, so the client stays in step.
+    if (row.pausedAt !== null) return { ok: true, data: { pausedAt: row.pausedAt } };
+    const at = await pauseFocusSession(id);
+    if (at === null) throw new Error("Couldn't pause the session.");
+    return { ok: true, data: { pausedAt: at } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Resumes a paused session: the time it sat paused is banked and the timer carries on. */
+export async function resumeFocusAction(id: number): Promise<FocusResult<{ pausedSeconds: number }>> {
+  try {
+    const profileId = await ownProfile();
+    const row = await getFocusSession(id);
+    if (!row || row.profileId !== profileId) throw new Error("Session not found.");
+    if (row.status !== "active") throw new Error("This session already ended.");
+    const pausedSeconds = await resumeFocusSession(row);
+    return { ok: true, data: { pausedSeconds } };
   } catch (err) {
     return fail(err);
   }

@@ -553,5 +553,9 @@ export const focusSessions = sqliteTable("focus_sessions", {
   species: text("species", { enum: FOCUS_SPECIES_LIST }).notNull().default("oak"),
   status: text("status", { enum: FOCUS_STATUSES }).notNull().default("active"),
   focusedSeconds: integer("focused_seconds").notNull().default(0),
+  // Pausing stops the clock: `pausedSeconds` is the total time already banked as paused, and
+  // `pausedAt` (epoch ms) is set while a pause is in progress, null while the session is running.
+  pausedSeconds: integer("paused_seconds").notNull().default(0),
+  pausedAt: integer("paused_at"),
   endedAt: integer("ended_at"),
 });

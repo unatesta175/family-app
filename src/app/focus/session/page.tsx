@@ -26,7 +26,7 @@ export default async function FocusSessionPage() {
       serverNow={nowMs()}
       timerHabits={timerHabits}
       initialOutcome={ended ? (ended.status === "completed" ? "done" : "withered") : undefined}
-      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, cfg: cfgFromRow(row), species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds, endedAt: row.endedAt ?? undefined }}
+      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, cfg: cfgFromRow(row), species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds, pausedSeconds: row.pausedSeconds, pausedAt: row.pausedAt, endedAt: row.endedAt ?? undefined }}
     />
   );
 }

@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Clock, Coffee, Flame, Home, Loader2, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
-import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, type FinishSummary } from "@/lib/focus-actions";
-import { GRACE_SECONDS, clock, formatFocus, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
+import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
+import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, pauseFocusAction, resumeFocusAction, type FinishSummary } from "@/lib/focus-actions";
+import { GRACE_SECONDS, clock, formatFocus, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,9 @@ export type RunningSession = {
   habitName: string | null;
   /** Seconds focused so far (known once a session has ended). */
   focusedSeconds?: number;
+  /** Seconds already banked as paused time, and the moment (epoch ms) a pause began (null while running). */
+  pausedSeconds: number;
+  pausedAt: number | null;
   /** When the session ended on the server (epoch ms), if it has. */
   endedAt?: number;
 };
@@ -226,6 +229,10 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
   const [outcome, setOutcome] = useState<Outcome>(initialOutcome ? { kind: initialOutcome } : null);
   const [confirming, setConfirming] = useState(false);
   const [muted, setMuted] = useState(false);
+  // Pausing stops the clock: the banked paused seconds and (while paused) the moment it started.
+  const [pausedSeconds, setPausedSeconds] = useState(session.pausedSeconds);
+  const [pausedAt, setPausedAt] = useState<number | null>(session.pausedAt);
+  const [, startPause] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<"saving" | "saved" | "error">("saving");
   const [summary, setSummary] = useState<FinishSummary | null>(null);
@@ -246,7 +253,11 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
     return () => void lock?.release().catch(() => undefined);
   }, []);
 
-  const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, now, session.cfg);
+  const paused = pausedAt !== null;
+  // Paused time is subtracted from the wall clock, so the timer holds still while paused and resumes
+  // exactly where it left off. The same maths runs on the server, so a reload lands on the right moment.
+  const effectiveNow = now - pausedMsAt(pausedSeconds, pausedAt, now);
+  const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, effectiveNow, session.cfg);
   // Each focus block grows its own tree, so the live tree takes the current block's tier and growth.
   const tier = treeTier(tl.blockSeconds);
   // The trees a finished session leaves (one per focus block), for the celebration and notification.
@@ -298,6 +309,33 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
   useEffect(() => {
     document.title = outcome ? "Focus" : `${clock(tl.phaseRemaining)} · ${tl.phase === "break" ? "Break" : "Focus"}`;
   }, [tl.phaseRemaining, tl.phase, outcome]);
+
+  /** Pause or resume. The clock updates at once (optimistic); the server banks the real paused time. */
+  function togglePause() {
+    if (outcome) return;
+    if (paused) {
+      // Resume: bank the time spent paused, clear the pause, then confirm with the server.
+      const banked = pausedSeconds + Math.max(0, Math.round((now - (pausedAt ?? now)) / 1000));
+      setPausedSeconds(banked);
+      setPausedAt(null);
+      startPause(async () => {
+        const res = await resumeFocusAction(session.id);
+        if (res.ok) setPausedSeconds(res.data.pausedSeconds);
+        else setError(res.error);
+      });
+    } else {
+      const at = now;
+      setPausedAt(at);
+      startPause(async () => {
+        const res = await pauseFocusAction(session.id);
+        if (res.ok) setPausedAt(res.data.pausedAt);
+        else {
+          setPausedAt(null);
+          setError(res.error);
+        }
+      });
+    }
+  }
 
   function giveUp() {
     setConfirming(false);
@@ -395,11 +433,20 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
       <div className="flex flex-col items-center gap-4 text-center">
         <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(tl.phaseRemaining)}</p>
         <p className="flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md" aria-live="off">
-          <span className="nrg-dot h-2 w-2 rounded-full" style={{ background: resting ? "#fbbf24" : "#bef264", boxShadow: `0 0 10px ${resting ? "#fbbf24" : "#bef264"}` }} />
-          <span key={verb} className="nrg-verb">
-            {verb}
-          </span>
-          {!resting && <span className="tabular-nums text-lime-200">{Math.round(tl.blockProgress * 100)}%</span>}
+          {paused ? (
+            <span className="flex items-center gap-1.5">
+              <Pause className="h-3.5 w-3.5" fill="currentColor" />
+              Paused
+            </span>
+          ) : (
+            <>
+              <span className="nrg-dot h-2 w-2 rounded-full" style={{ background: resting ? "#fbbf24" : "#bef264", boxShadow: `0 0 10px ${resting ? "#fbbf24" : "#bef264"}` }} />
+              <span key={verb} className="nrg-verb">
+                {verb}
+              </span>
+              {!resting && <span className="tabular-nums text-lime-200">{Math.round(tl.blockProgress * 100)}%</span>}
+            </>
+          )}
         </p>
         <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
           {resting && <Coffee className="h-3.5 w-3.5" />}
@@ -414,16 +461,26 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
           </div>
         )}
         {error && <p className="text-xs font-bold text-red-200">{error}</p>}
-        <button
-          type="button"
-          onClick={() => setConfirming(true)}
-          disabled={pending}
-          aria-label={grace ? "Cancel session" : "Give up"}
-          className="mt-1 flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
-        >
-          <Square className="h-5 w-5" fill="currentColor" />
-        </button>
-        <p className="text-[11px] font-medium text-white/65">{grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}</p>
+        <div className="mt-1 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={togglePause}
+            aria-label={paused ? "Resume session" : "Pause session"}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#0b5a43] shadow-lg ring-1 ring-white/40 transition-transform active:scale-90"
+          >
+            {paused ? <Play className="h-5 w-5" fill="currentColor" /> : <Pause className="h-5 w-5" fill="currentColor" />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            disabled={pending}
+            aria-label={grace ? "Cancel session" : "Give up"}
+            className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
+          >
+            <Square className="h-5 w-5" fill="currentColor" />
+          </button>
+        </div>
+        <p className="text-[11px] font-medium text-white/65">{paused ? "Paused — tap play to carry on" : grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}</p>
       </div>
 
       {confirming && (

@@ -5,7 +5,7 @@ import { focusSessions, habitLogs } from "@/lib/db/schema";
 import { upsertHabitLog } from "@/lib/db/repo-habits";
 import { isoDate } from "@/lib/date";
 import { getHabit } from "@/lib/db/repo-habits";
-import { POMODORO, timeline, type FocusMode, type FocusSpecies, type PomodoroConfig, type SessionLite } from "@/lib/focus";
+import { POMODORO, pausedMsAt, timeline, type FocusMode, type FocusSpecies, type PomodoroConfig, type SessionLite } from "@/lib/focus";
 
 export type FocusSessionRow = typeof focusSessions.$inferSelect;
 
@@ -17,6 +17,15 @@ export function cfgFromRow(r: FocusSessionRow): PomodoroConfig {
     long: r.longBreakSeconds ?? POMODORO.long,
     every: r.cyclesBeforeLong ?? POMODORO.every,
   };
+}
+
+/**
+ * The clock the timer should read, with paused time taken out: a session paused for 3 minutes is 3
+ * minutes "behind" the wall clock, and a pause still in progress holds the clock still. Pass this to
+ * `timeline` in place of the raw now so paused time never counts.
+ */
+export function effectiveNow(row: Pick<FocusSessionRow, "pausedSeconds" | "pausedAt">, nowMs = Date.now()): number {
+  return nowMs - pausedMsAt(row.pausedSeconds, row.pausedAt, nowMs);
 }
 
 export function toLite(r: FocusSessionRow): SessionLite {
@@ -140,6 +149,34 @@ export async function extendCompletedSession(row: FocusSessionRow, extra: number
   return updated;
 }
 
+/**
+ * Pauses a running session: the clock stops until it's resumed. Returns the moment (epoch ms) the
+ * pause began, or null if the session wasn't an active, un-paused one (already paused, ended, or gone).
+ */
+export async function pauseFocusSession(id: number): Promise<number | null> {
+  const at = Date.now();
+  const res = await db
+    .update(focusSessions)
+    .set({ pausedAt: at })
+    .where(and(eq(focusSessions.id, id), eq(focusSessions.status, "active"), isNull(focusSessions.pausedAt)))
+    .returning({ id: focusSessions.id });
+  return res.length > 0 ? at : null;
+}
+
+/**
+ * Resumes a paused session: the time it sat paused is banked into `pausedSeconds` and `pausedAt` is
+ * cleared, so the timer carries on from where it stopped. Returns the new banked paused seconds.
+ */
+export async function resumeFocusSession(row: FocusSessionRow): Promise<number> {
+  if (row.pausedAt === null) return row.pausedSeconds;
+  const banked = row.pausedSeconds + Math.max(0, Math.round((Date.now() - row.pausedAt) / 1000));
+  await db
+    .update(focusSessions)
+    .set({ pausedSeconds: banked, pausedAt: null })
+    .where(and(eq(focusSessions.id, row.id), eq(focusSessions.status, "active")));
+  return banked;
+}
+
 /** A session given up part way: the tree withers and the time put in is still kept. */
 export async function witherFocusSession(id: number, focusedSeconds: number) {
   await db
@@ -166,7 +203,8 @@ export async function getRecentEndedSession(profileId: number, withinMs: number)
 export async function settleActiveSession(profileId: number): Promise<FocusSessionRow | null> {
   const active = await getActiveFocusSession(profileId);
   if (!active) return null;
-  const tl = timeline(active.startedAt, active.plannedSeconds, active.mode, Date.now(), cfgFromRow(active));
+  // A paused session's clock is held still, so effectiveNow freezes it and it never auto-completes.
+  const tl = timeline(active.startedAt, active.plannedSeconds, active.mode, effectiveNow(active), cfgFromRow(active));
   if (tl.done) {
     await completeFocusSession(active);
     return null;

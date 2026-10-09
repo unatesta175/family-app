@@ -107,6 +107,16 @@ export type Timeline = {
   done: boolean;
 };
 
+/**
+ * How long a session has spent paused by `nowMs` (milliseconds), counting a pause still in progress.
+ * Subtract this from the wall clock to get the "effective now" that drives the timer, so paused time
+ * never grows the tree and the countdown picks up exactly where it was.
+ */
+export function pausedMsAt(pausedSeconds: number, pausedAt: number | null, nowMs: number): number {
+  const banked = Math.max(0, pausedSeconds) * 1000;
+  return pausedAt !== null ? banked + Math.max(0, nowMs - pausedAt) : banked;
+}
+
 /** Where a session stands at `nowMs`, from its start time alone (so it survives sleep and reloads). */
 export function timeline(startedAtMs: number, plannedSeconds: number, mode: FocusMode, nowMs: number, cfg: PomodoroConfig = POMODORO): Timeline {
   const segs = segmentsFor(plannedSeconds, mode, cfg);

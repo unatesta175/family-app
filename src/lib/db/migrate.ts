@@ -41,6 +41,9 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "focus_sessions", column: "short_break_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN short_break_seconds INTEGER" },
   { table: "focus_sessions", column: "long_break_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN long_break_seconds INTEGER" },
   { table: "focus_sessions", column: "cycles_before_long", ddl: "ALTER TABLE focus_sessions ADD COLUMN cycles_before_long INTEGER" },
+  // Pausing a running session (clock stops until resumed).
+  { table: "focus_sessions", column: "paused_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN paused_seconds INTEGER NOT NULL DEFAULT 0" },
+  { table: "focus_sessions", column: "paused_at", ddl: "ALTER TABLE focus_sessions ADD COLUMN paused_at INTEGER" },
 ];
 
 /**
@@ -204,6 +207,8 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       species TEXT NOT NULL DEFAULT 'oak',
       status TEXT NOT NULL DEFAULT 'active',
       focused_seconds INTEGER NOT NULL DEFAULT 0,
+      paused_seconds INTEGER NOT NULL DEFAULT 0,
+      paused_at INTEGER,
       ended_at INTEGER
     )`,
   },
