@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getActiveProfileId } from "@/lib/session";
-import { getAllLogsByDate, getLogTagsMap, getProfile } from "@/lib/db/repo";
+import { getAllLogsByDate, getLogTagsMap, getProfile, getQadaOwedCount } from "@/lib/db/repo";
 import { todayIso } from "@/lib/date";
-import { PRAYER_META, PRAYER_ORDER } from "@/lib/prayers";
+import { PRAYER_META, PRAYER_ORDER, isPerformed } from "@/lib/prayers";
 import { currentStreak, bestStreak } from "@/lib/streaks";
+import { buildInsights } from "@/lib/prayer-insights";
+import { PrayerInsightsCard } from "@/components/prayer-insights-card";
 import {
   computePeriodStats,
   computeLifetimeStats,
@@ -50,10 +52,11 @@ export default async function StatsPage({
   const range: StatsRange = RANGES.includes(rawRange as StatsRange) ? (rawRange as StatsRange) : "week";
   const today = todayIso();
 
-  const [logsByDate, logTagsMap, profile] = await Promise.all([
+  const [logsByDate, logTagsMap, profile, qadaOwed] = await Promise.all([
     getAllLogsByDate(profileId),
     getLogTagsMap(profileId),
     getProfile(profileId),
+    getQadaOwedCount(profileId),
   ]);
 
   const firstLogDate = firstLogDateOf(logsByDate);
@@ -64,6 +67,13 @@ export default async function StatsPage({
   const streak = currentStreak(logsByDate, today);
   const best = bestStreak(logsByDate);
   const periodLabel = RANGE_LABEL[range];
+
+  // Proactive insights. "Remaining today" only counts prayers still open (not_yet); if one is already
+  // missed the day can't stay perfect, so there's no streak to protect.
+  const todayLog = logsByDate[today] ?? {};
+  const missedToday = PRAYER_ORDER.filter((p) => (todayLog[p] ?? "not_yet") === "missed").length;
+  const notYetToday = PRAYER_ORDER.filter((p) => !isPerformed(todayLog[p] ?? "not_yet") && (todayLog[p] ?? "not_yet") !== "missed").length;
+  const insights = buildInsights({ logsByDate, today, streak, remainingToday: missedToday > 0 ? 0 : notYetToday, qadaOwed });
 
   const calendar = range === "month" ? computeMonthCalendar(logsByDate, today) : null;
   const monthSeries = calendar
@@ -107,6 +117,8 @@ export default async function StatsPage({
         commitmentTotal={period.totalSlots}
         commitmentPct={period.commitmentPct}
       />
+
+      <PrayerInsightsCard insights={insights} />
 
       {range === "month" && calendar ? (
         <StatsChartCarousel series={monthSeries} calendar={calendar} />

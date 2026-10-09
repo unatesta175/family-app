@@ -109,7 +109,7 @@ Enterprise-grade improvements, implemented one at a time:
 * [x] **Automated tests on religiously-sensitive logic + CI** — unit coverage for the excused/qada/streak/quality maths, plus a GitHub Actions pipeline gating `lint` + `tsc` + `npm run check` on every push and PR, so a trust-breaking regression (e.g. counting Hayd as a lapse) can't merge.
 * [ ] **Contextual challenges & seasonal reminders** — Ramadan streaks and Ayyam al-Beed fasting challenges built on the events engine.
 * [ ] **Offline-first sync** — an offline queue with optimistic writes and last-write-wins conflict resolution, so check-ins feel native on poor connections instead of a server round-trip each time.
-* [ ] **Deeper, proactive analytics** — move beyond descriptive stats to streak-risk prediction ("your Fajr tends to slip on weekends"), a qada burn-down plan, and a family dashboard.
+* [x] **Deeper, proactive analytics** — a prioritised insights engine on the Stats page: streak-at-risk warnings, your weakest prayer and hardest weekday, a qada burn-down plan, and momentum encouragement. *(Family dashboard still to come.)*
 
 ## License
 
