@@ -559,3 +559,72 @@ export const focusSessions = sqliteTable("focus_sessions", {
   pausedAt: integer("paused_at"),
   endedAt: integer("ended_at"),
 });
+
+// ---------------------------------------------------------------------------------------------
+// Prayer reminders (Web Push). A profile can have several push subscriptions (one per device/
+// browser), one row of preferences, and a per-day log so the scheduler never pushes the same
+// prayer twice. Same profile scoping as the rest of the app.
+// ---------------------------------------------------------------------------------------------
+
+/** A browser push endpoint for a device. The endpoint is globally unique, so re-subscribing updates in place. */
+export const pushSubscriptions = sqliteTable(
+  "push_subscriptions",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    p256dh: text("p256dh").notNull(),
+    auth: text("auth").notNull(),
+    userAgent: text("user_agent"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("push_subscriptions_endpoint_unique").on(table.endpoint)]
+);
+
+/** What a prayer reminder is: the time itself, or the follow-up "did you pray?" nudge. */
+export const REMINDER_KINDS = ["azan", "followup"] as const;
+export type ReminderKind = (typeof REMINDER_KINDS)[number];
+
+/**
+ * One row per profile holding its reminder preferences. `prayers` is a CSV of the prayers that are
+ * on (subset of PRAYERS). `leadMinutes` fires the azan reminder that many minutes before the time
+ * (0 = at the time); `followupMinutes` sends a nudge that long after the time if the prayer is still
+ * unlogged (0 = off). Quiet hours are minutes-since-midnight in the profile's own timezone; a window
+ * that wraps past midnight (start > end) is allowed.
+ */
+export const notificationPrefs = sqliteTable("notification_prefs", {
+  profileId: integer("profile_id")
+    .primaryKey()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
+  prayers: text("prayers").notNull().default("fajr,dhuhr,asr,maghrib,isha"),
+  leadMinutes: integer("lead_minutes").notNull().default(0),
+  followupMinutes: integer("followup_minutes").notNull().default(15),
+  quietStartMin: integer("quiet_start_min"),
+  quietEndMin: integer("quiet_end_min"),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+/** A record that a given reminder has been sent, so the scheduler is idempotent across ticks and restarts. */
+export const notificationSends = sqliteTable(
+  "notification_sends",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // yyyy-mm-dd in the profile's timezone
+    prayer: text("prayer", { enum: PRAYERS }).notNull(),
+    kind: text("kind", { enum: REMINDER_KINDS }).notNull(),
+    sentAt: text("sent_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("notification_sends_unique").on(table.profileId, table.date, table.prayer, table.kind)]
+);

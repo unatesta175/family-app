@@ -1,7 +1,9 @@
 import { getProfile, getHousehold } from "@/lib/db/repo";
 import { getOwnProfileId, requireAuth } from "@/lib/auth";
+import { countSubscriptionsForProfile, getPrefs, prefsPrayers } from "@/lib/db/repo-notifications";
 import { ProfileSettingsForm } from "@/components/profile-settings-form";
 import { LocationSettingsForm } from "@/components/location-settings-form";
+import { PrayerRemindersForm } from "@/components/prayer-reminders-form";
 import { ExportDataButton } from "@/components/export-data-button";
 import { ThemeToggle } from "@/components/theme-toggle-loader";
 import { InviteCodeCard } from "@/components/invite-code-card";
@@ -10,6 +12,8 @@ export default async function SettingsPage() {
   const session = await requireAuth();
   const [ownProfileId, household] = await Promise.all([getOwnProfileId(), getHousehold(session.householdId)]);
   const ownProfile = ownProfileId !== null ? await getProfile(ownProfileId) : null;
+  const [reminderPrefs, reminderDevices] =
+    ownProfileId !== null ? await Promise.all([getPrefs(ownProfileId), countSubscriptionsForProfile(ownProfileId)]) : [null, 0];
 
   return (
     <div className="flex flex-col gap-5">
@@ -23,6 +27,20 @@ export default async function SettingsPage() {
       )}
 
       {ownProfile && <LocationSettingsForm profile={ownProfile} />}
+
+      {ownProfile && reminderPrefs && (
+        <PrayerRemindersForm
+          initial={{
+            enabled: reminderPrefs.enabled,
+            prayers: prefsPrayers(reminderPrefs),
+            leadMinutes: reminderPrefs.leadMinutes,
+            followupMinutes: reminderPrefs.followupMinutes,
+            quietStartMin: reminderPrefs.quietStartMin,
+            quietEndMin: reminderPrefs.quietEndMin,
+          }}
+          devices={reminderDevices}
+        />
+      )}
 
       {household && <InviteCodeCard inviteCode={household.inviteCode} householdName={household.name} />}
 

@@ -216,6 +216,51 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
     table: "focus_sessions_idx",
     ddl: `CREATE INDEX IF NOT EXISTS focus_sessions_profile_date_idx ON focus_sessions (profile_id, date)`,
   },
+  // --- Prayer reminders (Web Push) ----------------------------------------------------------
+  {
+    table: "push_subscriptions",
+    ddl: `CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      endpoint TEXT NOT NULL,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      user_agent TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "push_subscriptions_endpoint_unique",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS push_subscriptions_endpoint_unique ON push_subscriptions (endpoint)`,
+  },
+  {
+    table: "notification_prefs",
+    ddl: `CREATE TABLE IF NOT EXISTS notification_prefs (
+      profile_id INTEGER PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+      enabled INTEGER NOT NULL DEFAULT 1,
+      prayers TEXT NOT NULL DEFAULT 'fajr,dhuhr,asr,maghrib,isha',
+      lead_minutes INTEGER NOT NULL DEFAULT 0,
+      followup_minutes INTEGER NOT NULL DEFAULT 15,
+      quiet_start_min INTEGER,
+      quiet_end_min INTEGER,
+      updated_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "notification_sends",
+    ddl: `CREATE TABLE IF NOT EXISTS notification_sends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      prayer TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      sent_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "notification_sends_unique",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS notification_sends_unique ON notification_sends (profile_id, date, prayer, kind)`,
+  },
   // --- Goals module -------------------------------------------------------------------------
   {
     table: "goals",

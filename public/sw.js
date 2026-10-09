@@ -1,4 +1,4 @@
-const VERSION = "v2";
+const VERSION = "v3";
 const STATIC_CACHE = `istiqamahly-static-${VERSION}`;
 const PAGE_CACHE = `istiqamahly-pages-${VERSION}`;
 const KEEP = [STATIC_CACHE, PAGE_CACHE];
@@ -50,6 +50,44 @@ function isStaticAsset(url) {
     /\.(?:png|jpg|jpeg|svg|webp|ico|woff2?)$/.test(url.pathname)
   );
 }
+
+// Prayer reminders: a pushed message (see src/lib/push.js payload) becomes a notification. The data
+// is best-effort JSON; a malformed or empty push still shows a sensible default.
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = { body: event.data ? event.data.text() : "" };
+  }
+  const title = payload.title || "Prayer reminder";
+  const options = {
+    body: payload.body || "",
+    tag: payload.tag,
+    renotify: Boolean(payload.tag),
+    icon: "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
+    data: { url: payload.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Tapping a notification focuses an open app window if there is one, otherwise opens a new one.
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const target = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if ("focus" in client) {
+          client.navigate(target).catch(() => {});
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(target);
+    })
+  );
+});
 
 self.addEventListener("fetch", (event) => {
   const { request } = event;
