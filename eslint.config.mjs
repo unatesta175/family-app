@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Editor local-history snapshots (gitignored) — never our source to lint.
+    ".history/**",
   ]),
 ]);
 

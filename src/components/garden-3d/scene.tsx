@@ -157,6 +157,10 @@ function DayNightCycle({ shadowHalf, controls }: { shadowHalf: number; controls:
   const phaseRef = useRef(controls.phase);
   const lastSyncRef = useRef(0);
 
+  // Imperative render-loop animation: react-three-fiber's useFrame is meant to mutate the scene graph
+  // (lights, the Canvas background, materials) every frame, which the React Compiler immutability rule
+  // doesn't model. The mutations below are intentional and scoped to this driver.
+  // eslint-disable-next-line react-hooks/immutability
   useFrame((state, delta) => {
     if (controls.paused) {
       phaseRef.current = controls.phase;
@@ -210,6 +214,7 @@ function DayNightCycle({ shadowHalf, controls }: { shadowHalf: number; controls:
 
     // The Canvas's own background, so the sky visible above the terrain/mountains actually
     // darkens at night instead of staying a static daytime blue behind the 3D content.
+    // eslint-disable-next-line react-hooks/immutability
     if (!(scene.background instanceof Color)) scene.background = new Color();
     (scene.background as Color).copy(BG_NIGHT).lerp(BG_DAY, dayT);
 

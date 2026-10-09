@@ -98,7 +98,7 @@ npx tsx scripts/reminder-check.ts          # prayer-reminder timing (lead, follo
 npx tsx scripts/focus-check.ts             # Focus module timing and totals
 ```
 
-Each suite exits non-zero on failure, so `npm run check` (together with `tsc --noEmit` and `eslint`) is the gate a broken streak, a mis-scored status, or a reminder firing at the wrong minute has to pass. Wiring these into GitHub Actions on every push and pull request is the next roadmap item.
+These run in CI on every push and pull request (`.github/workflows/ci.yml`), alongside `npm run lint` and `tsc --noEmit`, so a broken streak, a mis-scored status, or a reminder firing at the wrong minute fails the build before it can merge.
 
 ## Roadmap
 
@@ -106,7 +106,7 @@ Enterprise-grade improvements, implemented one at a time:
 
 * [x] **Prayer reminders & notification engine** — Web Push at prayer times with lead/follow-up nudges, quiet hours, timezone-aware delivery, and an in-process scheduler (plus a cron backstop).
 * [x] **Hijri calendar + Islamic-events engine** — Ramadan awareness, Jummah, the two Eids, Arafah, Ashura, the first ten of Dhul-Hijjah, and the white days, with a countdown card and fasting-day flags. Foundation for Ramadan streaks and seasonal reminders.
-* [ ] **Automated tests on religiously-sensitive logic + CI** — unit coverage for the excused/qada/streak/quality maths, gated in CI so a trust-breaking regression (e.g. counting Hayd as a lapse) can't merge. *(suites and CI landing incrementally — see Testing above.)*
+* [x] **Automated tests on religiously-sensitive logic + CI** — unit coverage for the excused/qada/streak/quality maths, plus a GitHub Actions pipeline gating `lint` + `tsc` + `npm run check` on every push and PR, so a trust-breaking regression (e.g. counting Hayd as a lapse) can't merge.
 * [ ] **Contextual challenges & seasonal reminders** — Ramadan streaks and Ayyam al-Beed fasting challenges built on the events engine.
 * [ ] **Offline-first sync** — an offline queue with optimistic writes and last-write-wins conflict resolution, so check-ins feel native on poor connections instead of a server round-trip each time.
 * [ ] **Deeper, proactive analytics** — move beyond descriptive stats to streak-risk prediction ("your Fajr tends to slip on weekends"), a qada burn-down plan, and a family dashboard.

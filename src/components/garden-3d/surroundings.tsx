@@ -489,7 +489,6 @@ export function GardenSurroundings({ cols, rows }: { cols: number; rows: number 
       });
     }
     return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clearingR]);
 
   const heightFn = useMemo(
