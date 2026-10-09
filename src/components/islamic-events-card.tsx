@@ -1,4 +1,5 @@
-import { CalendarDays, Moon, Sparkles, Star } from "lucide-react";
+import Link from "next/link";
+import { CalendarDays, ChevronRight, Moon, Sparkles, Star } from "lucide-react";
 import { eventsOn, ramadanProgress, upcomingEvents, type EventCategory, type IslamicEvent } from "@/lib/islamic-events";
 import { toHijri } from "@/lib/hijri";
 import { cn } from "@/lib/utils";
@@ -29,7 +30,7 @@ export function IslamicEventsCard({ now }: { now: Date }) {
 
   return (
     <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
-      <div className="flex items-center justify-between gap-3 border-b border-neutral-100 px-4 py-3">
+      <Link href="/calendar" className="flex items-center justify-between gap-3 border-b border-neutral-100 px-4 py-3 transition-colors hover:bg-neutral-50">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
             <CalendarDays className="h-5 w-5" />
@@ -39,7 +40,8 @@ export function IslamicEventsCard({ now }: { now: Date }) {
             <p className="text-xs text-neutral-400">{hijri.day} {hijri.monthName} {hijri.year} AH</p>
           </div>
         </div>
-      </div>
+        <ChevronRight className="h-4 w-4 shrink-0 text-neutral-400" />
+      </Link>
 
       <div className="flex flex-col gap-3 p-4">
         {ramadan.active && (
