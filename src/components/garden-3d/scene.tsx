@@ -294,7 +294,10 @@ export function Garden3DScene({
       <Canvas
         dpr={[1, 2.5]}
         shadows
-        gl={{ antialias: true, powerPreference: "high-performance" }}
+        // `default` power preference + allowing a performance caveat lets WebGL fall back to the
+        // integrated GPU or software rendering instead of failing to create a context when the
+        // high-performance GPU is unavailable (e.g. after a driver/hardware-acceleration change).
+        gl={{ antialias: true, powerPreference: "default", failIfMajorPerformanceCaveat: false }}
         camera={{ position: [0, 11, 10.5], fov: 42 }}
       >
         <DayNightCycle

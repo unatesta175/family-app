@@ -292,7 +292,7 @@ function LanternRig({ quality, goldenFraction, missedCount }: LanternSceneProps)
 export function LanternScene(props: LanternSceneProps) {
   return (
     <div className="h-56 w-full overflow-hidden rounded-3xl bg-gradient-to-b from-neutral-900 via-neutral-900 to-neutral-800">
-      <Canvas dpr={[1, 2]} gl={{ antialias: true }} camera={{ position: [0, 0.5, 5.2], fov: 38 }}>
+      <Canvas dpr={[1, 2]} gl={{ antialias: true, failIfMajorPerformanceCaveat: false }} camera={{ position: [0, 0.5, 5.2], fov: 38 }}>
         <ambientLight intensity={0.16} />
         {/* faint cool rim so the frame reads with some shape even when the flame is nearly out */}
         <directionalLight position={[-2, 2, 3]} intensity={0.18} color="#8fa8c9" />

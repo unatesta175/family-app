@@ -376,7 +376,7 @@ export default function Garden3D({ sessions }: { sessions: SessionLite[] }) {
   const d = n * 0.95 + 3.4;
 
   return (
-    <Canvas flat camera={{ position: [d, d * 0.8, d], fov: 32 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }}>
+    <Canvas flat camera={{ position: [d, d * 0.8, d], fov: 32 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true, failIfMajorPerformanceCaveat: false }}>
       <ambientLight intensity={1.35} />
       <hemisphereLight args={["#f3ffe0", "#9ac56a", 1.0]} />
       <directionalLight position={[n, n * 1.4, n * 0.6]} intensity={1.5} color="#fff3d0" />

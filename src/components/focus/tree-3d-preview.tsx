@@ -11,7 +11,7 @@ import type { FocusSpecies, TreeTier } from "@/lib/focus";
  */
 export default function Tree3DPreview({ progress, species, tier }: { progress: number; species: FocusSpecies; tier: TreeTier }) {
   return (
-    <Canvas flat camera={{ position: [2.7, 1.9, 3.1], fov: 30 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true }}>
+    <Canvas flat camera={{ position: [2.7, 1.9, 3.1], fov: 30 }} dpr={[1, 1.75]} gl={{ alpha: true, antialias: true, failIfMajorPerformanceCaveat: false }}>
       <ambientLight intensity={1.35} />
       <hemisphereLight args={["#f3ffe0", "#9ac56a", 1.0]} />
       <directionalLight position={[3, 5, 2]} intensity={1.5} color="#fff3d0" />
