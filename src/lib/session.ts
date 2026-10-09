@@ -1,6 +1,6 @@
 import "server-only";
 import { cookies } from "next/headers";
-import { requireAuth } from "@/lib/auth";
+import { getOwnProfileId, requireAuth } from "@/lib/auth";
 import { getProfilesInHousehold } from "@/lib/db/repo";
 
 const COOKIE_NAME = "active_profile_id";
@@ -16,6 +16,12 @@ export async function getActiveProfileId(): Promise<number> {
   if (!Number.isNaN(parsed) && householdProfiles.some((p) => p.id === parsed)) {
     return parsed;
   }
+
+  // No explicit selection yet (e.g. a freshly signed-in phone): default to the caller's OWN profile
+  // so they land on their own, editable day — not the first household member's (which renders the
+  // whole day read-only). Fall back to the first profile only if the owner's can't be resolved.
+  const ownId = await getOwnProfileId();
+  if (ownId !== null && householdProfiles.some((p) => p.id === ownId)) return ownId;
 
   return householdProfiles[0].id;
 }
