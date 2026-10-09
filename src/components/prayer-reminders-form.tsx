@@ -12,8 +12,6 @@ import { PRAYER_META, PRAYER_ORDER } from "@/lib/prayers";
 import type { Prayer } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 
-const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? "";
-
 export type ReminderInitial = {
   enabled: boolean;
   prayers: Prayer[];
@@ -43,9 +41,9 @@ function timeToMin(value: string): number | null {
   return h * 60 + m;
 }
 
-export function PrayerRemindersForm({ initial, devices: initialDevices }: { initial: ReminderInitial; devices: number }) {
+export function PrayerRemindersForm({ initial, devices: initialDevices, vapidPublicKey }: { initial: ReminderInitial; devices: number; vapidPublicKey: string }) {
   const supported = typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
-  const configured = VAPID_PUBLIC_KEY.length > 0;
+  const configured = vapidPublicKey.length > 0;
 
   const [subscribed, setSubscribed] = useState(initialDevices > 0);
   const [prayers, setPrayers] = useState<Set<Prayer>>(new Set(initial.prayers));
@@ -114,7 +112,7 @@ export function PrayerRemindersForm({ initial, devices: initialDevices }: { init
       const reg = await navigator.serviceWorker.ready;
       const sub =
         (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY) }));
+        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) }));
       const json = sub.toJSON() as { endpoint: string; keys: { p256dh: string; auth: string } };
       const res = await subscribePushAction({ endpoint: json.endpoint, keys: json.keys });
       if (!res.ok) return setError(res.error);

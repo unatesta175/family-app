@@ -29,7 +29,10 @@ jobs:
             # Written fresh on every deploy from GitHub secrets, never committed to the repo,
             # so docker compose's automatic .env loading picks up Google OAuth credentials
             # without them ever touching git history.
-            printf 'GOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\n' "${{ secrets.GOOGLE_CLIENT_ID }}" "${{ secrets.GOOGLE_CLIENT_SECRET }}" > .env
+            printf 'GOOGLE_CLIENT_ID=%s\nGOOGLE_CLIENT_SECRET=%s\nVAPID_PUBLIC_KEY=%s\nVAPID_PRIVATE_KEY=%s\nVAPID_SUBJECT=%s\nCRON_SECRET=%s\n' \
+              "${{ secrets.GOOGLE_CLIENT_ID }}" "${{ secrets.GOOGLE_CLIENT_SECRET }}" \
+              "${{ secrets.VAPID_PUBLIC_KEY }}" "${{ secrets.VAPID_PRIVATE_KEY }}" \
+              "${{ secrets.VAPID_SUBJECT }}" "${{ secrets.CRON_SECRET }}" > .env
 
             # Snapshot the live sqlite file inside the persistent volume before any schema
             # change runs, in case anything needs to be rolled back by hand later. Safe to

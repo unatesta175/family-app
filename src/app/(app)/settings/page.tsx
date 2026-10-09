@@ -39,6 +39,7 @@ export default async function SettingsPage() {
             quietEndMin: reminderPrefs.quietEndMin,
           }}
           devices={reminderDevices}
+          vapidPublicKey={process.env.VAPID_PUBLIC_KEY ?? ""}
         />
       )}
 
