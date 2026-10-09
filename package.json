@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "check": "tsx scripts/prayer-logic-check.ts && tsx scripts/islamic-events-check.ts && tsx scripts/prayer-insights-check.ts && tsx scripts/reminder-check.ts && tsx scripts/focus-check.ts"
+    "check": "tsx scripts/prayer-logic-check.ts && tsx scripts/islamic-events-check.ts && tsx scripts/prayer-insights-check.ts && tsx scripts/offline-sync-check.ts && tsx scripts/reminder-check.ts && tsx scripts/focus-check.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

@@ -108,7 +108,7 @@ Enterprise-grade improvements, implemented one at a time:
 * [x] **Hijri calendar + Islamic-events engine** — Ramadan awareness, Jummah, the two Eids, Arafah, Ashura, the first ten of Dhul-Hijjah, and the white days, with a countdown card and fasting-day flags. Foundation for Ramadan streaks and seasonal reminders.
 * [x] **Automated tests on religiously-sensitive logic + CI** — unit coverage for the excused/qada/streak/quality maths, plus a GitHub Actions pipeline gating `lint` + `tsc` + `npm run check` on every push and PR, so a trust-breaking regression (e.g. counting Hayd as a lapse) can't merge.
 * [ ] **Contextual challenges & seasonal reminders** — Ramadan streaks and Ayyam al-Beed fasting challenges built on the events engine.
-* [ ] **Offline-first sync** — an offline queue with optimistic writes and last-write-wins conflict resolution, so check-ins feel native on poor connections instead of a server round-trip each time.
+* [~] **Offline-first sync** — the decision core is built and unit-tested (`lib/offline-sync.ts`: an offline-edit queue, coalescing, last-write-wins conflict resolution, optimistic view, and acknowledgement). The remaining service-worker wiring that captures edits while offline and replays them on reconnect is deliberately deferred until it can be verified on a real device, since getting replay wrong risks data loss.
 * [x] **Deeper, proactive analytics** — a prioritised insights engine on the Stats page: streak-at-risk warnings, your weakest prayer and hardest weekday, a qada burn-down plan, and momentum encouragement. *(Family dashboard still to come.)*
 
 ## License
