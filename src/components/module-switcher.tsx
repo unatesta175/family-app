@@ -46,7 +46,7 @@ const MODULES = [
     hint: "Spending, bills & budget",
     href: "/finance",
     icon: Wallet,
-    tile: "bg-teal-100 text-teal-700",
+    tile: "bg-zinc-100 text-zinc-900",
   },
 ] as const;
 
