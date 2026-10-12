@@ -6,7 +6,7 @@ import { TransactionFormModal } from "@/components/finance/transaction-form";
 import { FinanceCategoryIcon } from "@/components/finance/finance-icons";
 import { deleteTransactionAction, toggleTransactionSharedAction } from "@/lib/finance-actions";
 import { addDays } from "@/lib/date";
-import { Card } from "@/components/finance/ui/card";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/finance/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/finance/ui/tooltip";
 import type { AccountRow, CategoryRow, TransactionRow } from "@/lib/db/repo-finance";
 
@@ -185,17 +185,26 @@ export function TransactionsBoard({
       </div>
 
       <div className="flex flex-col gap-3 md:sticky md:top-4 md:self-start">
-        <Card className="flex flex-col gap-1 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Income</p>
-          <p className="text-xl font-extrabold tabular-nums text-success">{money(totals.income)}</p>
+        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+          <CardHeader>
+            <CardDescription>Income</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums text-success @[250px]/card:text-3xl">{money(totals.income)}</CardTitle>
+          </CardHeader>
+          <CardFooter className="text-sm text-muted-foreground">This period</CardFooter>
         </Card>
-        <Card className="flex flex-col gap-1 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Spent</p>
-          <p className="text-xl font-extrabold tabular-nums text-destructive">{money(totals.spent)}</p>
+        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+          <CardHeader>
+            <CardDescription>Spent</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums text-destructive @[250px]/card:text-3xl">{money(totals.spent)}</CardTitle>
+          </CardHeader>
+          <CardFooter className="text-sm text-muted-foreground">This period</CardFooter>
         </Card>
-        <Card className="flex flex-col gap-1 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Net</p>
-          <p className="text-xl font-extrabold tabular-nums">{money(totals.net)}</p>
+        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+          <CardHeader>
+            <CardDescription>Net</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(totals.net)}</CardTitle>
+          </CardHeader>
+          <CardFooter className="text-sm text-muted-foreground">Income minus spend</CardFooter>
         </Card>
       </div>
 

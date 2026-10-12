@@ -16,8 +16,8 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Quick re-entry</p>
-          <h1 className="text-2xl font-extrabold tracking-tight">Templates</h1>
+          <h1 className="text-base font-medium">Templates</h1>
+          <p className="text-sm text-muted-foreground">Quick re-entry</p>
         </div>
         {!ctx.readOnly && <TemplateFormButton accounts={ctx.accounts} categories={ctx.categories} />}
       </div>

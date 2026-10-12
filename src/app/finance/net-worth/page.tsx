@@ -4,7 +4,7 @@ import { getAccountsByProfiles, getTransactionsByProfiles } from "@/lib/db/repo-
 import { colorHex } from "@/lib/habits";
 import { addDays } from "@/lib/date";
 import { NetWorthTrendChart, CategoryBreakdownChart, type NetWorthPoint, type CategorySlice } from "@/components/finance/net-worth-chart";
-import { Card } from "@/components/finance/ui/card";
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/finance/ui/card";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Net worth" };
@@ -73,8 +73,8 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-4xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Net worth{combined ? " · household" : ""}</p>
-          <h1 className="text-2xl font-extrabold tracking-tight">{money(currentNetWorth)}</h1>
+          <h1 className="text-base font-medium">Net worth{combined ? " · household" : ""}</h1>
+          <p className="text-sm text-muted-foreground">{money(currentNetWorth)}</p>
         </div>
         {!ctx.readOnly && ctx.household.length > 1 && (
           <Link
@@ -112,10 +112,14 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
   return (
-    <Card className="flex flex-col gap-1 p-3">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={cn("text-lg font-extrabold tabular-nums", tone === "bad" && "text-destructive", tone === "good" && "text-success")}>{value}</p>
-      {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
+    <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+      <CardHeader>
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className={cn("text-2xl font-semibold tabular-nums @[250px]/card:text-3xl", tone === "bad" && "text-destructive", tone === "good" && "text-success")}>
+          {value}
+        </CardTitle>
+      </CardHeader>
+      {sub && <CardFooter className="text-sm text-muted-foreground">{sub}</CardFooter>}
     </Card>
   );
 }

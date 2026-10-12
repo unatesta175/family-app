@@ -15,9 +15,8 @@ export default async function FinanceSettingsPage({ searchParams }: { searchPara
   return (
     <div className="flex flex-col gap-6 md:mx-auto md:max-w-2xl">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Settings</p>
-        <h1 className="text-2xl font-extrabold tracking-tight">Finance settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Currency is MYR (RM). Income and payday drive your daily budget and payday countdown.</p>
+        <h1 className="text-base font-medium">Finance settings</h1>
+        <p className="text-sm text-muted-foreground">Currency is MYR (RM). Income and payday drive your daily budget and payday countdown.</p>
       </div>
 
       <Tabs defaultValue="income">

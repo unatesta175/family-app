@@ -43,7 +43,7 @@ export default async function FinanceLayout({ children }: { children: React.Reac
                 <HabitLogout />
               </div>
             </header>
-            <main className="flex-1 px-4 pb-28 pt-2 md:px-8 md:pb-12">
+            <main className="@container/main flex-1 px-4 pb-28 pt-2 md:px-8 md:pb-12">
               <Suspense>
                 <FinanceViewingBanner members={members} />
               </Suspense>

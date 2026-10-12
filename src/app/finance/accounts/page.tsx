@@ -4,7 +4,7 @@ import { getTransactionsByProfiles } from "@/lib/db/repo-finance";
 import { AccountFormButton } from "@/components/finance/account-form";
 import { AccountRowList } from "@/components/finance/account-row-list";
 import { TransfersPanel } from "@/components/finance/transfers-panel";
-import { Card } from "@/components/finance/ui/card";
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/finance/ui/card";
 
 export const metadata = { title: "Accounts" };
 
@@ -20,12 +20,23 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-6 md:mx-auto md:max-w-4xl">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Available funds</p>
-        <h1 className="text-3xl font-extrabold tracking-tight tabular-nums">
-          RM {total.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-        </h1>
-        <p className="text-xs font-semibold text-muted-foreground">Across {accounts.length} account{accounts.length === 1 ? "" : "s"}</p>
+        <h1 className="text-base font-medium">Accounts</h1>
       </div>
+
+      <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+        <CardHeader>
+          <CardDescription>Available funds</CardDescription>
+          <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+            RM {total.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </CardTitle>
+          <CardAction>
+            <Wallet className="size-4 text-muted-foreground" />
+          </CardAction>
+        </CardHeader>
+        <CardFooter className="text-sm text-muted-foreground">
+          Across {accounts.length} account{accounts.length === 1 ? "" : "s"}
+        </CardFooter>
+      </Card>
 
       <div className="grid gap-5 md:grid-cols-[1.4fr_1fr]">
         <section className="flex flex-col gap-2">

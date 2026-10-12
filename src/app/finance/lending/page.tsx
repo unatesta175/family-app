@@ -29,10 +29,10 @@ export default async function LendingPage({ searchParams }: { searchParams: Prom
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Net owed to you</p>
-          <h1 className={`text-2xl font-extrabold tracking-tight ${net < 0 ? "text-destructive" : "text-foreground"}`}>
-            RM {net.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </h1>
+          <h1 className="text-base font-medium">Lending</h1>
+          <p className={`text-sm text-muted-foreground ${net < 0 ? "text-destructive" : ""}`}>
+            Net owed to you · RM {net.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </p>
         </div>
         <LendingFormButton />
       </div>

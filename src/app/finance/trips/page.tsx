@@ -17,8 +17,8 @@ export default async function TripsPage({ searchParams }: { searchParams: Promis
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Planning</p>
-          <h1 className="text-2xl font-extrabold tracking-tight">Trips</h1>
+          <h1 className="text-base font-medium">Trips</h1>
+          <p className="text-sm text-muted-foreground">Planning</p>
         </div>
         {!ctx.readOnly && <TripFormButton />}
       </div>

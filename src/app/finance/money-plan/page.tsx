@@ -21,10 +21,9 @@ export default async function MoneyPlanPage({ searchParams }: { searchParams: Pr
   return (
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Planning · {month}</p>
-        <h1 className="text-2xl font-extrabold tracking-tight">Money Plan</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          RM {totalActual.toFixed(2)} spent of RM {totalPlanned.toFixed(2)} planned this month.
+        <h1 className="text-base font-medium">Money Plan</h1>
+        <p className="text-sm text-muted-foreground">
+          {month} · RM {totalActual.toFixed(2)} spent of RM {totalPlanned.toFixed(2)} planned this month.
         </p>
       </div>
 

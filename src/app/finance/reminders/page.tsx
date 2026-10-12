@@ -16,8 +16,8 @@ export default async function RemindersPage({ searchParams }: { searchParams: Pr
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Planning</p>
-          <h1 className="text-2xl font-extrabold tracking-tight">Reminders</h1>
+          <h1 className="text-base font-medium">Reminders</h1>
+          <p className="text-sm text-muted-foreground">Planning</p>
         </div>
         {!ctx.readOnly && <ReminderFormButton />}
       </div>

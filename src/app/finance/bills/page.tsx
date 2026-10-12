@@ -22,10 +22,10 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">This month</p>
-          <h1 className="text-2xl font-extrabold tracking-tight">
-            RM {totalPaid.toFixed(2)} / {totalDue.toFixed(2)} paid
-          </h1>
+          <h1 className="text-base font-medium">Bills</h1>
+          <p className="text-sm text-muted-foreground">
+            This month · RM {totalPaid.toFixed(2)} / {totalDue.toFixed(2)} paid
+          </p>
         </div>
         {!ctx.readOnly && <BillFormButton categories={ctx.categories} />}
       </div>

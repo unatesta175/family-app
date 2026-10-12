@@ -45,8 +45,8 @@ export default async function TransactionsPage({
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-5xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Transactions</p>
-          <h1 className="text-2xl font-extrabold tracking-tight">{visible.length} entries</h1>
+          <h1 className="text-base font-medium">Transactions</h1>
+          <p className="text-sm text-muted-foreground">{visible.length} entries</p>
         </div>
         {!ctx.readOnly && <TransactionFormButton accounts={ctx.accounts} categories={ctx.categories} />}
       </div>

@@ -22,7 +22,8 @@ import { addDays } from "@/lib/date";
 import { QuickAddButton } from "@/components/finance/quick-add";
 import { TransactionList } from "@/components/finance/transaction-list";
 import { AccountHeroCarousel, type AccountStats } from "@/components/finance/account-hero-carousel";
-import { Card } from "@/components/finance/ui/card";
+import { Badge } from "@/components/finance/ui/badge";
+import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/finance/ui/card";
 import { cn } from "@/lib/utils";
 
 const APP_NAME = "Istiqamahly";
@@ -128,8 +129,8 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
   return (
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-4xl">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{ctx.readOnly ? "Partner's finances" : "Today"}</p>
-        <h1 className="text-2xl font-extrabold tracking-tight">Finance</h1>
+        <h1 className="text-base font-medium">Finance</h1>
+        <p className="text-sm text-muted-foreground">{ctx.readOnly ? "Partner's finances" : "Today"}</p>
       </div>
 
       {heroAccounts.length > 0 && (
@@ -138,91 +139,132 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
 
       {/* Safe to spend today — the single most actionable number: daily budget minus what's
           already spent today minus a daily slice set aside for upcoming unpaid bills. */}
-      {safeToSpendToday !== null && (
-        <Card className={cn("flex flex-col gap-2 p-6", safeToSpendToday < 0 && "ring-2 ring-destructive")}>
-          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Safe to spend today
-          </p>
-          <p className={cn("text-5xl font-extrabold tabular-nums tracking-tight", safeToSpendToday < 0 ? "text-destructive" : "text-foreground")}>
-            {money(Math.max(0, safeToSpendToday))}
-          </p>
-          <p className="text-xs font-semibold text-muted-foreground">
-            {safeToSpendToday < 0
-              ? `You're ${money(Math.abs(safeToSpendToday))} past what's safe for today.`
-              : dailyReserve > 0
-                ? `${money(dailyBudget)}/day budget, minus ${money(todaySpend)} spent and ${money(dailyReserve)} set aside for unpaid bills.`
-                : `${money(dailyBudget)}/day budget minus ${money(todaySpend)} spent so far.`}
-            {ctx.budget?.adaptiveBudget && " (adaptive)"}
-          </p>
-        </Card>
-      )}
-
-      {/* Today vs daily budget — the core overspend indicator */}
-      <Card className={cn("flex flex-col gap-3 p-5", overBudget && "ring-2 ring-destructive")}>
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Spent today</p>
-          {overBudget && (
-            <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-extrabold text-destructive">
-              <AlertTriangle className="h-3 w-3" />
-              Over budget
-            </span>
-          )}
-        </div>
-        <p className={cn("text-4xl font-extrabold tabular-nums", overBudget ? "text-destructive" : "text-foreground")}>{money(todaySpend)}</p>
-        {dailyBudget > 0 ? (
-          <>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className={cn("h-full rounded-full transition-all", overBudget ? "bg-destructive" : "bg-primary")}
-                style={{ width: `${Math.min(100, pctOfBudget)}%` }}
-              />
-            </div>
-            <p className="text-xs font-semibold text-muted-foreground">
-              {pctOfBudget}% of your {money(dailyBudget)}/day budget
-              {ctx.budget?.adaptiveBudget ? " (adaptive, recalculated daily)" : !ctx.budget?.dailyBudgetOverride && " (from monthly income ÷ days in month)"}
-            </p>
-          </>
-        ) : (
-          <Link href="/finance/settings" className="text-xs font-bold text-primary">
-            Set your monthly income to see a daily budget →
-          </Link>
+      <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @md/main:grid-cols-2">
+        {safeToSpendToday !== null && (
+          <Card className={cn("@container/card", safeToSpendToday < 0 && "ring-2 ring-destructive")}>
+            <CardHeader>
+              <CardDescription>Safe to spend today</CardDescription>
+              <CardTitle className={cn("text-2xl font-semibold tabular-nums @[250px]/card:text-3xl", safeToSpendToday < 0 && "text-destructive")}>
+                {money(Math.max(0, safeToSpendToday))}
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  <ShieldCheck className="size-3.5" />
+                  {ctx.budget?.adaptiveBudget ? "Adaptive" : "Daily"}
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="line-clamp-1 flex gap-2 font-medium">
+                {safeToSpendToday < 0 ? "Over what's safe for today" : "On track for today"}
+              </div>
+              <div className="text-muted-foreground">
+                {safeToSpendToday < 0
+                  ? `You're ${money(Math.abs(safeToSpendToday))} past what's safe for today.`
+                  : dailyReserve > 0
+                    ? `${money(dailyBudget)}/day budget, minus ${money(todaySpend)} spent and ${money(dailyReserve)} set aside for unpaid bills.`
+                    : `${money(dailyBudget)}/day budget minus ${money(todaySpend)} spent so far.`}
+              </div>
+            </CardFooter>
+          </Card>
         )}
-      </Card>
 
-      {/* Projected month-end savings/shortfall */}
-      {projectedLeftover !== null && (
-        <Card className={cn("flex items-center justify-between gap-3 p-4", projectedLeftover < 0 && "ring-2 ring-destructive")}>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Projected by payday, at this pace</p>
-            <p className={cn("text-2xl font-extrabold tabular-nums", projectedLeftover < 0 ? "text-destructive" : "text-success")}>
-              {projectedLeftover < 0 ? `− ${money(Math.abs(projectedLeftover))}` : money(projectedLeftover)}
-            </p>
-          </div>
-          <p className="max-w-[45%] text-right text-[11px] font-semibold text-muted-foreground">
-            {projectedLeftover < 0 ? "Projected shortfall before payday if this pace continues." : "Projected leftover if this pace continues."}
-          </p>
+        {/* Today vs daily budget — the core overspend indicator */}
+        <Card className={cn("@container/card", overBudget && "ring-2 ring-destructive")}>
+          <CardHeader>
+            <CardDescription>Spent today</CardDescription>
+            <CardTitle className={cn("text-2xl font-semibold tabular-nums @[250px]/card:text-3xl", overBudget && "text-destructive")}>
+              {money(todaySpend)}
+            </CardTitle>
+            <CardAction>
+              {overBudget ? (
+                <Badge variant="destructive">
+                  <AlertTriangle className="size-3.5" />
+                  Over budget
+                </Badge>
+              ) : (
+                <Badge variant="outline">
+                  <TrendingUp className="size-3.5" />
+                  {dailyBudget > 0 ? `${pctOfBudget}%` : "No budget"}
+                </Badge>
+              )}
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            {dailyBudget > 0 ? (
+              <>
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  {pctOfBudget}% of your {money(dailyBudget)}/day budget
+                </div>
+                <div className="text-muted-foreground">
+                  {ctx.budget?.adaptiveBudget ? "Adaptive, recalculated daily" : !ctx.budget?.dailyBudgetOverride && "From monthly income ÷ days in month"}
+                </div>
+              </>
+            ) : (
+              <Link href="/finance/settings" className="font-medium text-primary">
+                Set your monthly income to see a daily budget →
+              </Link>
+            )}
+          </CardFooter>
         </Card>
-      )}
 
-      <div className="grid grid-cols-2 gap-3">
-        <Card className="flex flex-col gap-1 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <TrendingDown className="h-3.5 w-3.5" />
-            Predicted tomorrow
-          </p>
-          <p className="text-xl font-extrabold tabular-nums">{money(prediction.amount)}</p>
-          <p className="text-[11px] text-muted-foreground">
-            {prediction.confident ? "Based on your last 2-4 weeks, weekday-weighted." : "Not enough history yet — rough estimate only."}
-          </p>
+        {/* Projected month-end savings/shortfall */}
+        {projectedLeftover !== null && (
+          <Card className={cn("@container/card", projectedLeftover < 0 && "ring-2 ring-destructive")}>
+            <CardHeader>
+              <CardDescription>Projected by payday, at this pace</CardDescription>
+              <CardTitle className={cn("text-2xl font-semibold tabular-nums @[250px]/card:text-3xl", projectedLeftover < 0 ? "text-destructive" : "text-success")}>
+                {projectedLeftover < 0 ? `− ${money(Math.abs(projectedLeftover))}` : money(projectedLeftover)}
+              </CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  {projectedLeftover < 0 ? <TrendingDown className="size-3.5" /> : <TrendingUp className="size-3.5" />}
+                  {projectedLeftover < 0 ? "Shortfall" : "Leftover"}
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardFooter className="flex-col items-start gap-1.5 text-sm">
+              <div className="text-muted-foreground">
+                {projectedLeftover < 0 ? "Projected shortfall before payday if this pace continues." : "Projected leftover if this pace continues."}
+              </div>
+            </CardFooter>
+          </Card>
+        )}
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Predicted tomorrow</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(prediction.amount)}</CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <TrendingDown className="size-3.5" />
+                {prediction.confident ? "Confident" : "Estimate"}
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="text-muted-foreground">
+              {prediction.confident ? "Based on your last 2-4 weeks, weekday-weighted." : "Not enough history yet — rough estimate only."}
+            </div>
+          </CardFooter>
         </Card>
-        <Card className="flex flex-col gap-1 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <CalendarClock className="h-3.5 w-3.5" />
-            Payday
-          </p>
-          <p className="text-xl font-extrabold tabular-nums">{paydayDays === null ? "—" : paydayDays === 0 ? "Today" : `${paydayDays}d`}</p>
-          <p className="text-[11px] text-muted-foreground">{paydayDays === null ? "Set payday in Settings" : "until your next payday"}</p>
+
+        <Card className="@container/card">
+          <CardHeader>
+            <CardDescription>Payday</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+              {paydayDays === null ? "—" : paydayDays === 0 ? "Today" : `${paydayDays}d`}
+            </CardTitle>
+            <CardAction>
+              <Badge variant="outline">
+                <CalendarClock className="size-3.5" />
+                Payday
+              </Badge>
+            </CardAction>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="text-muted-foreground">{paydayDays === null ? "Set payday in Settings" : "until your next payday"}</div>
+          </CardFooter>
         </Card>
       </div>
 
@@ -281,23 +323,32 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
 
       {/* Weekly spending digest */}
       {weeklyDigest.thisWeekTotal > 0 && (
-        <Card className="flex flex-col gap-2 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Last 7 days</p>
-          <div className="flex items-center justify-between">
-            <p className="text-2xl font-extrabold tabular-nums">{money(weeklyDigest.thisWeekTotal)}</p>
+        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+          <CardHeader>
+            <CardDescription>Last 7 days</CardDescription>
+            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(weeklyDigest.thisWeekTotal)}</CardTitle>
             {weeklyDigest.pctChange !== null && (
-              <span className={cn("text-xs font-extrabold", weeklyDigest.pctChange > 0 ? "text-destructive" : "text-success")}>
-                {weeklyDigest.pctChange > 0 ? "+" : ""}
-                {Math.round(weeklyDigest.pctChange)}% vs prior week
-              </span>
+              <CardAction>
+                <Badge variant="outline">
+                  {weeklyDigest.pctChange > 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                  {weeklyDigest.pctChange > 0 ? "+" : ""}
+                  {Math.round(weeklyDigest.pctChange)}%
+                </Badge>
+              </CardAction>
             )}
-          </div>
-          <p className="text-xs font-semibold text-muted-foreground">
-            {weeklyDigest.topCategoryId !== null && `Top category: ${categoryNameById.get(weeklyDigest.topCategoryId) ?? "—"}. `}
-            {weeklyDigest.daysOverBudget > 0
-              ? `Over budget on ${weeklyDigest.daysOverBudget} of the last 7 days.`
-              : "Within budget every day this week."}
-          </p>
+          </CardHeader>
+          <CardFooter className="flex-col items-start gap-1.5 text-sm">
+            <div className="line-clamp-1 flex gap-2 font-medium">
+              {weeklyDigest.daysOverBudget > 0
+                ? `Over budget on ${weeklyDigest.daysOverBudget} of the last 7 days`
+                : "Within budget every day this week"}
+            </div>
+            <div className="text-muted-foreground">
+              {weeklyDigest.topCategoryId !== null
+                ? `Top category: ${categoryNameById.get(weeklyDigest.topCategoryId) ?? "—"}.`
+                : "vs prior week"}
+            </div>
+          </CardFooter>
         </Card>
       )}
 
