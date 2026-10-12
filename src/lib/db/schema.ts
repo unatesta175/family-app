@@ -617,10 +617,28 @@ export const notificationPrefs = sqliteTable("notification_prefs", {
 // controls whether a partner profile sees it at all.
 // ---------------------------------------------------------------------------------------------
 
-export const FINANCE_ACCOUNT_TYPES = ["bank", "ewallet", "cash", "savings"] as const;
+export const FINANCE_ACCOUNT_TYPES = ["bank", "ewallet", "cash", "savings", "credit_card", "other"] as const;
 export type FinanceAccountType = (typeof FINANCE_ACCOUNT_TYPES)[number];
 
-export const FINANCE_CARD_THEMES = ["rose_gold", "black", "holographic", "mint", "sunset", "midnight"] as const;
+export const FINANCE_CARD_THEMES = [
+  "rose_gold",
+  "black",
+  "holographic",
+  "mint",
+  "sunset",
+  "midnight",
+  "obsidian",
+  "glacier",
+  "emerald",
+  "amethyst",
+  "topaz",
+  "ruby",
+  "coral",
+  "ocean",
+  "sunshine",
+  "flamingo",
+  "sky",
+] as const;
 export type FinanceCardTheme = (typeof FINANCE_CARD_THEMES)[number];
 
 export const FINANCE_CATEGORY_GROUPS = ["need", "want"] as const;
