@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Lock } from "lucide-react";
 import { TransactionFormModal } from "@/components/finance/transaction-form";
 import { FinanceCategoryIcon } from "@/components/finance/finance-icons";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/finance/ui/tooltip";
 import type { AccountRow, CategoryRow, TransactionRow } from "@/lib/db/repo-finance";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -48,7 +49,14 @@ export function TransactionList({
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
                     <span className="truncate text-sm font-bold">{tx.note || cat?.name || TYPE_NAME(tx.type)}</span>
-                    {!tx.isShared && <Lock className="h-3 w-3 shrink-0 text-h-muted" />}
+                    {!tx.isShared && (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Lock className="h-3 w-3 shrink-0 text-h-muted" />
+                        </TooltipTrigger>
+                        <TooltipContent>Private — only visible to you</TooltipContent>
+                      </Tooltip>
+                    )}
                   </span>
                   <span className="block text-[11px] font-semibold text-h-muted">
                     {accountName.get(tx.accountId) ?? "—"} · {tx.date}

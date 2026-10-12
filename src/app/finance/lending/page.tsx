@@ -3,6 +3,7 @@ import { loadFinanceContext } from "@/lib/finance-data";
 import { getLendingByProfile } from "@/lib/db/repo-finance";
 import { LendingFormButton } from "@/components/finance/lending-form";
 import { LendingList } from "@/components/finance/lending-list";
+import { Card } from "@/components/finance/ui/card";
 
 export const metadata = { title: "Lending" };
 
@@ -12,10 +13,10 @@ export default async function LendingPage({ searchParams }: { searchParams: Prom
 
   if (ctx.readOnly) {
     return (
-      <div className="h-card flex flex-col items-center gap-3 p-8 text-center md:mx-auto md:max-w-2xl">
+      <Card className="h-card items-center gap-3 border-h-border bg-h-surface p-8 py-8 text-center text-h-fg md:mx-auto md:max-w-2xl">
         <HandCoins className="h-8 w-8 text-h-muted" />
         <p className="text-sm font-semibold text-h-muted">Lending and borrowing is personal — it isn&apos;t shared with your partner.</p>
-      </div>
+      </Card>
     );
   }
 
@@ -35,9 +36,9 @@ export default async function LendingPage({ searchParams }: { searchParams: Prom
         </div>
         <LendingFormButton />
       </div>
-      <div className="h-card p-2">
+      <Card className="h-card border-h-border bg-h-surface p-2 py-2 text-h-fg">
         <LendingList entries={entries} />
-      </div>
+      </Card>
     </div>
   );
 }

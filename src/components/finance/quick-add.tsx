@@ -2,9 +2,16 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
 import { FinanceModal } from "@/components/finance/finance-modal";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/finance/ui/select";
 import { quickAddExpenseAction } from "@/lib/finance-actions";
 import type { AccountRow, CategoryRow } from "@/lib/db/repo-finance";
 import { cn } from "@/lib/utils";
@@ -77,13 +84,18 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
             ))}
           </div>
           {accounts.length > 1 && (
-            <select value={accountId} onChange={(e) => setAccountId(Number(e.target.value))} className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm">
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
+            <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" />
           {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}

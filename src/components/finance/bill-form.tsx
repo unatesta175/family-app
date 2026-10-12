@@ -2,8 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Label } from "@/components/finance/ui/label";
+import { Switch } from "@/components/finance/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/finance/ui/select";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveBillAction, deleteBillAction } from "@/lib/finance-actions";
 import type { BillRow, CategoryRow } from "@/lib/db/repo-finance";
@@ -58,31 +67,39 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
   return (
     <FinanceModal open={open} onClose={onClose} title={bill ? "Edit bill" : "New bill"}>
       <div className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Name</span>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Name</Label>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Electricity (TNB)" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Amount (RM)</Label>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Due day of month</span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Due day of month</Label>
           <Input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Category</span>
-          <select value={categoryId ?? ""} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)} className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm">
-            <option value="">None</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Category</Label>
+          <Select
+            value={categoryId !== null ? String(categoryId) : "none"}
+            onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <label className="flex items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="h-4 w-4 accent-current" />
+          <Switch checked={recurring} onCheckedChange={setRecurring} />
           Recurs every month
         </label>
         {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}

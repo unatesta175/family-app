@@ -3,6 +3,7 @@ import { loadFinanceContext } from "@/lib/finance-data";
 import { getTransactionsByProfiles, type TransactionFilters } from "@/lib/db/repo-finance";
 import { TransactionFormButton } from "@/components/finance/transaction-form";
 import { TransactionList } from "@/components/finance/transaction-list";
+import { Card } from "@/components/finance/ui/card";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Transactions" };
@@ -72,9 +73,9 @@ export default async function TransactionsPage({
         ))}
       </div>
 
-      <div className="h-card p-2">
+      <Card className="h-card border-h-border bg-h-surface p-2 py-2 text-h-fg">
         <TransactionList transactions={visible} accounts={ctx.accounts} categories={ctx.categories} readOnly={ctx.readOnly} />
-      </div>
+      </Card>
     </div>
   );
 }

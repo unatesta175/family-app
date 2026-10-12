@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Badge } from "@/components/finance/ui/badge";
 import { saveCategoryAction, deleteCategoryAction } from "@/lib/finance-actions";
 import { FINANCE_CATEGORY_GROUPS } from "@/lib/db/schema";
 import { FinanceCategoryIcon } from "@/components/finance/finance-icons";
@@ -47,9 +48,12 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
                 <FinanceCategoryIcon icon={c.icon} className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1 text-sm font-bold">{c.name}</span>
-              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold capitalize", c.group === "need" ? "bg-h-brand-soft text-h-brand" : "bg-h-surface2 text-h-muted")}>
+              <Badge
+                variant="outline"
+                className={cn("border-transparent text-[10px] capitalize", c.group === "need" ? "bg-h-brand-soft text-h-brand" : "bg-h-surface2 text-h-muted")}
+              >
                 {c.group}
-              </span>
+              </Badge>
               <button type="button" onClick={() => remove(c.id)} disabled={pending} className="text-h-muted hover:text-h-bad">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

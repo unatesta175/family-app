@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Label } from "@/components/finance/ui/label";
+import { Textarea } from "@/components/finance/ui/textarea";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveLendingAction, deleteLendingAction, setLendingStatusAction } from "@/lib/finance-actions";
 import { FINANCE_LEND_DIRECTIONS } from "@/lib/db/schema";
@@ -83,22 +85,22 @@ export function LendingFormModal({ entry, open, onClose }: { entry?: LendingRow;
             </button>
           ))}
         </div>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Who</span>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Who</Label>
           <Input value={counterpartyName} onChange={(e) => setCounterpartyName(e.target.value)} placeholder="Name" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Amount (RM)</Label>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Due date (optional)</span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Due date (optional)</Label>
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Note</span>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
-        </label>
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs font-bold text-h-muted">Note</Label>
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" rows={2} />
+        </div>
         {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
         <div className="flex items-center justify-between gap-2 pt-1">
           <div className="flex gap-3">

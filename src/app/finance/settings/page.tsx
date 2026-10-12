@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { loadFinanceContext } from "@/lib/finance-data";
 import { BudgetSettingsForm } from "@/components/finance/budget-settings-form";
 import { CategoryManager } from "@/components/finance/category-manager";
+import { Card } from "@/components/finance/ui/card";
+import { Separator } from "@/components/finance/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/finance/ui/tabs";
 
 export const metadata = { title: "Settings" };
 
@@ -18,17 +21,22 @@ export default async function FinanceSettingsPage({ searchParams }: { searchPara
         <p className="mt-1 text-sm text-h-muted">Currency is MYR (RM). Income and payday drive your daily budget and payday countdown.</p>
       </div>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Income & payday</h2>
-        <BudgetSettingsForm settings={ctx.budget} />
-      </section>
+      <Separator className="bg-h-border" />
 
-      <section className="flex flex-col gap-2">
-        <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Categories</h2>
-        <div className="h-card p-4">
-          <CategoryManager categories={ctx.categories} />
-        </div>
-      </section>
+      <Tabs defaultValue="income">
+        <TabsList className="bg-h-surface2">
+          <TabsTrigger value="income">Income & payday</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+        </TabsList>
+        <TabsContent value="income" className="flex flex-col gap-2 pt-2">
+          <BudgetSettingsForm settings={ctx.budget} />
+        </TabsContent>
+        <TabsContent value="categories" className="flex flex-col gap-2 pt-2">
+          <Card className="h-card border-h-border bg-h-surface p-4 py-4 text-h-fg">
+            <CategoryManager categories={ctx.categories} />
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { loadFinanceContext } from "@/lib/finance-data";
 import { getBillPayments, getBillsByProfile } from "@/lib/db/repo-finance";
 import { BillFormButton } from "@/components/finance/bill-form";
 import { BillRowItem } from "@/components/finance/bill-row";
+import { Card } from "@/components/finance/ui/card";
 
 export const metadata = { title: "Bills" };
 
@@ -30,15 +31,15 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
       </div>
 
       {bills.length === 0 ? (
-        <div className="h-card flex flex-col items-center gap-3 p-8 text-center">
+        <Card className="h-card items-center gap-3 border-h-border bg-h-surface p-8 py-8 text-center text-h-fg">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-h-brand-soft text-h-brand">
             <Wallet className="h-7 w-7" />
           </span>
           <p className="text-base font-extrabold">No recurring bills yet</p>
           <p className="mx-auto max-w-sm text-sm text-h-muted">Add your rent, utilities, and subscriptions so nothing slips past due.</p>
-        </div>
+        </Card>
       ) : (
-        <div className="h-card p-2">
+        <Card className="h-card border-h-border bg-h-surface p-2 py-2 text-h-fg">
           <ul className="flex flex-col divide-y divide-h-border">
             {bills.map((b) => (
               <BillRowItem
@@ -52,7 +53,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
               />
             ))}
           </ul>
-        </div>
+        </Card>
       )}
     </div>
   );

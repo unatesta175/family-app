@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { LendingFormModal } from "@/components/finance/lending-form";
+import { Badge } from "@/components/finance/ui/badge";
 import type { LendingRow } from "@/lib/db/repo-finance";
 import { cn } from "@/lib/utils";
 
@@ -20,14 +21,15 @@ export function LendingList({ entries }: { entries: LendingRow[] }) {
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-bold">{e.counterpartyName}</span>
-                  <span
+                  <Badge
+                    variant="outline"
                     className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
+                      "border-transparent px-1.5 text-[10px]",
                       e.status === "settled" ? "bg-h-surface2 text-h-muted" : "bg-h-brand-soft text-h-brand"
                     )}
                   >
                     {e.status}
-                  </span>
+                  </Badge>
                 </span>
                 <span className="block text-[11px] font-semibold text-h-muted">
                   {e.direction === "lent" ? "You lent" : "You borrowed"}
