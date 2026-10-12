@@ -1,0 +1,73 @@
+"use client";
+
+import { useState } from "react";
+import { Lock } from "lucide-react";
+import { TransactionFormModal } from "@/components/finance/transaction-form";
+import { FinanceCategoryIcon } from "@/components/finance/finance-icons";
+import type { AccountRow, CategoryRow, TransactionRow } from "@/lib/db/repo-finance";
+
+const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+export function TransactionList({
+  transactions,
+  accounts,
+  categories,
+  readOnly,
+}: {
+  transactions: TransactionRow[];
+  accounts: AccountRow[];
+  categories: CategoryRow[];
+  readOnly: boolean;
+}) {
+  const [editing, setEditing] = useState<TransactionRow | null>(null);
+  const accountName = new Map(accounts.map((a) => [a.id, a.name]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+
+  if (transactions.length === 0) {
+    return <p className="py-8 text-center text-sm text-h-muted">No transactions here yet.</p>;
+  }
+
+  return (
+    <>
+      <ul className="flex flex-col divide-y divide-h-border">
+        {transactions.map((tx) => {
+          const cat = tx.categoryId ? categoryById.get(tx.categoryId) : null;
+          const sign = tx.type === "income" ? "+" : tx.type === "expense" ? "−" : "";
+          const color = tx.type === "income" ? "text-h-good" : tx.type === "expense" ? "text-h-bad" : "text-h-muted";
+          return (
+            <li key={tx.id}>
+              <button
+                type="button"
+                disabled={readOnly}
+                onClick={() => !readOnly && setEditing(tx)}
+                className="flex w-full items-center gap-3 py-3 text-left disabled:cursor-default"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-h-surface2 text-h-muted">
+                  <FinanceCategoryIcon icon={cat?.icon} className="h-4 w-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="truncate text-sm font-bold">{tx.note || cat?.name || TYPE_NAME(tx.type)}</span>
+                    {!tx.isShared && <Lock className="h-3 w-3 shrink-0 text-h-muted" />}
+                  </span>
+                  <span className="block text-[11px] font-semibold text-h-muted">
+                    {accountName.get(tx.accountId) ?? "—"} · {tx.date}
+                  </span>
+                </span>
+                <span className={`shrink-0 text-sm font-extrabold tabular-nums ${color}`}>
+                  {sign}
+                  {money(tx.amount)}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {editing && <TransactionFormModal tx={editing} accounts={accounts} categories={categories} open onClose={() => setEditing(null)} />}
+    </>
+  );
+}
+
+function TYPE_NAME(t: string) {
+  return t === "income" ? "Income" : t === "transfer" ? "Transfer" : "Expense";
+}

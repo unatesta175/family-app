@@ -611,6 +611,141 @@ export const notificationPrefs = sqliteTable("notification_prefs", {
     .default(sql`(current_timestamp)`),
 });
 
+// ---------------------------------------------------------------------------------------------
+// Finance module. A couple's shared expense tracker. Every row hangs off a profileId, same
+// household-visibility convention as the rest of the app; `isShared` on accounts/transactions
+// controls whether a partner profile sees it at all.
+// ---------------------------------------------------------------------------------------------
+
+export const FINANCE_ACCOUNT_TYPES = ["bank", "ewallet", "cash", "savings"] as const;
+export type FinanceAccountType = (typeof FINANCE_ACCOUNT_TYPES)[number];
+
+export const FINANCE_CARD_THEMES = ["rose_gold", "black", "holographic", "mint", "sunset", "midnight"] as const;
+export type FinanceCardTheme = (typeof FINANCE_CARD_THEMES)[number];
+
+export const FINANCE_CATEGORY_GROUPS = ["need", "want"] as const;
+export type FinanceCategoryGroup = (typeof FINANCE_CATEGORY_GROUPS)[number];
+
+export const FINANCE_TX_TYPES = ["income", "expense", "transfer"] as const;
+export type FinanceTxType = (typeof FINANCE_TX_TYPES)[number];
+
+export const FINANCE_LEND_DIRECTIONS = ["lent", "borrowed"] as const;
+export type FinanceLendDirection = (typeof FINANCE_LEND_DIRECTIONS)[number];
+
+export const FINANCE_LEND_STATUSES = ["open", "partial", "settled"] as const;
+export type FinanceLendStatus = (typeof FINANCE_LEND_STATUSES)[number];
+
+export const financeAccounts = sqliteTable("finance_accounts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  type: text("type", { enum: FINANCE_ACCOUNT_TYPES }).notNull().default("bank"),
+  icon: text("icon").notNull().default("landmark"),
+  colorTheme: text("color_theme", { enum: FINANCE_CARD_THEMES }).notNull().default("midnight"),
+  balance: real("balance").notNull().default(0),
+  isShared: integer("is_shared", { mode: "boolean" }).notNull().default(true),
+  archivedAt: text("archived_at"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const financeCategories = sqliteTable("finance_categories", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  icon: text("icon").notNull().default("tag"),
+  color: text("color").notNull().default("indigo"),
+  group: text("group", { enum: FINANCE_CATEGORY_GROUPS }).notNull().default("want"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const financeTransactions = sqliteTable("finance_transactions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  accountId: integer("account_id")
+    .notNull()
+    .references(() => financeAccounts.id, { onDelete: "cascade" }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").references(() => financeCategories.id, { onDelete: "set null" }),
+  type: text("type", { enum: FINANCE_TX_TYPES }).notNull().default("expense"),
+  amount: real("amount").notNull(),
+  note: text("note"),
+  date: text("date").notNull(), // yyyy-mm-dd
+  isShared: integer("is_shared", { mode: "boolean" }).notNull().default(true),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const financeBills = sqliteTable("finance_bills", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  amount: real("amount").notNull(),
+  dueDay: integer("due_day").notNull().default(1), // 1-31
+  categoryId: integer("category_id").references(() => financeCategories.id, { onDelete: "set null" }),
+  recurring: integer("recurring", { mode: "boolean" }).notNull().default(true),
+  archivedAt: text("archived_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const financeBillPayments = sqliteTable(
+  "finance_bill_payments",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    billId: integer("bill_id")
+      .notNull()
+      .references(() => financeBills.id, { onDelete: "cascade" }),
+    month: text("month").notNull(), // yyyy-mm
+    paidAt: text("paid_at"),
+    amountPaid: real("amount_paid"),
+  },
+  (table) => [uniqueIndex("finance_bill_payments_unique").on(table.billId, table.month)]
+);
+
+export const financeLending = sqliteTable("finance_lending", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  counterpartyName: text("counterparty_name").notNull(),
+  direction: text("direction", { enum: FINANCE_LEND_DIRECTIONS }).notNull().default("lent"),
+  amount: real("amount").notNull(),
+  note: text("note"),
+  dueDate: text("due_date"),
+  status: text("status", { enum: FINANCE_LEND_STATUSES }).notNull().default("open"),
+  settledAt: text("settled_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+export const financeBudgetSettings = sqliteTable("finance_budget_settings", {
+  profileId: integer("profile_id")
+    .primaryKey()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  monthlyIncome: real("monthly_income").notNull().default(0),
+  paydayDay: integer("payday_day").notNull().default(1), // 1-31
+  dailyBudgetOverride: real("daily_budget_override"),
+  updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
 /** A record that a given reminder has been sent, so the scheduler is idempotent across ticks and restarts. */
 export const notificationSends = sqliteTable(
   "notification_sends",

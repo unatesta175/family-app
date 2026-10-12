@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ChevronDown, Check, ListChecks, MoonStar, Sprout, Target, Wallet, Sparkles, HeartHandshake } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type ModuleKey = "prayer" | "habits" | "goals" | "focus";
+export type ModuleKey = "prayer" | "habits" | "goals" | "focus" | "finance";
 
 const MODULES = [
   {
@@ -40,10 +40,17 @@ const MODULES = [
     icon: Sprout,
     tile: "bg-green-100 text-green-700",
   },
+  {
+    key: "finance",
+    label: "Finance",
+    hint: "Spending, bills & budget",
+    href: "/finance",
+    icon: Wallet,
+    tile: "bg-teal-100 text-teal-700",
+  },
 ] as const;
 
 const COMING_SOON = [
-  { label: "Finance", icon: Wallet },
   { label: "Sunnah", icon: Sparkles },
   { label: "Akhlaq", icon: HeartHandshake },
 ] as const;

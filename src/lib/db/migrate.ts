@@ -401,6 +401,110 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       lifespan_years INTEGER NOT NULL DEFAULT 80
     )`,
   },
+  // --- Finance module -----------------------------------------------------------------------
+  {
+    table: "finance_accounts",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL DEFAULT 'bank',
+      icon TEXT NOT NULL DEFAULT 'landmark',
+      color_theme TEXT NOT NULL DEFAULT 'midnight',
+      balance REAL NOT NULL DEFAULT 0,
+      is_shared INTEGER NOT NULL DEFAULT 1,
+      archived_at TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_accounts_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_accounts_profile_idx ON finance_accounts (profile_id)` },
+  {
+    table: "finance_categories",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_categories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      icon TEXT NOT NULL DEFAULT 'tag',
+      color TEXT NOT NULL DEFAULT 'indigo',
+      "group" TEXT NOT NULL DEFAULT 'want',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_categories_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_categories_profile_idx ON finance_categories (profile_id)` },
+  {
+    table: "finance_transactions",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL REFERENCES finance_accounts(id) ON DELETE CASCADE,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      category_id INTEGER REFERENCES finance_categories(id) ON DELETE SET NULL,
+      type TEXT NOT NULL DEFAULT 'expense',
+      amount REAL NOT NULL,
+      note TEXT,
+      date TEXT NOT NULL,
+      is_shared INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_transactions_profile_date_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_transactions_profile_date_idx ON finance_transactions (profile_id, date)` },
+  { table: "finance_transactions_account_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_transactions_account_idx ON finance_transactions (account_id)` },
+  {
+    table: "finance_bills",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_bills (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      due_day INTEGER NOT NULL DEFAULT 1,
+      category_id INTEGER REFERENCES finance_categories(id) ON DELETE SET NULL,
+      recurring INTEGER NOT NULL DEFAULT 1,
+      archived_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_bills_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_bills_profile_idx ON finance_bills (profile_id)` },
+  {
+    table: "finance_bill_payments",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_bill_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      bill_id INTEGER NOT NULL REFERENCES finance_bills(id) ON DELETE CASCADE,
+      month TEXT NOT NULL,
+      paid_at TEXT,
+      amount_paid REAL
+    )`,
+  },
+  {
+    table: "finance_bill_payments_idx",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS finance_bill_payments_unique ON finance_bill_payments (bill_id, month)`,
+  },
+  {
+    table: "finance_lending",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_lending (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      counterparty_name TEXT NOT NULL,
+      direction TEXT NOT NULL DEFAULT 'lent',
+      amount REAL NOT NULL,
+      note TEXT,
+      due_date TEXT,
+      status TEXT NOT NULL DEFAULT 'open',
+      settled_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_lending_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_lending_profile_idx ON finance_lending (profile_id)` },
+  {
+    table: "finance_budget_settings",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_budget_settings (
+      profile_id INTEGER PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+      monthly_income REAL NOT NULL DEFAULT 0,
+      payday_day INTEGER NOT NULL DEFAULT 1,
+      daily_budget_override REAL,
+      updated_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
 ];
 
 /** Runs once at server startup (see src/instrumentation.ts) to self-heal schema drift. */
@@ -457,5 +561,12 @@ export async function runStartupMigrations() {
     await syncHabitCategoriesOnce();
   } catch (err) {
     console.error("[migrate] starter habit seeding failed", err);
+  }
+
+  try {
+    const { seedStarterFinanceCategoriesOnce } = await import("@/lib/db/repo-finance");
+    await seedStarterFinanceCategoriesOnce();
+  } catch (err) {
+    console.error("[migrate] starter finance category seeding failed", err);
   }
 }

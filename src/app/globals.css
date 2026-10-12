@@ -699,6 +699,62 @@ html:has(.habits-app) {
   --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
 }
 
+/*
+ * Finance module theme: deep teal and money-green. Calm but serious, since the whole point of this
+ * module is to make overspending visible. Sits on top of the habits tokens like Goals/Focus do.
+ */
+.habits-theme.finance-theme {
+  --h-bg: #f2f7f6;
+  --h-surface: #ffffff;
+  --h-surface-2: #e7f1ef;
+  --h-border: #d6e6e2;
+  --h-fg: #0c201c;
+  --h-muted: #5d7b74;
+  --h-brand: #0f766e;
+  --h-brand-fg: #ffffff;
+  --h-brand-soft: #d9f0ec;
+  --h-break: #dc2626;
+  --h-break-soft: #fee2e2;
+  --h-good: #059669;
+  --h-bad: #dc2626;
+  --h-shadow: 0 1px 2px rgb(12 32 28 / 0.04), 0 4px 16px rgb(12 32 28 / 0.06);
+}
+
+.dark .habits-theme.finance-theme {
+  --h-bg: #081614;
+  --h-surface: #0f211e;
+  --h-surface-2: #163029;
+  --h-border: #1f4038;
+  --h-fg: #e8f6f2;
+  --h-muted: #8fb3a9;
+  --h-brand: #2dd4bf;
+  --h-brand-fg: #052420;
+  --h-brand-soft: #123c34;
+  --h-break: #f87171;
+  --h-break-soft: #3a1414;
+  --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
+}
+
+/* Finance: the flippable account card. */
+.fin-flip-outer {
+  perspective: 1200px;
+}
+.fin-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.fin-flip-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.fin-flip-back {
+  transform: rotateY(180deg);
+}
+
 /* Focus: the finish celebration. All of it stands still for people who prefer reduced motion. */
 @keyframes fx-confetti {
   0% { transform: translate3d(0, -12vh, 0) rotate(0deg); opacity: 0; }

@@ -1,0 +1,169 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { FinanceModal } from "@/components/finance/finance-modal";
+import { saveTransactionAction, deleteTransactionAction } from "@/lib/finance-actions";
+import { FINANCE_TX_TYPES } from "@/lib/db/schema";
+import type { AccountRow, CategoryRow, TransactionRow } from "@/lib/db/repo-finance";
+import { todayIso } from "@/lib/date";
+import { cn } from "@/lib/utils";
+
+const TYPE_LABEL: Record<string, string> = { income: "Income", expense: "Expense", transfer: "Transfer" };
+
+export function TransactionFormButton({ accounts, categories }: { accounts: AccountRow[]; categories: CategoryRow[] }) {
+  const [open, setOpen] = useState(false);
+  if (accounts.length === 0) return null;
+  return (
+    <>
+      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+        <Plus className="h-4 w-4" />
+        Add
+      </Button>
+      <TransactionFormModal accounts={accounts} categories={categories} open={open} onClose={() => setOpen(false)} />
+    </>
+  );
+}
+
+export function TransactionFormModal({
+  tx,
+  accounts,
+  categories,
+  open,
+  onClose,
+}: {
+  tx?: TransactionRow;
+  accounts: AccountRow[];
+  categories: CategoryRow[];
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [accountId, setAccountId] = useState(tx?.accountId ?? accounts[0]?.id ?? 0);
+  const [categoryId, setCategoryId] = useState<number | null>(tx?.categoryId ?? null);
+  const [type, setType] = useState(tx?.type ?? "expense");
+  const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
+  const [note, setNote] = useState(tx?.note ?? "");
+  const [date, setDate] = useState(tx?.date ?? todayIso());
+  const [isShared, setIsShared] = useState(tx?.isShared ?? true);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  function submit() {
+    setError(null);
+    startTransition(async () => {
+      const res = await saveTransactionAction(tx?.id ?? null, {
+        accountId,
+        categoryId,
+        type,
+        amount: Number(amount) || 0,
+        note: note.trim() || null,
+        date,
+        isShared,
+      });
+      if (!res.ok) setError(res.error);
+      else onClose();
+    });
+  }
+
+  async function remove() {
+    if (!tx) return;
+    if (!confirm("Delete this transaction?")) return;
+    startTransition(async () => {
+      const res = await deleteTransactionAction(tx.id);
+      if (!res.ok) setError(res.error);
+      else onClose();
+    });
+  }
+
+  return (
+    <FinanceModal open={open} onClose={onClose} title={tx ? "Edit transaction" : "Add transaction"}>
+      <div className="flex flex-col gap-3">
+        <div className="flex gap-1.5">
+          {FINANCE_TX_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setType(t)}
+              className={cn(
+                "flex-1 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
+                type === t ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted"
+              )}
+            >
+              {TYPE_LABEL[t]}
+            </button>
+          ))}
+        </div>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+          <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" autoFocus />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Account</span>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(Number(e.target.value))}
+            className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
+          >
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {type !== "transfer" && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-bold text-h-muted">Category</span>
+            <select
+              value={categoryId ?? ""}
+              onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
+              className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
+            >
+              <option value="">None</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Date</span>
+          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Note</span>
+          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
+        </label>
+
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} className="h-4 w-4 accent-current" />
+          Visible to my partner
+        </label>
+
+        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+
+        <div className="flex items-center justify-between gap-2 pt-1">
+          {tx ? (
+            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-h-bad">
+              Delete
+            </button>
+          ) : (
+            <span />
+          )}
+          <Button type="button" onClick={submit} disabled={pending || !amount} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+            {pending ? "Saving…" : "Save"}
+          </Button>
+        </div>
+      </div>
+    </FinanceModal>
+  );
+}
