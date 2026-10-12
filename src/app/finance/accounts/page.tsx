@@ -2,7 +2,6 @@ import { Wallet } from "lucide-react";
 import { loadFinanceContext } from "@/lib/finance-data";
 import { AccountFormButton } from "@/components/finance/account-form";
 import { AccountCardClientList } from "@/components/finance/account-card-list";
-import { Card } from "@/components/finance/ui/card";
 
 export const metadata = { title: "Accounts" };
 
@@ -25,13 +24,13 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
       </div>
 
       {accounts.length === 0 ? (
-        <Card className="h-card items-center gap-3 border-h-border bg-h-surface p-8 py-8 text-center text-h-fg">
+        <div className="h-card flex flex-col items-center gap-3 p-8 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-h-brand-soft text-h-brand">
             <Wallet className="h-7 w-7" />
           </span>
           <p className="text-base font-extrabold">No accounts yet</p>
           <p className="mx-auto max-w-sm text-sm text-h-muted">Add your bank, e-wallet, or cash on hand to start tracking where your money lives.</p>
-        </Card>
+        </div>
       ) : (
         <AccountCardClientList accounts={accounts} readOnly={ctx.readOnly} />
       )}

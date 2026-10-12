@@ -13,8 +13,6 @@ import {
 import { addDays } from "@/lib/date";
 import { QuickAddButton } from "@/components/finance/quick-add";
 import { TransactionList } from "@/components/finance/transaction-list";
-import { Card } from "@/components/finance/ui/card";
-import { Badge } from "@/components/finance/ui/badge";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Dashboard" };
@@ -77,14 +75,14 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
       </div>
 
       {/* Today vs daily budget — the core overspend indicator */}
-      <Card className={cn("h-card gap-3 border-h-border bg-h-surface p-5 py-5 text-h-fg", overBudget && "ring-2 ring-h-bad")}>
+      <div className={cn("h-card flex flex-col gap-3 p-5", overBudget && "ring-2 ring-h-bad")}>
         <div className="flex items-center justify-between">
           <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Spent today</p>
           {overBudget && (
-            <Badge className="gap-1 border-transparent bg-h-break-soft text-[11px] text-h-bad">
+            <span className="flex items-center gap-1 rounded-full bg-h-break-soft px-2.5 py-1 text-[11px] font-extrabold text-h-bad">
               <AlertTriangle className="h-3 w-3" />
               Over budget
-            </Badge>
+            </span>
           )}
         </div>
         <p className={cn("text-4xl font-extrabold tabular-nums", overBudget ? "text-h-bad" : "text-h-fg")}>{money(todaySpend)}</p>
@@ -106,10 +104,10 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
             Set your monthly income to see a daily budget →
           </Link>
         )}
-      </Card>
+      </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <Card className="h-card gap-1 border-h-border bg-h-surface p-4 py-4 text-h-fg">
+        <div className="h-card flex flex-col gap-1 p-4">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
             <TrendingDown className="h-3.5 w-3.5" />
             Predicted tomorrow
@@ -118,31 +116,31 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
           <p className="text-[11px] text-h-muted">
             {prediction.confident ? "Based on your last 2-4 weeks, weekday-weighted." : "Not enough history yet — rough estimate only."}
           </p>
-        </Card>
-        <Card className="h-card gap-1 border-h-border bg-h-surface p-4 py-4 text-h-fg">
+        </div>
+        <div className="h-card flex flex-col gap-1 p-4">
           <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
             <CalendarClock className="h-3.5 w-3.5" />
             Payday
           </p>
           <p className="text-xl font-extrabold tabular-nums">{paydayDays === null ? "—" : paydayDays === 0 ? "Today" : `${paydayDays}d`}</p>
           <p className="text-[11px] text-h-muted">{paydayDays === null ? "Set payday in Settings" : "until your next payday"}</p>
-        </Card>
+        </div>
       </div>
 
       {runOutDay !== null && (
-        <Card className="h-card flex-row items-center gap-3 border-h-border border-l-4 border-l-h-bad bg-h-surface p-4 py-4 text-h-fg">
+        <div className="h-card flex items-center gap-3 border-l-4 border-l-h-bad p-4">
           <AlertTriangle className="h-5 w-5 shrink-0 text-h-bad" />
           <p className="text-sm font-bold">
             At this pace, you&apos;ll hit RM0 of this month&apos;s budget by day {runOutDay} of {dim}.
           </p>
-        </Card>
+        </div>
       )}
 
       {hasPartner && householdTotal !== null && (
-        <Card className="h-card flex-row items-center justify-between border-h-border bg-h-surface p-4 py-4 text-h-fg">
+        <div className="h-card flex items-center justify-between p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Household spent today (shared)</p>
           <p className="text-lg font-extrabold tabular-nums">{money(householdTotal)}</p>
-        </Card>
+        </div>
       )}
 
       {!ctx.readOnly && (
@@ -161,9 +159,9 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
             See all <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <Card className="h-card border-h-border bg-h-surface p-2 py-2 text-h-fg">
+        <div className="h-card p-2">
           <TransactionList transactions={recent} accounts={ctx.accounts} categories={ctx.categories} readOnly={ctx.readOnly} />
-        </Card>
+        </div>
       </section>
     </div>
   );

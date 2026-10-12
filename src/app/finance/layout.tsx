@@ -4,7 +4,6 @@ import { ModuleSwitcher } from "@/components/module-switcher";
 import { FinanceBottomNav, FinanceSidebar } from "@/components/finance/finance-nav";
 import { FinanceFamilyBar, FinanceViewingBanner } from "@/components/finance/finance-family-bar";
 import { HabitLogout, HabitThemeToggle } from "@/components/habits/habit-header-controls";
-import { TooltipProvider } from "@/components/finance/ui/tooltip";
 import { requireAuth } from "@/lib/auth";
 import { listFinanceMembers } from "@/lib/finance-data";
 
@@ -25,7 +24,6 @@ export default async function FinanceLayout({ children }: { children: React.Reac
   await requireAuth();
   const members = await listFinanceMembers();
   return (
-    <TooltipProvider delayDuration={200}>
     <div className="habits-theme finance-theme habits-app flex min-h-dvh flex-1 flex-col bg-h-bg text-h-fg">
       <div className="mx-auto flex w-full max-w-md flex-1 md:max-w-6xl md:flex-row">
         <Suspense>
@@ -54,6 +52,5 @@ export default async function FinanceLayout({ children }: { children: React.Reac
         </div>
       </div>
     </div>
-    </TooltipProvider>
   );
 }

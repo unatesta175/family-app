@@ -2,10 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/finance/ui/button";
-import { Input } from "@/components/finance/ui/input";
-import { Label } from "@/components/finance/ui/label";
-import { Switch } from "@/components/finance/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { ACCOUNT_TYPE_LABEL, CARD_THEME_GRADIENT, CARD_THEME_LABEL, FINANCE_ACCOUNT_ICONS } from "@/components/finance/finance-icons";
 import { saveAccountAction, deleteAccountAction } from "@/lib/finance-actions";
@@ -71,15 +69,15 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
   return (
     <FinanceModal open={open} onClose={onClose} title={account ? "Edit account" : "New account"}>
       <div className="flex flex-col gap-3">
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs font-bold text-h-muted">Name</Label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Name</span>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Maybank Savings" />
-        </div>
+        </label>
 
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs font-bold text-h-muted">Starting / current balance (RM)</Label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Starting / current balance (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} />
-        </div>
+        </label>
 
         <div className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">Type</span>
@@ -141,7 +139,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
         </div>
 
         <label className="flex items-center gap-2 text-sm font-semibold">
-          <Switch checked={isShared} onCheckedChange={setIsShared} />
+          <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} className="h-4 w-4 accent-current" />
           Visible to my partner
         </label>
 

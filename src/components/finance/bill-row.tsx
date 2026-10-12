@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import { AlertTriangle, Check } from "lucide-react";
 import { markBillPaidAction, markBillUnpaidAction } from "@/lib/finance-actions";
 import { BillFormModal } from "@/components/finance/bill-form";
-import { Badge } from "@/components/finance/ui/badge";
 import type { BillRow, BillPaymentRow, CategoryRow } from "@/lib/db/repo-finance";
 import { cn } from "@/lib/utils";
 
@@ -57,13 +56,8 @@ export function BillRowItem({
           <span className="truncate text-sm font-bold">{bill.name}</span>
           {overdue && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-h-bad" />}
         </span>
-        <span className="block text-[11px] font-semibold text-h-muted">Due day {bill.dueDay}</span>
+        <span className="block text-[11px] font-semibold text-h-muted">Due day {bill.dueDay}{overdue && " · overdue"}</span>
       </button>
-      {paid ? (
-        <Badge className="shrink-0 bg-h-good text-white">Paid</Badge>
-      ) : overdue ? (
-        <Badge variant="destructive" className="shrink-0 bg-h-bad">Overdue</Badge>
-      ) : null}
       <span className="shrink-0 text-sm font-extrabold tabular-nums">{money(payment?.amountPaid ?? bill.amount)}</span>
       {editing && <BillFormModal bill={bill} categories={categories} open onClose={() => setEditing(false)} />}
     </li>

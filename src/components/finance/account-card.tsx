@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import { Pencil } from "lucide-react";
 import type { AccountRow } from "@/lib/db/repo-finance";
 import { ACCOUNT_TYPE_LABEL, AccountIcon, CARD_THEME_FG, CARD_THEME_GRADIENT } from "@/components/finance/finance-icons";
-import { Badge } from "@/components/finance/ui/badge";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -30,11 +29,7 @@ export function AccountCard({ account, readOnly, onEdit }: { account: AccountRow
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/15">
               <AccountIcon icon={account.icon} className="h-5 w-5" />
             </span>
-            {!account.isShared && (
-              <Badge variant="outline" className="border-transparent bg-black/15 text-[10px] font-bold" style={{ color: fg }}>
-                Private
-              </Badge>
-            )}
+            {!account.isShared && <span className="rounded-full bg-black/15 px-2 py-0.5 text-[10px] font-bold">Private</span>}
           </div>
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wider opacity-80">{account.name}</p>

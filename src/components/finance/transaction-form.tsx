@@ -2,17 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/finance/ui/button";
-import { Input } from "@/components/finance/ui/input";
-import { Label } from "@/components/finance/ui/label";
-import { Switch } from "@/components/finance/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/finance/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveTransactionAction, deleteTransactionAction } from "@/lib/finance-actions";
 import { FINANCE_TX_TYPES } from "@/lib/db/schema";
@@ -105,61 +96,56 @@ export function TransactionFormModal({
           ))}
         </div>
 
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs font-bold text-h-muted">Amount (RM)</Label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" autoFocus />
-        </div>
+        </label>
 
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs font-bold text-h-muted">Account</Label>
-          <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((a) => (
-                <SelectItem key={a.id} value={String(a.id)}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Account</span>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(Number(e.target.value))}
+            className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
+          >
+            {accounts.map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.name}
+              </option>
+            ))}
+          </select>
+        </label>
 
         {type !== "transfer" && (
-          <div className="flex flex-col gap-1">
-            <Label className="text-xs font-bold text-h-muted">Category</Label>
-            <Select
-              value={categoryId !== null ? String(categoryId) : "none"}
-              onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-bold text-h-muted">Category</span>
+            <select
+              value={categoryId ?? ""}
+              onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
+              className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
             >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <option value="">None</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
         )}
 
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs font-bold text-h-muted">Date</Label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Date</span>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
+        </label>
 
-        <div className="flex flex-col gap-1">
-          <Label className="text-xs font-bold text-h-muted">Note</Label>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-bold text-h-muted">Note</span>
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
-        </div>
+        </label>
 
         <label className="flex items-center gap-2 text-sm font-semibold">
-          <Switch checked={isShared} onCheckedChange={setIsShared} />
+          <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} className="h-4 w-4 accent-current" />
           Visible to my partner
         </label>
 

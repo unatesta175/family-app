@@ -4,7 +4,6 @@ import { getAccountsByProfiles, getTransactionsByProfiles } from "@/lib/db/repo-
 import { colorHex } from "@/lib/habits";
 import { addDays } from "@/lib/date";
 import { NetWorthTrendChart, CategoryBreakdownChart, type NetWorthPoint, type CategorySlice } from "@/components/finance/net-worth-chart";
-import { Card } from "@/components/finance/ui/card";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Net worth" };
@@ -89,9 +88,9 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
         )}
       </div>
 
-      <Card className="h-card border-h-border bg-h-surface p-4 py-4 text-h-fg">
+      <div className="h-card p-4">
         <NetWorthTrendChart series={points} />
-      </Card>
+      </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Avg daily spend" value={money(avgDaily)} />
@@ -102,9 +101,9 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
 
       <section className="flex flex-col gap-2">
         <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Spend by category (30 days)</h2>
-        <Card className="h-card border-h-border bg-h-surface p-4 py-4 text-h-fg">
+        <div className="h-card p-4">
           {slices.length === 0 ? <p className="text-sm text-h-muted">No spending recorded yet.</p> : <CategoryBreakdownChart slices={slices} />}
-        </Card>
+        </div>
       </section>
     </div>
   );
@@ -112,10 +111,10 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
   return (
-    <Card className="h-card gap-1 border-h-border bg-h-surface p-3 py-3 text-h-fg">
+    <div className="h-card flex flex-col gap-1 p-3">
       <p className="text-[10px] font-bold uppercase tracking-wider text-h-muted">{label}</p>
       <p className={cn("text-lg font-extrabold tabular-nums", tone === "bad" && "text-h-bad", tone === "good" && "text-h-good")}>{value}</p>
       {sub && <p className="text-[10px] text-h-muted">{sub}</p>}
-    </Card>
+    </div>
   );
 }

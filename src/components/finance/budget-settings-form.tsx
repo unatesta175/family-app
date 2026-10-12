@@ -1,10 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button } from "@/components/finance/ui/button";
-import { Input } from "@/components/finance/ui/input";
-import { Label } from "@/components/finance/ui/label";
-import { Card } from "@/components/finance/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { saveBudgetSettingsAction } from "@/lib/finance-actions";
 import type { BudgetSettingsRow } from "@/lib/db/repo-finance";
 
@@ -31,24 +29,24 @@ export function BudgetSettingsForm({ settings }: { settings: BudgetSettingsRow |
   }
 
   return (
-    <Card className="h-card gap-3 border-h-border bg-h-surface p-4 py-4 text-h-fg">
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs font-bold text-h-muted">Monthly income (RM)</Label>
+    <div className="h-card flex flex-col gap-3 p-4">
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-bold text-h-muted">Monthly income (RM)</span>
         <Input type="number" inputMode="decimal" step="0.01" value={monthlyIncome} onChange={(e) => setMonthlyIncome(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs font-bold text-h-muted">Payday (day of month)</Label>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-bold text-h-muted">Payday (day of month)</span>
         <Input type="number" min={1} max={31} value={paydayDay} onChange={(e) => setPaydayDay(e.target.value)} />
-      </div>
-      <div className="flex flex-col gap-1">
-        <Label className="text-xs font-bold text-h-muted">Daily budget override (RM, optional)</Label>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-xs font-bold text-h-muted">Daily budget override (RM, optional)</span>
         <Input type="number" inputMode="decimal" step="0.01" value={override} onChange={(e) => setOverride(e.target.value)} placeholder="Leave empty to use income ÷ days in month" />
-      </div>
+      </label>
       {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
       {saved && !error && <p className="text-xs font-semibold text-h-good">Saved.</p>}
       <Button type="button" onClick={submit} disabled={pending} className="self-start bg-h-brand text-h-brand-fg hover:opacity-90">
         {pending ? "Saving…" : "Save"}
       </Button>
-    </Card>
+    </div>
   );
 }
