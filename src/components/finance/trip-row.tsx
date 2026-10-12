@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { TripFormModal } from "@/components/finance/trip-form";
+import { Progress } from "@/components/finance/ui/progress";
 import type { TripRow } from "@/lib/db/repo-finance";
 import { cn } from "@/lib/utils";
 
@@ -26,9 +27,7 @@ export function TripRowItem({ trip, spend, readOnly }: { trip: TripRow; spend: n
           <span className="block text-[11px] font-semibold text-h-muted">of {money(trip.budget)}</span>
         </div>
       </button>
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-h-surface2">
-        <div className={cn("h-full rounded-full", over ? "bg-h-bad" : "bg-h-brand")} style={{ width: `${pct}%` }} />
-      </div>
+      <Progress value={pct} className="mt-2 h-1.5" indicatorClassName={over ? "bg-h-bad" : "bg-h-brand"} />
       {editing && <TripFormModal trip={trip} open onClose={() => setEditing(false)} />}
     </li>
   );

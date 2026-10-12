@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
+import { Switch } from "@/components/finance/ui/switch";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveBillAction, deleteBillAction } from "@/lib/finance-actions";
 import type { BillRow, CategoryRow } from "@/lib/db/repo-finance";
@@ -72,18 +74,23 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">Category</span>
-          <select value={categoryId ?? ""} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)} className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm">
-            <option value="">None</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
+            <SelectTrigger>
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
-        <label className="flex items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="h-4 w-4 accent-current" />
+        <label className="flex items-center justify-between gap-2 text-sm font-semibold">
           Recurs every month
+          <Switch checked={recurring} onCheckedChange={setRecurring} />
         </label>
         {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
         <div className="flex items-center justify-between gap-2 pt-1">

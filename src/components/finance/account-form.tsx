@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Eye, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
 import { FinanceModal } from "@/components/finance/finance-modal";
+import { Switch } from "@/components/finance/ui/switch";
 import {
   ACCOUNT_TYPE_LABEL,
   AccountIcon,
@@ -224,9 +225,9 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
           </div>
         </div>
 
-        <label className="flex items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} className="h-4 w-4 accent-current" />
+        <label className="flex items-center justify-between gap-2 text-sm font-semibold">
           Visible to my partner
+          <Switch checked={isShared} onCheckedChange={setIsShared} />
         </label>
 
         {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}

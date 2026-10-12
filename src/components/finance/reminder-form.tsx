@@ -2,9 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
 import { FinanceModal } from "@/components/finance/finance-modal";
+import { Switch } from "@/components/finance/ui/switch";
 import { saveReminderAction, deleteReminderAction } from "@/lib/finance-actions";
 import type { ReminderRow } from "@/lib/db/repo-finance";
 import { todayIso } from "@/lib/date";
@@ -69,9 +70,9 @@ export function ReminderFormModal({ reminder, open, onClose }: { reminder?: Remi
           <span className="text-xs font-bold text-h-muted">Note</span>
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </label>
-        <label className="flex items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="h-4 w-4 accent-current" />
+        <label className="flex items-center justify-between gap-2 text-sm font-semibold">
           Recurring (yearly)
+          <Switch checked={recurring} onCheckedChange={setRecurring} />
         </label>
         {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
         <div className="flex items-center justify-between gap-2 pt-1">

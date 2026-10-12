@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveTemplateAction, deleteTemplateAction } from "@/lib/finance-actions";
 import type { AccountRow, CategoryRow, TemplateRow } from "@/lib/db/repo-finance";
@@ -79,34 +80,49 @@ export function TemplateFormModal({
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">Type</span>
-          <select value={type} onChange={(e) => setType(e.target.value as (typeof FINANCE_TX_TYPES)[number])} className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm">
-            {FINANCE_TX_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
+          <Select value={type} onValueChange={(v) => setType(v as (typeof FINANCE_TX_TYPES)[number])}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {FINANCE_TX_TYPES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">Account</span>
-          <select value={accountId} onChange={(e) => setAccountId(Number(e.target.value))} className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm">
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">Category</span>
-          <select value={categoryId ?? ""} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)} className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm">
-            <option value="">None</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
+            <SelectTrigger>
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">Amount (RM)</span>

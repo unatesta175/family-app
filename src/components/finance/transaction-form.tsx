@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
+import { Switch } from "@/components/finance/ui/switch";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveTransactionAction, deleteTransactionAction } from "@/lib/finance-actions";
 import { FINANCE_TX_TYPES } from "@/lib/db/schema";
@@ -107,52 +109,55 @@ export function TransactionFormModal({
 
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">Account</span>
-          <select
-            value={accountId}
-            onChange={(e) => setAccountId(Number(e.target.value))}
-            className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         {type !== "transfer" && (
           <label className="flex flex-col gap-1">
             <span className="text-xs font-bold text-h-muted">Category</span>
-            <select
-              value={categoryId ?? ""}
-              onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : null)}
-              className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
-            >
-              <option value="">None</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
+              <SelectTrigger>
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         )}
 
         {trips.length > 0 && type !== "transfer" && (
           <label className="flex flex-col gap-1">
             <span className="text-xs font-bold text-h-muted">Trip</span>
-            <select
-              value={tripId ?? ""}
-              onChange={(e) => setTripId(e.target.value ? Number(e.target.value) : null)}
-              className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
-            >
-              <option value="">None</option>
-              {trips.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
+              <SelectTrigger>
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {trips.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
         )}
 
@@ -166,9 +171,9 @@ export function TransactionFormModal({
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </label>
 
-        <label className="flex items-center gap-2 text-sm font-semibold">
-          <input type="checkbox" checked={isShared} onChange={(e) => setIsShared(e.target.checked)} className="h-4 w-4 accent-current" />
+        <label className="flex items-center justify-between gap-2 text-sm font-semibold">
           Visible to my partner
+          <Switch checked={isShared} onCheckedChange={setIsShared} />
         </label>
 
         {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}

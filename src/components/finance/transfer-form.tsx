@@ -2,8 +2,9 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { createTransferAction } from "@/lib/finance-actions";
 import { todayIso } from "@/lib/date";
@@ -52,32 +53,34 @@ function TransferFormModal({ accounts, onClose }: { accounts: AccountRow[]; onCl
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">From</span>
-          <select
-            value={fromAccountId}
-            onChange={(e) => setFromAccountId(Number(e.target.value))}
-            className="h-10 rounded-xl border border-h-border bg-h-surface px-3 text-sm font-semibold"
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <Select value={String(fromAccountId)} onValueChange={(v) => setFromAccountId(Number(v))}>
+            <SelectTrigger className="font-semibold">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-h-muted">To</span>
-          <select
-            value={toAccountId}
-            onChange={(e) => setToAccountId(Number(e.target.value))}
-            className="h-10 rounded-xl border border-h-border bg-h-surface px-3 text-sm font-semibold"
-          >
-            {accounts.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
+          <Select value={String(toAccountId)} onValueChange={(v) => setToAccountId(Number(v))}>
+            <SelectTrigger className="font-semibold">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((a) => (
+                <SelectItem key={a.id} value={String(a.id)}>
+                  {a.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </label>
 
         <label className="flex flex-col gap-1">

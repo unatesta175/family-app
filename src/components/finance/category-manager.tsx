@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Button } from "@/components/finance/ui/button";
 import { saveCategoryAction, deleteCategoryAction } from "@/lib/finance-actions";
 import { FINANCE_CATEGORY_GROUPS } from "@/lib/db/schema";
 import { FinanceCategoryIcon } from "@/components/finance/finance-icons";

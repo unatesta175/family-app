@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
+import { Switch } from "@/components/finance/ui/switch";
 import { saveBudgetSettingsAction } from "@/lib/finance-actions";
 import type { BudgetSettingsRow } from "@/lib/db/repo-finance";
 
@@ -49,7 +50,7 @@ export function BudgetSettingsForm({ settings }: { settings: BudgetSettingsRow |
           <span className="text-xs font-bold">Adaptive daily budget</span>
           <span className="text-[11px] text-h-muted">Today&apos;s allowance = remaining budget ÷ days left to payday. Overspend one day, tomorrow shrinks; underspend, tomorrow grows.</span>
         </span>
-        <input type="checkbox" checked={adaptiveBudget} onChange={(e) => setAdaptiveBudget(e.target.checked)} className="h-5 w-5 shrink-0 accent-h-brand" />
+        <Switch checked={adaptiveBudget} onCheckedChange={setAdaptiveBudget} />
       </label>
       {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
       {saved && !error && <p className="text-xs font-semibold text-h-good">Saved.</p>}

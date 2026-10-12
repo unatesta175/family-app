@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { saveMoneyPlanAllocationAction } from "@/lib/finance-actions";
+import { Progress } from "@/components/finance/ui/progress";
 import type { CategoryRow } from "@/lib/db/repo-finance";
-import { cn } from "@/lib/utils";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -54,9 +54,11 @@ export function MoneyPlanRow({
         />
         <span className="text-xs font-semibold text-h-muted">planned {pending && "· saving…"}</span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-h-surface2">
-        <div className={cn("h-full rounded-full", over ? "bg-h-bad" : near ? "bg-amber-500" : "bg-h-brand")} style={{ width: `${pct}%` }} />
-      </div>
+      <Progress
+        value={pct}
+        className="h-1.5"
+        indicatorClassName={over ? "bg-h-bad" : near ? "bg-amber-500" : "bg-h-brand"}
+      />
     </li>
   );
 }

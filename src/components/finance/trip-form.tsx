@@ -2,8 +2,8 @@
 
 import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Button } from "@/components/finance/ui/button";
+import { Input } from "@/components/finance/ui/input";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveTripAction, archiveTripAction, deleteTripAction } from "@/lib/finance-actions";
 import type { TripRow } from "@/lib/db/repo-finance";
