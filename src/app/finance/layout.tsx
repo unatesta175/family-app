@@ -5,6 +5,7 @@ import { FinanceBottomNav, FinanceSidebar } from "@/components/finance/finance-n
 import { FinanceFamilyBar, FinanceViewingBanner } from "@/components/finance/finance-family-bar";
 import { HabitLogout, HabitThemeToggle } from "@/components/habits/habit-header-controls";
 import { FinancePortalProvider } from "@/components/finance/ui/portal-context";
+import { TooltipProvider } from "@/components/finance/ui/tooltip";
 import { requireAuth } from "@/lib/auth";
 import { listFinanceMembers } from "@/lib/finance-data";
 
@@ -26,32 +27,34 @@ export default async function FinanceLayout({ children }: { children: React.Reac
   const members = await listFinanceMembers();
   return (
     <FinancePortalProvider className="habits-theme finance-theme habits-app flex min-h-dvh flex-1 flex-col bg-h-bg text-h-fg">
-      <div className="mx-auto flex w-full max-w-md flex-1 md:max-w-6xl md:flex-row">
-        <Suspense>
-          <FinanceSidebar />
-        </Suspense>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-h-bg/90 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:px-8">
-            <ModuleSwitcher current="finance" tone="habits" />
-            <div className="flex min-w-0 items-center gap-2">
-              <Suspense>
-                <FinanceFamilyBar members={members} />
-              </Suspense>
-              <HabitThemeToggle />
-              <HabitLogout />
-            </div>
-          </header>
-          <main className="flex-1 px-4 pb-28 pt-2 md:px-8 md:pb-12">
-            <Suspense>
-              <FinanceViewingBanner members={members} />
-            </Suspense>
-            {children}
-          </main>
+      <TooltipProvider>
+        <div className="mx-auto flex w-full max-w-md flex-1 md:max-w-6xl md:flex-row">
           <Suspense>
-            <FinanceBottomNav />
+            <FinanceSidebar />
           </Suspense>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <header className="sticky top-0 z-30 flex items-center justify-between gap-2 bg-h-bg/90 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur md:px-8">
+              <ModuleSwitcher current="finance" tone="habits" />
+              <div className="flex min-w-0 items-center gap-2">
+                <Suspense>
+                  <FinanceFamilyBar members={members} />
+                </Suspense>
+                <HabitThemeToggle />
+                <HabitLogout />
+              </div>
+            </header>
+            <main className="flex-1 px-4 pb-28 pt-2 md:px-8 md:pb-12">
+              <Suspense>
+                <FinanceViewingBanner members={members} />
+              </Suspense>
+              {children}
+            </main>
+            <Suspense>
+              <FinanceBottomNav />
+            </Suspense>
+          </div>
         </div>
-      </div>
+      </TooltipProvider>
     </FinancePortalProvider>
   );
 }
