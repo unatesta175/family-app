@@ -723,6 +723,40 @@ html:has(.habits-app) {
   --h-good: #16a34a;
   --h-bad: #dc2626;
   --h-shadow: 0 1px 2px rgb(9 9 11 / 0.03), 0 2px 8px rgb(9 9 11 / 0.04);
+
+  /*
+   * Real shadcn/ui token set (zinc base), scoped to `.finance-theme` only — NOT a rename of the
+   * `--h-*` tokens above (those stay, other Finance code may still read them). This is the set
+   * `src/components/finance/ui/*` and the Finance pages are retheme'd onto, so `bg-card`,
+   * `text-muted-foreground`, `border-border` etc. carry the same meaning here as in a stock
+   * shadcn app. Overriding `--background`/`--foreground` here is intentional and safe: CSS custom
+   * properties cascade, so only elements inside `.finance-theme` see these values — the rest of
+   * the app keeps the root `--background`/`--foreground` untouched.
+   */
+  --background: #ffffff;
+  --foreground: #09090b;
+  --card: #f4f4f5;
+  --card-foreground: #09090b;
+  --popover: #ffffff;
+  --popover-foreground: #09090b;
+  --primary: #18181b;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #e4e4e7;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --warning: #dc2626;
+  --warning-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #18181b;
+  --radius: 0.75rem;
 }
 
 .dark .habits-theme.finance-theme {
@@ -740,6 +774,61 @@ html:has(.habits-app) {
   --h-good: #4ade80;
   --h-bad: #f87171;
   --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
+
+  --background: #0a0a0b;
+  --foreground: #fafafa;
+  --card: #141416;
+  --card-foreground: #fafafa;
+  --popover: #141416;
+  --popover-foreground: #fafafa;
+  --primary: #fafafa;
+  --primary-foreground: #09090b;
+  --secondary: #1c1c1f;
+  --secondary-foreground: #fafafa;
+  --muted: #1c1c1f;
+  --muted-foreground: #a1a1aa;
+  --accent: #1c1c1f;
+  --accent-foreground: #fafafa;
+  --destructive: #f87171;
+  --destructive-foreground: #09090b;
+  --success: #4ade80;
+  --success-foreground: #09090b;
+  --warning: #f87171;
+  --warning-foreground: #09090b;
+  --border: #2a2a2e;
+  --input: #2a2a2e;
+  --ring: #fafafa;
+  --radius: 0.75rem;
+}
+
+/*
+ * Tailwind v4 utility mapping for the shadcn token set above. These `--color-*` names
+ * (`bg-card`, `text-muted-foreground`, `border-border`, etc.) are the standard shadcn utility
+ * vocabulary; the underlying CSS variables only ever get real values inside `.finance-theme`, so
+ * this has no effect outside Finance.
+ */
+@theme inline {
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
 }
 
 /* Finance: the flippable account card. */

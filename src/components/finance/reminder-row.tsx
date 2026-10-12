@@ -20,25 +20,25 @@ export function ReminderRowItem({ reminder, today, readOnly }: { reminder: Remin
   }
 
   return (
-    <li className={cn("flex items-center gap-3 py-3", overdue && "rounded-xl bg-h-break-soft px-2")}>
+    <li className={cn("flex items-center gap-3 py-3", overdue && "rounded-xl bg-destructive/10 px-2")}>
       <button
         type="button"
         disabled={readOnly || pending}
         onClick={toggle}
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-          done ? "border-h-good bg-h-good text-white" : "border-h-border text-transparent hover:border-h-brand"
+          done ? "border-success bg-success text-white" : "border-border text-transparent hover:border-primary"
         )}
         aria-label={done ? "Mark not done" : "Mark done"}
       >
         <Check className="h-4 w-4" />
       </button>
       <button type="button" disabled={readOnly} onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left disabled:cursor-default">
-        <span className={cn("flex items-center gap-1.5 text-sm font-bold", done && "text-h-muted line-through")}>
+        <span className={cn("flex items-center gap-1.5 text-sm font-bold", done && "text-muted-foreground line-through")}>
           {reminder.title}
-          {reminder.recurring && <Repeat className="h-3 w-3 shrink-0 text-h-muted" />}
+          {reminder.recurring && <Repeat className="h-3 w-3 shrink-0 text-muted-foreground" />}
         </span>
-        <span className="block text-[11px] font-semibold text-h-muted">
+        <span className="block text-[11px] font-semibold text-muted-foreground">
           Due {reminder.dueDate}
           {overdue && " · overdue"}
         </span>

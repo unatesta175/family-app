@@ -46,7 +46,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "habit-sheet-in fixed z-50 flex max-h-[92dvh] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl border border-h-border bg-h-surface p-5 shadow-2xl",
+          "habit-sheet-in fixed z-50 flex max-h-[92dvh] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl border border-border bg-card p-5 shadow-2xl",
           "bottom-0 left-1/2 -translate-x-1/2 md:bottom-auto md:left-1/2 md:top-1/2 md:max-w-lg md:-translate-y-1/2 md:rounded-3xl",
           className
         )}
@@ -56,7 +56,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute right-4 top-4 rounded-full p-1.5 text-h-muted outline-none hover:bg-h-surface2 hover:text-h-fg focus-visible:ring-2 focus-visible:ring-h-brand/50"
+            className="absolute right-4 top-4 rounded-full p-1.5 text-muted-foreground outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -91,7 +91,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-base font-extrabold text-h-fg", className)}
+      className={cn("text-base font-extrabold text-foreground", className)}
       {...props}
     />
   );
@@ -101,7 +101,7 @@ function DialogDescription({ className, ...props }: React.ComponentProps<typeof 
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-h-muted", className)}
+      className={cn("text-sm text-muted-foreground", className)}
       {...props}
     />
   );

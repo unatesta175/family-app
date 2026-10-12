@@ -38,14 +38,14 @@ export function BillRowItem({
   }
 
   return (
-    <li className={cn("flex items-center gap-3 py-3", overdue && "rounded-xl bg-h-break-soft px-2")}>
+    <li className={cn("flex items-center gap-3 py-3", overdue && "rounded-xl bg-destructive/10 px-2")}>
       <button
         type="button"
         disabled={readOnly || pending}
         onClick={toggle}
         className={cn(
           "flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-          paid ? "border-h-good bg-h-good text-white" : "border-h-border text-transparent hover:border-h-brand"
+          paid ? "border-success bg-success text-white" : "border-border text-transparent hover:border-primary"
         )}
         aria-label={paid ? "Mark unpaid" : "Mark paid"}
       >
@@ -54,9 +54,9 @@ export function BillRowItem({
       <button type="button" disabled={readOnly} onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left disabled:cursor-default">
         <span className="flex items-center gap-1.5">
           <span className="truncate text-sm font-bold">{bill.name}</span>
-          {overdue && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-h-bad" />}
+          {overdue && <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-destructive" />}
         </span>
-        <span className="block text-[11px] font-semibold text-h-muted">Due day {bill.dueDay}{overdue && " · overdue"}</span>
+        <span className="block text-[11px] font-semibold text-muted-foreground">Due day {bill.dueDay}{overdue && " · overdue"}</span>
       </button>
       <span className="shrink-0 text-sm font-extrabold tabular-nums">{money(payment?.amountPaid ?? bill.amount)}</span>
       {editing && <BillFormModal bill={bill} categories={categories} open onClose={() => setEditing(false)} />}

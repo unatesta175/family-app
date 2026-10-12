@@ -10,11 +10,11 @@ const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDi
 
 export function LendingList({ entries }: { entries: LendingRow[] }) {
   const [editing, setEditing] = useState<LendingRow | null>(null);
-  if (entries.length === 0) return <p className="py-8 text-center text-sm text-h-muted">No lending or borrowing tracked yet.</p>;
+  if (entries.length === 0) return <p className="py-8 text-center text-sm text-muted-foreground">No lending or borrowing tracked yet.</p>;
 
   return (
     <>
-      <ul className="flex flex-col divide-y divide-h-border">
+      <ul className="flex flex-col divide-y divide-border">
         {entries.map((e) => (
           <li key={e.id}>
             <button type="button" onClick={() => setEditing(e)} className="flex w-full items-center gap-3 py-3 text-left">
@@ -25,12 +25,12 @@ export function LendingList({ entries }: { entries: LendingRow[] }) {
                     {e.status}
                   </Badge>
                 </span>
-                <span className="block text-[11px] font-semibold text-h-muted">
+                <span className="block text-[11px] font-semibold text-muted-foreground">
                   {e.direction === "lent" ? "You lent" : "You borrowed"}
                   {e.dueDate && ` · due ${e.dueDate}`}
                 </span>
               </span>
-              <span className={cn("shrink-0 text-sm font-extrabold tabular-nums", e.direction === "lent" ? "text-h-good" : "text-h-bad")}>
+              <span className={cn("shrink-0 text-sm font-extrabold tabular-nums", e.direction === "lent" ? "text-success" : "text-destructive")}>
                 {money(e.amount)}
               </span>
             </button>

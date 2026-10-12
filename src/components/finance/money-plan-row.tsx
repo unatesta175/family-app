@@ -37,10 +37,10 @@ export function MoneyPlanRow({
     <li className="flex flex-col gap-1.5 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm font-bold">{category.name}</span>
-        <span className="text-xs font-semibold text-h-muted">{money(actual)} spent</span>
+        <span className="text-xs font-semibold text-muted-foreground">{money(actual)} spent</span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-xs font-bold text-h-muted">RM</span>
+        <span className="text-xs font-bold text-muted-foreground">RM</span>
         <input
           type="number"
           inputMode="decimal"
@@ -50,14 +50,14 @@ export function MoneyPlanRow({
           onChange={(e) => setValue(e.target.value)}
           onBlur={save}
           placeholder="0.00"
-          className="h-8 w-28 rounded-md border border-h-border bg-transparent px-2 text-sm"
+          className="h-8 w-28 rounded-md border border-border bg-transparent px-2 text-sm"
         />
-        <span className="text-xs font-semibold text-h-muted">planned {pending && "· saving…"}</span>
+        <span className="text-xs font-semibold text-muted-foreground">planned {pending && "· saving…"}</span>
       </div>
       <Progress
         value={pct}
         className="h-1.5"
-        indicatorClassName={over ? "bg-h-bad" : near ? "bg-amber-500" : "bg-h-brand"}
+        indicatorClassName={over ? "bg-destructive" : near ? "bg-warning" : "bg-primary"}
       />
     </li>
   );

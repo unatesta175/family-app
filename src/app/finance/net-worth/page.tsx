@@ -4,6 +4,7 @@ import { getAccountsByProfiles, getTransactionsByProfiles } from "@/lib/db/repo-
 import { colorHex } from "@/lib/habits";
 import { addDays } from "@/lib/date";
 import { NetWorthTrendChart, CategoryBreakdownChart, type NetWorthPoint, type CategorySlice } from "@/components/finance/net-worth-chart";
+import { Card } from "@/components/finance/ui/card";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Net worth" };
@@ -72,7 +73,7 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-4xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Net worth{combined ? " · household" : ""}</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Net worth{combined ? " · household" : ""}</p>
           <h1 className="text-2xl font-extrabold tracking-tight">{money(currentNetWorth)}</h1>
         </div>
         {!ctx.readOnly && ctx.household.length > 1 && (
@@ -80,7 +81,7 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
             href={`/finance/net-worth${combined ? "" : "?household=1"}`}
             className={cn(
               "rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-              combined ? "border-h-brand bg-h-brand text-h-brand-fg" : "border-h-border bg-h-surface text-h-muted"
+              combined ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"
             )}
           >
             {combined ? "Viewing combined" : "View combined"}
@@ -88,9 +89,9 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
         )}
       </div>
 
-      <div className="h-card p-4">
+      <Card className="p-4">
         <NetWorthTrendChart series={points} />
-      </div>
+      </Card>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <Stat label="Avg daily spend" value={money(avgDaily)} />
@@ -100,10 +101,10 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
       </div>
 
       <section className="flex flex-col gap-2">
-        <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Spend by category (30 days)</h2>
-        <div className="h-card p-4">
-          {slices.length === 0 ? <p className="text-sm text-h-muted">No spending recorded yet.</p> : <CategoryBreakdownChart slices={slices} />}
-        </div>
+        <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Spend by category (30 days)</h2>
+        <Card className="p-4">
+          {slices.length === 0 ? <p className="text-sm text-muted-foreground">No spending recorded yet.</p> : <CategoryBreakdownChart slices={slices} />}
+        </Card>
       </section>
     </div>
   );
@@ -111,10 +112,10 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
   return (
-    <div className="h-card flex flex-col gap-1 p-3">
-      <p className="text-[10px] font-bold uppercase tracking-wider text-h-muted">{label}</p>
-      <p className={cn("text-lg font-extrabold tabular-nums", tone === "bad" && "text-h-bad", tone === "good" && "text-h-good")}>{value}</p>
-      {sub && <p className="text-[10px] text-h-muted">{sub}</p>}
-    </div>
+    <Card className="flex flex-col gap-1 p-3">
+      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={cn("text-lg font-extrabold tabular-nums", tone === "bad" && "text-destructive", tone === "good" && "text-success")}>{value}</p>
+      {sub && <p className="text-[10px] text-muted-foreground">{sub}</p>}
+    </Card>
   );
 }

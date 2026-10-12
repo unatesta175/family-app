@@ -45,18 +45,18 @@ export default async function TransactionsPage({
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-5xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Transactions</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Transactions</p>
           <h1 className="text-2xl font-extrabold tracking-tight">{visible.length} entries</h1>
         </div>
         {!ctx.readOnly && <TransactionFormButton accounts={ctx.accounts} categories={ctx.categories} />}
       </div>
 
       <div className="flex items-center justify-center gap-3">
-        <Link href={href({ month: addMonths(from, -1).slice(0, 7) })} className="rounded-full border border-h-border p-1.5 text-h-muted hover:text-h-fg">
+        <Link href={href({ month: addMonths(from, -1).slice(0, 7) })} className="rounded-full border border-border p-1.5 text-muted-foreground hover:text-foreground">
           <ChevronLeft className="h-4 w-4" />
         </Link>
         <p className="text-sm font-extrabold">{monthLabel}</p>
-        <Link href={href({ month: addMonths(from, 1).slice(0, 7) })} className="rounded-full border border-h-border p-1.5 text-h-muted hover:text-h-fg">
+        <Link href={href({ month: addMonths(from, 1).slice(0, 7) })} className="rounded-full border border-border p-1.5 text-muted-foreground hover:text-foreground">
           <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
@@ -93,7 +93,7 @@ function FilterChip({ active, href, label }: { active: boolean; href: string; la
     <Link
       href={href}
       className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold capitalize transition-colors ${
-        active ? "border-h-brand bg-h-brand text-h-brand-fg" : "border-h-border bg-h-surface text-h-muted hover:text-h-fg"
+        active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground"
       }`}
     >
       {label}

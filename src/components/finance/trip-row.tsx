@@ -18,16 +18,16 @@ export function TripRowItem({ trip, spend, readOnly }: { trip: TripRow; spend: n
       <button type="button" disabled={readOnly} onClick={() => setEditing(true)} className="flex w-full items-center justify-between gap-3 text-left disabled:cursor-default">
         <div className="min-w-0">
           <span className="block truncate text-sm font-bold">{trip.name}</span>
-          <span className="block text-[11px] font-semibold text-h-muted">
+          <span className="block text-[11px] font-semibold text-muted-foreground">
             {trip.startDate} → {trip.endDate}
           </span>
         </div>
         <div className="shrink-0 text-right">
-          <span className={cn("block text-sm font-extrabold tabular-nums", over && "text-h-bad")}>{money(spend)}</span>
-          <span className="block text-[11px] font-semibold text-h-muted">of {money(trip.budget)}</span>
+          <span className={cn("block text-sm font-extrabold tabular-nums", over && "text-destructive")}>{money(spend)}</span>
+          <span className="block text-[11px] font-semibold text-muted-foreground">of {money(trip.budget)}</span>
         </div>
       </button>
-      <Progress value={pct} className="mt-2 h-1.5" indicatorClassName={over ? "bg-h-bad" : "bg-h-brand"} />
+      <Progress value={pct} className="mt-2 h-1.5" indicatorClassName={over ? "bg-destructive" : "bg-primary"} />
       {editing && <TripFormModal trip={trip} open onClose={() => setEditing(false)} />}
     </li>
   );

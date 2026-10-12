@@ -39,7 +39,7 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
 
   return (
     <div className="flex flex-col gap-2">
-      <ul className="flex flex-col divide-y divide-h-border">
+      <ul className="flex flex-col divide-y divide-border">
         {categories.map((c) => {
           return (
             <li key={c.id} className="flex items-center gap-3 py-2.5">
@@ -47,10 +47,10 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
                 <FinanceCategoryIcon icon={c.icon} className="h-4 w-4" />
               </span>
               <span className="min-w-0 flex-1 text-sm font-bold">{c.name}</span>
-              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold capitalize", c.group === "need" ? "bg-h-brand-soft text-h-brand" : "bg-h-surface2 text-h-muted")}>
+              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold capitalize", c.group === "need" ? "bg-accent text-primary" : "bg-muted text-muted-foreground")}>
                 {c.group}
               </span>
-              <button type="button" onClick={() => remove(c.id)} disabled={pending} className="text-h-muted hover:text-h-bad">
+              <button type="button" onClick={() => remove(c.id)} disabled={pending} className="text-muted-foreground hover:text-destructive">
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
             </li>
@@ -69,16 +69,16 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
                 onClick={() => setGroup(g)}
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs font-bold capitalize",
-                  group === g ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted"
+                  group === g ? "border-primary bg-accent text-primary" : "border-border text-muted-foreground"
                 )}
               >
                 {g}
               </button>
             ))}
           </div>
-          {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+          {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={add} disabled={pending || !name.trim()} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+            <Button type="button" size="sm" onClick={add} disabled={pending || !name.trim()} className="bg-primary text-primary-foreground hover:opacity-90">
               Add
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>
@@ -87,7 +87,7 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1.5 self-start pt-2 text-xs font-bold text-h-brand">
+        <button type="button" onClick={() => setAdding(true)} className="flex items-center gap-1.5 self-start pt-2 text-xs font-bold text-primary">
           <Plus className="h-3.5 w-3.5" />
           Add category
         </button>

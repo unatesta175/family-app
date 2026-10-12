@@ -2,6 +2,7 @@ import { PiggyBank } from "lucide-react";
 import { loadFinanceContext } from "@/lib/finance-data";
 import { getActualSpendByCategory, getMoneyPlanAllocations } from "@/lib/db/repo-finance";
 import { MoneyPlanRow } from "@/components/finance/money-plan-row";
+import { Card } from "@/components/finance/ui/card";
 
 export const metadata = { title: "Money Plan" };
 
@@ -20,24 +21,24 @@ export default async function MoneyPlanPage({ searchParams }: { searchParams: Pr
   return (
     <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Planning · {month}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Planning · {month}</p>
         <h1 className="text-2xl font-extrabold tracking-tight">Money Plan</h1>
-        <p className="mt-1 text-sm text-h-muted">
+        <p className="mt-1 text-sm text-muted-foreground">
           RM {totalActual.toFixed(2)} spent of RM {totalPlanned.toFixed(2)} planned this month.
         </p>
       </div>
 
       {ctx.categories.length === 0 ? (
-        <div className="h-card flex flex-col items-center gap-3 p-8 text-center">
-          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-h-brand-soft text-h-brand">
+        <Card className="flex flex-col items-center gap-3 p-8 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-primary">
             <PiggyBank className="h-7 w-7" />
           </span>
           <p className="text-base font-extrabold">No categories yet</p>
-          <p className="mx-auto max-w-sm text-sm text-h-muted">Add spending categories in Settings to start planning envelopes for each one.</p>
-        </div>
+          <p className="mx-auto max-w-sm text-sm text-muted-foreground">Add spending categories in Settings to start planning envelopes for each one.</p>
+        </Card>
       ) : (
-        <div className="h-card p-2">
-          <ul className="flex flex-col divide-y divide-h-border">
+        <Card className="p-2">
+          <ul className="flex flex-col divide-y divide-border">
             {ctx.categories.map((c) => (
               <MoneyPlanRow
                 key={c.id}
@@ -49,7 +50,7 @@ export default async function MoneyPlanPage({ searchParams }: { searchParams: Pr
               />
             ))}
           </ul>
-        </div>
+        </Card>
       )}
     </div>
   );

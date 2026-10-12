@@ -22,6 +22,7 @@ import { addDays } from "@/lib/date";
 import { QuickAddButton } from "@/components/finance/quick-add";
 import { TransactionList } from "@/components/finance/transaction-list";
 import { AccountHeroCarousel, type AccountStats } from "@/components/finance/account-hero-carousel";
+import { Card } from "@/components/finance/ui/card";
 import { cn } from "@/lib/utils";
 
 const APP_NAME = "Istiqamahly";
@@ -127,7 +128,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
   return (
     <div className="flex flex-col gap-5 md:mx-auto md:max-w-4xl">
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{ctx.readOnly ? "Partner's finances" : "Today"}</p>
+        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{ctx.readOnly ? "Partner's finances" : "Today"}</p>
         <h1 className="text-2xl font-extrabold tracking-tight">Finance</h1>
       </div>
 
@@ -138,15 +139,15 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
       {/* Safe to spend today — the single most actionable number: daily budget minus what's
           already spent today minus a daily slice set aside for upcoming unpaid bills. */}
       {safeToSpendToday !== null && (
-        <div className={cn("h-card flex flex-col gap-2 p-6", safeToSpendToday < 0 && "ring-2 ring-h-bad")}>
-          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-h-muted">
+        <Card className={cn("flex flex-col gap-2 p-6", safeToSpendToday < 0 && "ring-2 ring-destructive")}>
+          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
             <ShieldCheck className="h-3.5 w-3.5" />
             Safe to spend today
           </p>
-          <p className={cn("text-5xl font-extrabold tabular-nums tracking-tight", safeToSpendToday < 0 ? "text-h-bad" : "text-h-fg")}>
+          <p className={cn("text-5xl font-extrabold tabular-nums tracking-tight", safeToSpendToday < 0 ? "text-destructive" : "text-foreground")}>
             {money(Math.max(0, safeToSpendToday))}
           </p>
-          <p className="text-xs font-semibold text-h-muted">
+          <p className="text-xs font-semibold text-muted-foreground">
             {safeToSpendToday < 0
               ? `You're ${money(Math.abs(safeToSpendToday))} past what's safe for today.`
               : dailyReserve > 0
@@ -154,104 +155,104 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
                 : `${money(dailyBudget)}/day budget minus ${money(todaySpend)} spent so far.`}
             {ctx.budget?.adaptiveBudget && " (adaptive)"}
           </p>
-        </div>
+        </Card>
       )}
 
       {/* Today vs daily budget — the core overspend indicator */}
-      <div className={cn("h-card flex flex-col gap-3 p-5", overBudget && "ring-2 ring-h-bad")}>
+      <Card className={cn("flex flex-col gap-3 p-5", overBudget && "ring-2 ring-destructive")}>
         <div className="flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Spent today</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Spent today</p>
           {overBudget && (
-            <span className="flex items-center gap-1 rounded-full bg-h-break-soft px-2.5 py-1 text-[11px] font-extrabold text-h-bad">
+            <span className="flex items-center gap-1 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-extrabold text-destructive">
               <AlertTriangle className="h-3 w-3" />
               Over budget
             </span>
           )}
         </div>
-        <p className={cn("text-4xl font-extrabold tabular-nums", overBudget ? "text-h-bad" : "text-h-fg")}>{money(todaySpend)}</p>
+        <p className={cn("text-4xl font-extrabold tabular-nums", overBudget ? "text-destructive" : "text-foreground")}>{money(todaySpend)}</p>
         {dailyBudget > 0 ? (
           <>
-            <div className="h-2.5 w-full overflow-hidden rounded-full bg-h-surface2">
+            <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
               <div
-                className={cn("h-full rounded-full transition-all", overBudget ? "bg-h-bad" : "bg-h-brand")}
+                className={cn("h-full rounded-full transition-all", overBudget ? "bg-destructive" : "bg-primary")}
                 style={{ width: `${Math.min(100, pctOfBudget)}%` }}
               />
             </div>
-            <p className="text-xs font-semibold text-h-muted">
+            <p className="text-xs font-semibold text-muted-foreground">
               {pctOfBudget}% of your {money(dailyBudget)}/day budget
               {ctx.budget?.adaptiveBudget ? " (adaptive, recalculated daily)" : !ctx.budget?.dailyBudgetOverride && " (from monthly income ÷ days in month)"}
             </p>
           </>
         ) : (
-          <Link href="/finance/settings" className="text-xs font-bold text-h-brand">
+          <Link href="/finance/settings" className="text-xs font-bold text-primary">
             Set your monthly income to see a daily budget →
           </Link>
         )}
-      </div>
+      </Card>
 
       {/* Projected month-end savings/shortfall */}
       {projectedLeftover !== null && (
-        <div className={cn("h-card flex items-center justify-between gap-3 p-4", projectedLeftover < 0 && "ring-2 ring-h-bad")}>
+        <Card className={cn("flex items-center justify-between gap-3 p-4", projectedLeftover < 0 && "ring-2 ring-destructive")}>
           <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Projected by payday, at this pace</p>
-            <p className={cn("text-2xl font-extrabold tabular-nums", projectedLeftover < 0 ? "text-h-bad" : "text-h-good")}>
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Projected by payday, at this pace</p>
+            <p className={cn("text-2xl font-extrabold tabular-nums", projectedLeftover < 0 ? "text-destructive" : "text-success")}>
               {projectedLeftover < 0 ? `− ${money(Math.abs(projectedLeftover))}` : money(projectedLeftover)}
             </p>
           </div>
-          <p className="max-w-[45%] text-right text-[11px] font-semibold text-h-muted">
+          <p className="max-w-[45%] text-right text-[11px] font-semibold text-muted-foreground">
             {projectedLeftover < 0 ? "Projected shortfall before payday if this pace continues." : "Projected leftover if this pace continues."}
           </p>
-        </div>
+        </Card>
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        <div className="h-card flex flex-col gap-1 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
+        <Card className="flex flex-col gap-1 p-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <TrendingDown className="h-3.5 w-3.5" />
             Predicted tomorrow
           </p>
           <p className="text-xl font-extrabold tabular-nums">{money(prediction.amount)}</p>
-          <p className="text-[11px] text-h-muted">
+          <p className="text-[11px] text-muted-foreground">
             {prediction.confident ? "Based on your last 2-4 weeks, weekday-weighted." : "Not enough history yet — rough estimate only."}
           </p>
-        </div>
-        <div className="h-card flex flex-col gap-1 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
+        </Card>
+        <Card className="flex flex-col gap-1 p-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <CalendarClock className="h-3.5 w-3.5" />
             Payday
           </p>
           <p className="text-xl font-extrabold tabular-nums">{paydayDays === null ? "—" : paydayDays === 0 ? "Today" : `${paydayDays}d`}</p>
-          <p className="text-[11px] text-h-muted">{paydayDays === null ? "Set payday in Settings" : "until your next payday"}</p>
-        </div>
+          <p className="text-[11px] text-muted-foreground">{paydayDays === null ? "Set payday in Settings" : "until your next payday"}</p>
+        </Card>
       </div>
 
 {(runOutDay !== null || prediction.confident) && (
-        <div className="h-card flex items-center justify-between gap-3 p-4">
+        <Card className="flex items-center justify-between gap-3 p-4">
           <div className="flex items-center gap-3">
-            <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", runOutDay !== null ? "bg-h-bad" : "bg-h-good")} />
+            <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", runOutDay !== null ? "bg-destructive" : "bg-success")} />
             <p className="text-sm font-bold">
               {runOutDay !== null
                 ? `At this pace, you'll hit RM0 of this month's budget by day ${runOutDay} of ${dim} — tomorrow's spend is predicted at ${money(prediction.amount)}.`
                 : `On track this month. Tomorrow's spend is predicted at ${money(prediction.amount)}.`}
             </p>
           </div>
-          <Link href="/finance/transactions" className="shrink-0 text-xs font-bold text-h-brand">
+          <Link href="/finance/transactions" className="shrink-0 text-xs font-bold text-primary">
             Ask for advice →
           </Link>
-        </div>
+        </Card>
       )}
 
       {hasPartner && householdTotal !== null && (
-        <div className="h-card flex items-center justify-between p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Household spent today (shared)</p>
+        <Card className="flex items-center justify-between p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Household spent today (shared)</p>
           <p className="text-lg font-extrabold tabular-nums">{money(householdTotal)}</p>
-        </div>
+        </Card>
       )}
 
       {/* Day-of-week spending pattern */}
       {weekdayPattern.length > 0 && (
-        <div className="h-card flex flex-col gap-1.5 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
+        <Card className="flex flex-col gap-1.5 p-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <TrendingUp className="h-3.5 w-3.5" />
             Spending pattern
           </p>
@@ -260,13 +261,13 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
               You spend about {money(w.avg)} on {WEEKDAY_NAMES[w.weekday]}s — well above your usual daily spend.
             </p>
           ))}
-        </div>
+        </Card>
       )}
 
       {/* Category spend trend */}
       {risingCategories.length > 0 && (
-        <div className="h-card flex flex-col gap-1.5 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
+        <Card className="flex flex-col gap-1.5 p-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
             <TrendingUp className="h-3.5 w-3.5" />
             Trending up this month
           </p>
@@ -275,35 +276,35 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
               {categoryNameById.get(t.categoryId) ?? "A category"} is up {Math.round(t.pctChange ?? 0)}% vs last month ({money(t.lastMonth)} → {money(t.thisMonth)}).
             </p>
           ))}
-        </div>
+        </Card>
       )}
 
       {/* Weekly spending digest */}
       {weeklyDigest.thisWeekTotal > 0 && (
-        <div className="h-card flex flex-col gap-2 p-4">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-h-muted">Last 7 days</p>
+        <Card className="flex flex-col gap-2 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Last 7 days</p>
           <div className="flex items-center justify-between">
             <p className="text-2xl font-extrabold tabular-nums">{money(weeklyDigest.thisWeekTotal)}</p>
             {weeklyDigest.pctChange !== null && (
-              <span className={cn("text-xs font-extrabold", weeklyDigest.pctChange > 0 ? "text-h-bad" : "text-h-good")}>
+              <span className={cn("text-xs font-extrabold", weeklyDigest.pctChange > 0 ? "text-destructive" : "text-success")}>
                 {weeklyDigest.pctChange > 0 ? "+" : ""}
                 {Math.round(weeklyDigest.pctChange)}% vs prior week
               </span>
             )}
           </div>
-          <p className="text-xs font-semibold text-h-muted">
+          <p className="text-xs font-semibold text-muted-foreground">
             {weeklyDigest.topCategoryId !== null && `Top category: ${categoryNameById.get(weeklyDigest.topCategoryId) ?? "—"}. `}
             {weeklyDigest.daysOverBudget > 0
               ? `Over budget on ${weeklyDigest.daysOverBudget} of the last 7 days.`
               : "Within budget every day this week."}
           </p>
-        </div>
+        </Card>
       )}
 
       {!ctx.readOnly && (
         <div className="flex items-center gap-2">
           <QuickAddButton accounts={ctx.accounts} categories={ctx.categories} />
-          <Link href="/finance/transactions" className="text-xs font-bold text-h-muted hover:text-h-fg">
+          <Link href="/finance/transactions" className="text-xs font-bold text-muted-foreground hover:text-foreground">
             View all transactions
           </Link>
         </div>
@@ -311,14 +312,14 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-h-muted">Recent activity</h2>
-          <Link href="/finance/transactions" className="flex items-center gap-1 text-xs font-bold text-h-brand">
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Recent activity</h2>
+          <Link href="/finance/transactions" className="flex items-center gap-1 text-xs font-bold text-primary">
             See all <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
-        <div className="h-card p-2">
+        <Card className="p-2">
           <TransactionList transactions={recent} accounts={ctx.accounts} categories={ctx.categories} readOnly={ctx.readOnly} />
-        </div>
+        </Card>
       </section>
     </div>
   );

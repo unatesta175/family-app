@@ -2,6 +2,7 @@
 
 import { ArrowLeftRight } from "lucide-react";
 import { TransferFormButton } from "@/components/finance/transfer-form";
+import { Card } from "@/components/finance/ui/card";
 import type { AccountRow, TransactionRow } from "@/lib/db/repo-finance";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -31,20 +32,20 @@ export function TransfersPanel({
   }
 
   return (
-    <div className="h-card flex flex-col gap-3 p-4">
+    <Card className="flex flex-col gap-3 p-4">
       {!readOnly && <TransferFormButton accounts={accounts} />}
       {pairs.length === 0 ? (
         <div className="flex flex-col items-center gap-2 py-6 text-center">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-h-surface2 text-h-muted">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
             <ArrowLeftRight className="h-5 w-5" />
           </span>
-          <p className="text-xs font-semibold text-h-muted">No transfers yet</p>
+          <p className="text-xs font-semibold text-muted-foreground">No transfers yet</p>
         </div>
       ) : (
-        <ul className="flex flex-col divide-y divide-h-border">
+        <ul className="flex flex-col divide-y divide-border">
           {pairs.map((p, i) => (
             <li key={i} className="flex items-center gap-2 py-2.5 text-xs">
-              <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-h-muted" />
+              <ArrowLeftRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1 truncate font-bold">
                 {accountName.get(p.accountIds[0]) ?? "—"} → {accountName.get(p.accountIds[1]) ?? "—"}
               </span>
@@ -53,6 +54,6 @@ export function TransfersPanel({
           ))}
         </ul>
       )}
-    </div>
+    </Card>
   );
 }

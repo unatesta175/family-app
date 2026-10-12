@@ -34,7 +34,7 @@ export function TemplateRowItem({
     <li className="flex items-center gap-3 py-3">
       <button type="button" disabled={readOnly} onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left disabled:cursor-default">
         <span className="block truncate text-sm font-bold">{template.name}</span>
-        <span className="block text-[11px] font-semibold text-h-muted">
+        <span className="block text-[11px] font-semibold text-muted-foreground">
           {account?.name ?? "—"} {category ? `· ${category.name}` : ""} · {template.type}
         </span>
       </button>
@@ -44,7 +44,7 @@ export function TemplateRowItem({
           type="button"
           onClick={use}
           disabled={pending}
-          className="flex items-center gap-1 rounded-full bg-h-brand-soft px-3 py-1.5 text-xs font-bold text-h-brand hover:opacity-90"
+          className="flex items-center gap-1 rounded-full bg-accent px-3 py-1.5 text-xs font-bold text-primary hover:opacity-90"
         >
           <Zap className="h-3.5 w-3.5" />
           Use
