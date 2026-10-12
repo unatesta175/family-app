@@ -13,7 +13,10 @@ import {
 import { addDays } from "@/lib/date";
 import { QuickAddButton } from "@/components/finance/quick-add";
 import { TransactionList } from "@/components/finance/transaction-list";
+import { AccountHeroCarousel, type AccountStats } from "@/components/finance/account-hero-carousel";
 import { cn } from "@/lib/utils";
+
+const APP_NAME = "Istiqamahly";
 
 export const metadata = { title: "Dashboard" };
 
@@ -55,6 +58,16 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
 
   const recent = visibleTx.slice(0, 8);
 
+  const monthTx = visibleTx.filter((t) => t.date >= monthStart && t.date <= today);
+  const statsByAccount = new Map<number, AccountStats>();
+  for (const t of monthTx) {
+    const entry = statsByAccount.get(t.accountId) ?? { income: 0, spending: 0 };
+    if (t.type === "income") entry.income += t.amount;
+    else if (t.type === "expense") entry.spending += t.amount;
+    statsByAccount.set(t.accountId, entry);
+  }
+  const heroAccounts = ctx.accounts.filter((a) => !a.archivedAt);
+
   const hasPartner = ctx.household.length > 1;
   const householdTotal = hasPartner
     ? await (async () => {
@@ -73,6 +86,10 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
         <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{ctx.readOnly ? "Partner's finances" : "Today"}</p>
         <h1 className="text-2xl font-extrabold tracking-tight">Finance</h1>
       </div>
+
+      {heroAccounts.length > 0 && (
+        <AccountHeroCarousel accounts={heroAccounts} statsByAccount={statsByAccount} appName={APP_NAME} />
+      )}
 
       {/* Today vs daily budget — the core overspend indicator */}
       <div className={cn("h-card flex flex-col gap-3 p-5", overBudget && "ring-2 ring-h-bad")}>
@@ -127,12 +144,19 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
         </div>
       </div>
 
-      {runOutDay !== null && (
-        <div className="h-card flex items-center gap-3 border-l-4 border-l-h-bad p-4">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-h-bad" />
-          <p className="text-sm font-bold">
-            At this pace, you&apos;ll hit RM0 of this month&apos;s budget by day {runOutDay} of {dim}.
-          </p>
+{(runOutDay !== null || prediction.confident) && (
+        <div className="h-card flex items-center justify-between gap-3 p-4">
+          <div className="flex items-center gap-3">
+            <span className={cn("h-2.5 w-2.5 shrink-0 rounded-full", runOutDay !== null ? "bg-h-bad" : "bg-h-good")} />
+            <p className="text-sm font-bold">
+              {runOutDay !== null
+                ? `At this pace, you'll hit RM0 of this month's budget by day ${runOutDay} of ${dim} — tomorrow's spend is predicted at ${money(prediction.amount)}.`
+                : `On track this month. Tomorrow's spend is predicted at ${money(prediction.amount)}.`}
+            </p>
+          </div>
+          <Link href="/finance/transactions" className="shrink-0 text-xs font-bold text-h-brand">
+            Ask for advice →
+          </Link>
         </div>
       )}
 

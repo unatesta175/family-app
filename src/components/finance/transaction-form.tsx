@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { FinanceModal } from "@/components/finance/finance-modal";
 import { saveTransactionAction, deleteTransactionAction } from "@/lib/finance-actions";
 import { FINANCE_TX_TYPES } from "@/lib/db/schema";
-import type { AccountRow, CategoryRow, TransactionRow } from "@/lib/db/repo-finance";
+import type { AccountRow, CategoryRow, TransactionRow, TripRow } from "@/lib/db/repo-finance";
 import { todayIso } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
@@ -31,17 +31,20 @@ export function TransactionFormModal({
   tx,
   accounts,
   categories,
+  trips = [],
   open,
   onClose,
 }: {
   tx?: TransactionRow;
   accounts: AccountRow[];
   categories: CategoryRow[];
+  trips?: TripRow[];
   open: boolean;
   onClose: () => void;
 }) {
   const [accountId, setAccountId] = useState(tx?.accountId ?? accounts[0]?.id ?? 0);
   const [categoryId, setCategoryId] = useState<number | null>(tx?.categoryId ?? null);
+  const [tripId, setTripId] = useState<number | null>(tx?.tripId ?? null);
   const [type, setType] = useState(tx?.type ?? "expense");
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
   const [note, setNote] = useState(tx?.note ?? "");
@@ -56,6 +59,7 @@ export function TransactionFormModal({
       const res = await saveTransactionAction(tx?.id ?? null, {
         accountId,
         categoryId,
+        tripId,
         type,
         amount: Number(amount) || 0,
         note: note.trim() || null,
@@ -128,6 +132,24 @@ export function TransactionFormModal({
               {categories.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {trips.length > 0 && type !== "transfer" && (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-bold text-h-muted">Trip</span>
+            <select
+              value={tripId ?? ""}
+              onChange={(e) => setTripId(e.target.value ? Number(e.target.value) : null)}
+              className="h-10 rounded-md border border-h-border bg-transparent px-3 text-sm"
+            >
+              <option value="">None</option>
+              {trips.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name}
                 </option>
               ))}
             </select>

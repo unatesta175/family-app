@@ -8,7 +8,11 @@ import {
   financeBudgetSettings,
   financeCategories,
   financeLending,
+  financeMoneyPlanAllocations,
+  financeReminders,
+  financeTemplates,
   financeTransactions,
+  financeTrips,
   profiles,
 } from "@/lib/db/schema";
 import type {
@@ -27,6 +31,10 @@ export type BillRow = typeof financeBills.$inferSelect;
 export type BillPaymentRow = typeof financeBillPayments.$inferSelect;
 export type LendingRow = typeof financeLending.$inferSelect;
 export type BudgetSettingsRow = typeof financeBudgetSettings.$inferSelect;
+export type TripRow = typeof financeTrips.$inferSelect;
+export type TemplateRow = typeof financeTemplates.$inferSelect;
+export type MoneyPlanAllocationRow = typeof financeMoneyPlanAllocations.$inferSelect;
+export type ReminderRow = typeof financeReminders.$inferSelect;
 
 const SEED_FLAG = "finance_categories_seed_v1";
 
@@ -186,6 +194,7 @@ export async function getTransaction(id: number): Promise<TransactionRow | null>
 export type TransactionInput = {
   accountId: number;
   categoryId: number | null;
+  tripId?: number | null;
   type: FinanceTxType;
   amount: number;
   note: string | null;
@@ -221,6 +230,45 @@ async function applyBalanceDelta(accountId: number, type: FinanceTxType, amount:
     .update(financeAccounts)
     .set({ balance: sql`${financeAccounts.balance} + ${signed}` })
     .where(eq(financeAccounts.id, accountId));
+}
+
+/** A transfer between two of the same profile's accounts: an expense leg + a matching income leg, both type "transfer" so they're excluded from spend/income totals but update balances. */
+export async function createTransfer(
+  profileId: number,
+  input: { fromAccountId: number; toAccountId: number; amount: number; date: string; note: string | null }
+): Promise<{ from: TransactionRow; to: TransactionRow }> {
+  const [from] = await db
+    .insert(financeTransactions)
+    .values({
+      profileId,
+      accountId: input.fromAccountId,
+      categoryId: null,
+      tripId: null,
+      type: "transfer",
+      amount: input.amount,
+      note: input.note,
+      date: input.date,
+      isShared: false,
+    })
+    .returning();
+  const [to] = await db
+    .insert(financeTransactions)
+    .values({
+      profileId,
+      accountId: input.toAccountId,
+      categoryId: null,
+      tripId: null,
+      type: "transfer",
+      amount: input.amount,
+      note: input.note,
+      date: input.date,
+      isShared: false,
+    })
+    .returning();
+  // Transfer legs net out of the originating account and into the destination account.
+  await db.update(financeAccounts).set({ balance: sql`${financeAccounts.balance} - ${input.amount}` }).where(eq(financeAccounts.id, input.fromAccountId));
+  await db.update(financeAccounts).set({ balance: sql`${financeAccounts.balance} + ${input.amount}` }).where(eq(financeAccounts.id, input.toAccountId));
+  return { from, to };
 }
 
 // --- Bills -----------------------------------------------------------------------------------
@@ -399,4 +447,162 @@ export function projectRunOutDay(monthlyIncome: number, spentSoFar: number, curr
   const daysLeft = remaining / avgDailySpend;
   const runOutDay = currentDay + daysLeft;
   return runOutDay <= dim ? Math.ceil(runOutDay) : null;
+}
+
+// --- Templates (quick re-entry) ----------------------------------------------------------------
+
+export async function getTemplatesByProfile(profileId: number): Promise<TemplateRow[]> {
+  return db.select().from(financeTemplates).where(eq(financeTemplates.profileId, profileId)).orderBy(asc(financeTemplates.sortOrder), asc(financeTemplates.id));
+}
+
+export async function getTemplate(id: number): Promise<TemplateRow | null> {
+  const [row] = await db.select().from(financeTemplates).where(eq(financeTemplates.id, id));
+  return row ?? null;
+}
+
+export type TemplateInput = {
+  name: string;
+  accountId: number;
+  categoryId: number | null;
+  type: FinanceTxType;
+  amount: number;
+  note: string | null;
+};
+
+export async function createTemplate(profileId: number, input: TemplateInput): Promise<TemplateRow> {
+  const [max] = await db
+    .select({ max: sql<number>`coalesce(max(${financeTemplates.sortOrder}), -1)` })
+    .from(financeTemplates)
+    .where(eq(financeTemplates.profileId, profileId));
+  const [row] = await db.insert(financeTemplates).values({ profileId, ...input, sortOrder: (max?.max ?? -1) + 1 }).returning();
+  return row;
+}
+
+export async function updateTemplate(id: number, input: TemplateInput) {
+  await db.update(financeTemplates).set(input).where(eq(financeTemplates.id, id));
+}
+
+export async function deleteTemplate(id: number) {
+  await db.delete(financeTemplates).where(eq(financeTemplates.id, id));
+}
+
+// --- Trips ----------------------------------------------------------------------------------
+
+export async function getTripsByProfile(profileId: number): Promise<TripRow[]> {
+  return db.select().from(financeTrips).where(eq(financeTrips.profileId, profileId)).orderBy(desc(financeTrips.startDate), desc(financeTrips.id));
+}
+
+export async function getTrip(id: number): Promise<TripRow | null> {
+  const [row] = await db.select().from(financeTrips).where(eq(financeTrips.id, id));
+  return row ?? null;
+}
+
+export type TripInput = { name: string; startDate: string; endDate: string; budget: number };
+
+export async function createTrip(profileId: number, input: TripInput): Promise<TripRow> {
+  const [row] = await db.insert(financeTrips).values({ profileId, ...input }).returning();
+  return row;
+}
+
+export async function updateTrip(id: number, input: TripInput) {
+  await db.update(financeTrips).set(input).where(eq(financeTrips.id, id));
+}
+
+export async function archiveTrip(id: number) {
+  await db.update(financeTrips).set({ archivedAt: sql`(current_timestamp)` }).where(eq(financeTrips.id, id));
+}
+
+export async function deleteTrip(id: number) {
+  // Transactions tagged to this trip keep their trip_id as orphaned once the row is gone; detach first.
+  await db.update(financeTransactions).set({ tripId: null }).where(eq(financeTransactions.tripId, id));
+  await db.delete(financeTrips).where(eq(financeTrips.id, id));
+}
+
+/** Sum of expense transactions tagged to a set of trips. */
+export async function getTripSpend(tripIds: number[]): Promise<Map<number, number>> {
+  if (tripIds.length === 0) return new Map();
+  const rows = await db
+    .select({ tripId: financeTransactions.tripId, total: sql<number>`coalesce(sum(${financeTransactions.amount}), 0)` })
+    .from(financeTransactions)
+    .where(and(inArray(financeTransactions.tripId, tripIds), eq(financeTransactions.type, "expense")))
+    .groupBy(financeTransactions.tripId);
+  return new Map(rows.filter((r) => r.tripId !== null).map((r) => [r.tripId as number, r.total]));
+}
+
+// --- Money Plan (monthly envelope allocations) -----------------------------------------------
+
+export async function getMoneyPlanAllocations(profileId: number, month: string): Promise<MoneyPlanAllocationRow[]> {
+  return db
+    .select()
+    .from(financeMoneyPlanAllocations)
+    .where(and(eq(financeMoneyPlanAllocations.profileId, profileId), eq(financeMoneyPlanAllocations.month, month)));
+}
+
+export async function upsertMoneyPlanAllocation(profileId: number, categoryId: number, month: string, plannedAmount: number) {
+  await db
+    .insert(financeMoneyPlanAllocations)
+    .values({ profileId, categoryId, month, plannedAmount })
+    .onConflictDoUpdate({
+      target: [financeMoneyPlanAllocations.profileId, financeMoneyPlanAllocations.categoryId, financeMoneyPlanAllocations.month],
+      set: { plannedAmount },
+    });
+}
+
+export async function deleteMoneyPlanAllocation(id: number) {
+  await db.delete(financeMoneyPlanAllocations).where(eq(financeMoneyPlanAllocations.id, id));
+}
+
+export async function getMoneyPlanAllocation(id: number): Promise<MoneyPlanAllocationRow | null> {
+  const [row] = await db.select().from(financeMoneyPlanAllocations).where(eq(financeMoneyPlanAllocations.id, id));
+  return row ?? null;
+}
+
+/** Actual spend per category for a given profile+month, keyed by categoryId. */
+export async function getActualSpendByCategory(profileId: number, month: string): Promise<Map<number, number>> {
+  const rows = await db
+    .select({ categoryId: financeTransactions.categoryId, total: sql<number>`coalesce(sum(${financeTransactions.amount}), 0)` })
+    .from(financeTransactions)
+    .where(
+      and(
+        eq(financeTransactions.profileId, profileId),
+        eq(financeTransactions.type, "expense"),
+        gte(financeTransactions.date, `${month}-01`),
+        lte(financeTransactions.date, `${month}-31`)
+      )
+    )
+    .groupBy(financeTransactions.categoryId);
+  return new Map(rows.filter((r) => r.categoryId !== null).map((r) => [r.categoryId as number, r.total]));
+}
+
+// --- Reminders --------------------------------------------------------------------------------
+
+export async function getRemindersByProfile(profileId: number): Promise<ReminderRow[]> {
+  return db.select().from(financeReminders).where(eq(financeReminders.profileId, profileId)).orderBy(asc(financeReminders.dueDate), asc(financeReminders.id));
+}
+
+export async function getReminder(id: number): Promise<ReminderRow | null> {
+  const [row] = await db.select().from(financeReminders).where(eq(financeReminders.id, id));
+  return row ?? null;
+}
+
+export type ReminderInput = { title: string; note: string | null; dueDate: string; recurring: boolean };
+
+export async function createReminder(profileId: number, input: ReminderInput): Promise<ReminderRow> {
+  const [row] = await db.insert(financeReminders).values({ profileId, ...input }).returning();
+  return row;
+}
+
+export async function updateReminder(id: number, input: ReminderInput) {
+  await db.update(financeReminders).set(input).where(eq(financeReminders.id, id));
+}
+
+export async function setReminderDone(id: number, done: boolean) {
+  await db
+    .update(financeReminders)
+    .set({ doneAt: done ? sql`(current_timestamp)` : null })
+    .where(eq(financeReminders.id, id));
+}
+
+export async function deleteReminder(id: number) {
+  await db.delete(financeReminders).where(eq(financeReminders.id, id));
 }

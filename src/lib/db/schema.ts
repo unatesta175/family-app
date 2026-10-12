@@ -668,6 +668,22 @@ export const financeCategories = sqliteTable("finance_categories", {
     .default(sql`(current_timestamp)`),
 });
 
+/** A trip's spending pool: a date range and a total budget. Transactions can be tagged to it. */
+export const financeTrips = sqliteTable("finance_trips", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date").notNull(),
+  budget: real("budget").notNull().default(0),
+  archivedAt: text("archived_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
 export const financeTransactions = sqliteTable("finance_transactions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   accountId: integer("account_id")
@@ -677,6 +693,7 @@ export const financeTransactions = sqliteTable("finance_transactions", {
     .notNull()
     .references(() => profiles.id, { onDelete: "cascade" }),
   categoryId: integer("category_id").references(() => financeCategories.id, { onDelete: "set null" }),
+  tripId: integer("trip_id").references(() => financeTrips.id, { onDelete: "set null" }),
   type: text("type", { enum: FINANCE_TX_TYPES }).notNull().default("expense"),
   amount: real("amount").notNull(),
   note: text("note"),
@@ -742,6 +759,62 @@ export const financeBudgetSettings = sqliteTable("finance_budget_settings", {
   paydayDay: integer("payday_day").notNull().default(1), // 1-31
   dailyBudgetOverride: real("daily_budget_override"),
   updatedAt: text("updated_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+/** A saved transaction shape for quick re-entry (account, category, type, amount, note). */
+export const financeTemplates = sqliteTable("finance_templates", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  accountId: integer("account_id")
+    .notNull()
+    .references(() => financeAccounts.id, { onDelete: "cascade" }),
+  categoryId: integer("category_id").references(() => financeCategories.id, { onDelete: "set null" }),
+  type: text("type", { enum: FINANCE_TX_TYPES }).notNull().default("expense"),
+  amount: real("amount").notNull(),
+  note: text("note"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(current_timestamp)`),
+});
+
+/** Monthly envelope-style allocation: how much a profile plans to spend on a category that month. */
+export const financeMoneyPlanAllocations = sqliteTable(
+  "finance_money_plan_allocations",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => financeCategories.id, { onDelete: "cascade" }),
+    month: text("month").notNull(), // yyyy-mm
+    plannedAmount: real("planned_amount").notNull().default(0),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("finance_money_plan_unique").on(table.profileId, table.categoryId, table.month)]
+);
+
+/** A standalone reminder (title, due date, note, recurring, done), separate from recurring Bills. */
+export const financeReminders = sqliteTable("finance_reminders", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  profileId: integer("profile_id")
+    .notNull()
+    .references(() => profiles.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  note: text("note"),
+  dueDate: text("due_date").notNull(),
+  recurring: integer("recurring", { mode: "boolean" }).notNull().default(false),
+  doneAt: text("done_at"),
+  createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
 });

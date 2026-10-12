@@ -44,6 +44,8 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   // Pausing a running session (clock stops until resumed).
   { table: "focus_sessions", column: "paused_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN paused_seconds INTEGER NOT NULL DEFAULT 0" },
   { table: "focus_sessions", column: "paused_at", ddl: "ALTER TABLE focus_sessions ADD COLUMN paused_at INTEGER" },
+  // Finance: transactions can be tagged to a trip.
+  { table: "finance_transactions", column: "trip_id", ddl: "ALTER TABLE finance_transactions ADD COLUMN trip_id INTEGER REFERENCES finance_trips(id) ON DELETE SET NULL" },
 ];
 
 /**
@@ -505,6 +507,65 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       updated_at TEXT NOT NULL DEFAULT (current_timestamp)
     )`,
   },
+  {
+    table: "finance_trips",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_trips (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      start_date TEXT NOT NULL,
+      end_date TEXT NOT NULL,
+      budget REAL NOT NULL DEFAULT 0,
+      archived_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_trips_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_trips_profile_idx ON finance_trips (profile_id)` },
+  {
+    table: "finance_templates",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      account_id INTEGER NOT NULL REFERENCES finance_accounts(id) ON DELETE CASCADE,
+      category_id INTEGER REFERENCES finance_categories(id) ON DELETE SET NULL,
+      type TEXT NOT NULL DEFAULT 'expense',
+      amount REAL NOT NULL,
+      note TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_templates_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_templates_profile_idx ON finance_templates (profile_id)` },
+  {
+    table: "finance_money_plan_allocations",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_money_plan_allocations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      category_id INTEGER NOT NULL REFERENCES finance_categories(id) ON DELETE CASCADE,
+      month TEXT NOT NULL,
+      planned_amount REAL NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "finance_money_plan_unique",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS finance_money_plan_unique ON finance_money_plan_allocations (profile_id, category_id, month)`,
+  },
+  {
+    table: "finance_reminders",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_reminders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      note TEXT,
+      due_date TEXT NOT NULL,
+      recurring INTEGER NOT NULL DEFAULT 0,
+      done_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  { table: "finance_reminders_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_reminders_profile_idx ON finance_reminders (profile_id)` },
 ];
 
 /** Runs once at server startup (see src/instrumentation.ts) to self-heal schema drift. */

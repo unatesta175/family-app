@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { CreditCard, HandCoins, LayoutDashboard, Receipt, Settings, TrendingUp, Wallet } from "lucide-react";
+import { Bell, BookmarkPlus, CreditCard, HandCoins, LayoutDashboard, Luggage, PiggyBank, Receipt, Settings, TrendingUp, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ITEMS = [
@@ -13,7 +13,12 @@ const ITEMS = [
   { href: "/finance/net-worth", label: "Net worth", icon: TrendingUp },
 ] as const;
 
+/** "Planning" group, plus the other secondary links — shown in the sidebar and via FinanceMoreLinks on mobile. */
 const SIDEBAR_EXTRA = [
+  { href: "/finance/templates", label: "Templates", icon: BookmarkPlus },
+  { href: "/finance/trips", label: "Trips", icon: Luggage },
+  { href: "/finance/money-plan", label: "Money Plan", icon: PiggyBank },
+  { href: "/finance/reminders", label: "Reminders", icon: Bell },
   { href: "/finance/lending", label: "Lending", icon: HandCoins },
   { href: "/finance/settings", label: "Settings", icon: Settings },
 ] as const;

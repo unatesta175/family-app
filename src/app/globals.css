@@ -700,38 +700,41 @@ html:has(.habits-app) {
 }
 
 /*
- * Finance module theme: deep teal and money-green. Calm but serious, since the whole point of this
- * module is to make overspending visible. Sits on top of the habits tokens like Goals/Focus do.
+ * Finance module theme: restyled to match the Belanje reference — clean, light, minimal. White/
+ * near-white surfaces, near-black primary buttons/text, thin gray borders instead of heavy
+ * shadows. Sits on top of the habits tokens like Goals/Focus do.
  */
 .habits-theme.finance-theme {
-  --h-bg: #f2f7f6;
+  --h-bg: #fafafa;
   --h-surface: #ffffff;
-  --h-surface-2: #e7f1ef;
-  --h-border: #d6e6e2;
-  --h-fg: #0c201c;
-  --h-muted: #5d7b74;
-  --h-brand: #0f766e;
+  --h-surface-2: #f4f4f5;
+  --h-border: #e4e4e7;
+  --h-fg: #09090b;
+  --h-muted: #71717a;
+  --h-brand: #18181b;
   --h-brand-fg: #ffffff;
-  --h-brand-soft: #d9f0ec;
+  --h-brand-soft: #f4f4f5;
   --h-break: #dc2626;
-  --h-break-soft: #fee2e2;
-  --h-good: #059669;
+  --h-break-soft: #fef2f2;
+  --h-good: #16a34a;
   --h-bad: #dc2626;
-  --h-shadow: 0 1px 2px rgb(12 32 28 / 0.04), 0 4px 16px rgb(12 32 28 / 0.06);
+  --h-shadow: 0 1px 2px rgb(9 9 11 / 0.03), 0 2px 8px rgb(9 9 11 / 0.04);
 }
 
 .dark .habits-theme.finance-theme {
-  --h-bg: #081614;
-  --h-surface: #0f211e;
-  --h-surface-2: #163029;
-  --h-border: #1f4038;
-  --h-fg: #e8f6f2;
-  --h-muted: #8fb3a9;
-  --h-brand: #2dd4bf;
-  --h-brand-fg: #052420;
-  --h-brand-soft: #123c34;
+  --h-bg: #0a0a0b;
+  --h-surface: #141416;
+  --h-surface-2: #1c1c1f;
+  --h-border: #2a2a2e;
+  --h-fg: #fafafa;
+  --h-muted: #a1a1aa;
+  --h-brand: #fafafa;
+  --h-brand-fg: #09090b;
+  --h-brand-soft: #1c1c1f;
   --h-break: #f87171;
-  --h-break-soft: #3a1414;
+  --h-break-soft: #2a1414;
+  --h-good: #4ade80;
+  --h-bad: #f87171;
   --h-shadow: 0 1px 2px rgb(0 0 0 / 0.35), 0 4px 16px rgb(0 0 0 / 0.3);
 }
 
