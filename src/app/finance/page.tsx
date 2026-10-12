@@ -20,6 +20,7 @@ import {
 } from "@/lib/db/repo-finance";
 import { addDays } from "@/lib/date";
 import { QuickAddButton } from "@/components/finance/quick-add";
+import { TransactionFormButton } from "@/components/finance/transaction-form";
 import { TransactionList } from "@/components/finance/transaction-list";
 import { AccountHeroCarousel, type AccountStats } from "@/components/finance/account-hero-carousel";
 import { Badge } from "@/components/finance/ui/badge";
@@ -31,6 +32,13 @@ const APP_NAME = "Istiqamahly";
 export const metadata = { title: "Dashboard" };
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+function greeting(hour: number) {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 20) return "Good evening";
+  return "Good night";
+}
 
 export default async function FinanceDashboardPage({ searchParams }: { searchParams: Promise<{ member?: string }> }) {
   const sp = await searchParams;
@@ -114,6 +122,9 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
   }
   const heroAccounts = ctx.accounts.filter((a) => !a.archivedAt);
 
+  const viewerName = ctx.household.find((p) => p.id === ctx.viewerId)?.name ?? "";
+  const dateLabel = new Date(`${today}T00:00:00`).toLocaleDateString("en-MY", { weekday: "long", day: "numeric", month: "long" });
+
   const hasPartner = ctx.household.length > 1;
   const householdTotal = hasPartner
     ? await (async () => {
@@ -127,21 +138,28 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
     : null;
 
   return (
-    <div className="flex flex-col gap-5 md:mx-auto md:max-w-4xl">
-      <div>
-        <h1 className="text-base font-medium">Finance</h1>
-        <p className="text-sm text-muted-foreground">{ctx.readOnly ? "Partner's finances" : "Today"}</p>
+    <div className="flex flex-col gap-5 md:mx-auto md:max-w-5xl">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            {ctx.readOnly ? `${viewerName ? viewerName + "'s view of " : ""}partner's finances` : `${greeting(new Date().getHours())}, ${viewerName}`}
+          </h1>
+          <p className="text-sm text-muted-foreground">{dateLabel}</p>
+        </div>
+        {!ctx.readOnly && <TransactionFormButton accounts={ctx.accounts} categories={ctx.categories} label="Add transaction" />}
       </div>
 
-      {heroAccounts.length > 0 && (
-        <AccountHeroCarousel accounts={heroAccounts} statsByAccount={statsByAccount} appName={APP_NAME} />
-      )}
+      {/* Hero: account card paired with today's single most actionable number, side by side on
+          desktop — mirrors a typical finance-app home layout (account card + "this period" detail). */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {heroAccounts.length > 0 && (
+          <AccountHeroCarousel accounts={heroAccounts} statsByAccount={statsByAccount} appName={APP_NAME} />
+        )}
 
-      {/* Safe to spend today — the single most actionable number: daily budget minus what's
-          already spent today minus a daily slice set aside for upcoming unpaid bills. */}
-      <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @md/main:grid-cols-2">
+        {/* Safe to spend today — the single most actionable number: daily budget minus what's
+            already spent today minus a daily slice set aside for upcoming unpaid bills. */}
         {safeToSpendToday !== null && (
-          <Card className={cn("@container/card", safeToSpendToday < 0 && "ring-2 ring-destructive")}>
+          <Card className={cn("@container/card shadow-xs", safeToSpendToday < 0 && "ring-2 ring-destructive")}>
             <CardHeader>
               <CardDescription>Safe to spend today</CardDescription>
               <CardTitle className={cn("text-2xl font-semibold tabular-nums @[250px]/card:text-3xl", safeToSpendToday < 0 && "text-destructive")}>
@@ -168,7 +186,9 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
             </CardFooter>
           </Card>
         )}
+      </div>
 
+      <div className="grid grid-cols-1 gap-4 *:data-[slot=card]:shadow-xs @md/main:grid-cols-2">
         {/* Today vs daily budget — the core overspend indicator */}
         <Card className={cn("@container/card", overBudget && "ring-2 ring-destructive")}>
           <CardHeader>
@@ -284,94 +304,93 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
         </Card>
       )}
 
-      {hasPartner && householdTotal !== null && (
-        <Card className="flex items-center justify-between p-4">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Household spent today (shared)</p>
-          <p className="text-lg font-extrabold tabular-nums">{money(householdTotal)}</p>
-        </Card>
-      )}
+      {/* Insights (left, wider) paired with recent activity (right) — side by side on desktop. */}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
+        <div className="flex flex-col gap-4">
+          {hasPartner && householdTotal !== null && (
+            <Card className="flex items-center justify-between p-4">
+              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Household spent today (shared)</p>
+              <p className="text-lg font-extrabold tabular-nums">{money(householdTotal)}</p>
+            </Card>
+          )}
 
-      {/* Day-of-week spending pattern */}
-      {weekdayPattern.length > 0 && (
-        <Card className="flex flex-col gap-1.5 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <TrendingUp className="h-3.5 w-3.5" />
-            Spending pattern
-          </p>
-          {weekdayPattern.map((w) => (
-            <p key={w.weekday} className="text-sm font-semibold">
-              You spend about {money(w.avg)} on {WEEKDAY_NAMES[w.weekday]}s — well above your usual daily spend.
-            </p>
-          ))}
-        </Card>
-      )}
+          {/* Day-of-week spending pattern */}
+          {weekdayPattern.length > 0 && (
+            <Card className="flex flex-col gap-1.5 p-4">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Spending pattern
+              </p>
+              {weekdayPattern.map((w) => (
+                <p key={w.weekday} className="text-sm font-semibold">
+                  You spend about {money(w.avg)} on {WEEKDAY_NAMES[w.weekday]}s — well above your usual daily spend.
+                </p>
+              ))}
+            </Card>
+          )}
 
-      {/* Category spend trend */}
-      {risingCategories.length > 0 && (
-        <Card className="flex flex-col gap-1.5 p-4">
-          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            <TrendingUp className="h-3.5 w-3.5" />
-            Trending up this month
-          </p>
-          {risingCategories.map((t) => (
-            <p key={t.categoryId} className="text-sm font-semibold">
-              {categoryNameById.get(t.categoryId) ?? "A category"} is up {Math.round(t.pctChange ?? 0)}% vs last month ({money(t.lastMonth)} → {money(t.thisMonth)}).
-            </p>
-          ))}
-        </Card>
-      )}
+          {/* Category spend trend */}
+          {risingCategories.length > 0 && (
+            <Card className="flex flex-col gap-1.5 p-4">
+              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Trending up this month
+              </p>
+              {risingCategories.map((t) => (
+                <p key={t.categoryId} className="text-sm font-semibold">
+                  {categoryNameById.get(t.categoryId) ?? "A category"} is up {Math.round(t.pctChange ?? 0)}% vs last month ({money(t.lastMonth)} → {money(t.thisMonth)}).
+                </p>
+              ))}
+            </Card>
+          )}
 
-      {/* Weekly spending digest */}
-      {weeklyDigest.thisWeekTotal > 0 && (
-        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
-          <CardHeader>
-            <CardDescription>Last 7 days</CardDescription>
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(weeklyDigest.thisWeekTotal)}</CardTitle>
-            {weeklyDigest.pctChange !== null && (
-              <CardAction>
-                <Badge variant="outline">
-                  {weeklyDigest.pctChange > 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
-                  {weeklyDigest.pctChange > 0 ? "+" : ""}
-                  {Math.round(weeklyDigest.pctChange)}%
-                </Badge>
-              </CardAction>
-            )}
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              {weeklyDigest.daysOverBudget > 0
-                ? `Over budget on ${weeklyDigest.daysOverBudget} of the last 7 days`
-                : "Within budget every day this week"}
-            </div>
-            <div className="text-muted-foreground">
-              {weeklyDigest.topCategoryId !== null
-                ? `Top category: ${categoryNameById.get(weeklyDigest.topCategoryId) ?? "—"}.`
-                : "vs prior week"}
-            </div>
-          </CardFooter>
-        </Card>
-      )}
-
-      {!ctx.readOnly && (
-        <div className="flex items-center gap-2">
-          <QuickAddButton accounts={ctx.accounts} categories={ctx.categories} />
-          <Link href="/finance/transactions" className="text-xs font-bold text-muted-foreground hover:text-foreground">
-            View all transactions
-          </Link>
+          {/* Weekly spending digest */}
+          {weeklyDigest.thisWeekTotal > 0 && (
+            <Card className="@container/card shadow-xs">
+              <CardHeader>
+                <CardDescription>Last 7 days</CardDescription>
+                <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(weeklyDigest.thisWeekTotal)}</CardTitle>
+                {weeklyDigest.pctChange !== null && (
+                  <CardAction>
+                    <Badge variant="outline">
+                      {weeklyDigest.pctChange > 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
+                      {weeklyDigest.pctChange > 0 ? "+" : ""}
+                      {Math.round(weeklyDigest.pctChange)}%
+                    </Badge>
+                  </CardAction>
+                )}
+              </CardHeader>
+              <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                <div className="line-clamp-1 flex gap-2 font-medium">
+                  {weeklyDigest.daysOverBudget > 0
+                    ? `Over budget on ${weeklyDigest.daysOverBudget} of the last 7 days`
+                    : "Within budget every day this week"}
+                </div>
+                <div className="text-muted-foreground">
+                  {weeklyDigest.topCategoryId !== null
+                    ? `Top category: ${categoryNameById.get(weeklyDigest.topCategoryId) ?? "—"}.`
+                    : "vs prior week"}
+                </div>
+              </CardFooter>
+            </Card>
+          )}
         </div>
-      )}
 
-      <section className="flex flex-col gap-2">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Recent activity</h2>
-          <Link href="/finance/transactions" className="flex items-center gap-1 text-xs font-bold text-primary">
-            See all <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-        <Card className="p-2">
-          <TransactionList transactions={recent} accounts={ctx.accounts} categories={ctx.categories} readOnly={ctx.readOnly} />
-        </Card>
-      </section>
+        <section className="flex flex-col gap-2">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Recent activity</h2>
+            <div className="flex items-center gap-3">
+              {!ctx.readOnly && <QuickAddButton accounts={ctx.accounts} categories={ctx.categories} />}
+              <Link href="/finance/transactions" className="flex items-center gap-1 text-xs font-bold text-primary">
+                See all <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+          <Card className="p-2">
+            <TransactionList transactions={recent} accounts={ctx.accounts} categories={ctx.categories} readOnly={ctx.readOnly} />
+          </Card>
+        </section>
+      </div>
     </div>
   );
 }

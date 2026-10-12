@@ -15,14 +15,22 @@ import { cn } from "@/lib/utils";
 
 const TYPE_LABEL: Record<string, string> = { income: "Income", expense: "Expense", transfer: "Transfer" };
 
-export function TransactionFormButton({ accounts, categories }: { accounts: AccountRow[]; categories: CategoryRow[] }) {
+export function TransactionFormButton({
+  accounts,
+  categories,
+  label = "Add",
+}: {
+  accounts: AccountRow[];
+  categories: CategoryRow[];
+  label?: string;
+}) {
   const [open, setOpen] = useState(false);
   if (accounts.length === 0) return null;
   return (
     <>
       <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
         <Plus className="h-4 w-4" />
-        Add
+        {label}
       </Button>
       <TransactionFormModal accounts={accounts} categories={categories} open={open} onClose={() => setOpen(false)} />
     </>
@@ -54,6 +62,8 @@ export function TransactionFormModal({
   const [isShared, setIsShared] = useState(tx?.isShared ?? true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const showCategory = type !== "transfer";
+  const showTrip = trips.length > 0 && type !== "transfer";
 
   function submit() {
     setError(null);
@@ -107,64 +117,68 @@ export function TransactionFormModal({
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" autoFocus />
         </label>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Account</span>
-          <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((a) => (
-                <SelectItem key={a.id} value={String(a.id)}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
-
-        {type !== "transfer" && (
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-muted-foreground">Category</span>
-            <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
+        <div className="grid grid-cols-2 gap-3">
+          <label className={cn("flex flex-col gap-1", !showCategory && "col-span-2")}>
+            <span className="text-xs font-bold text-muted-foreground">Account</span>
+            <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
               <SelectTrigger>
-                <SelectValue placeholder="None" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </label>
-        )}
 
-        {trips.length > 0 && type !== "transfer" && (
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-muted-foreground">Trip</span>
-            <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
-              <SelectTrigger>
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {trips.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {showCategory && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold text-muted-foreground">Category</span>
+              <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <label className={cn("flex flex-col gap-1", !showTrip && "col-span-2")}>
+            <span className="text-xs font-bold text-muted-foreground">Date</span>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </label>
-        )}
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Date</span>
-          <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
+          {showTrip && (
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-bold text-muted-foreground">Trip</span>
+              <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">None</SelectItem>
+                  {trips.map((t) => (
+                    <SelectItem key={t.id} value={String(t.id)}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </label>
+          )}
+        </div>
 
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-muted-foreground">Note</span>

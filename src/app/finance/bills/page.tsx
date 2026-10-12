@@ -3,9 +3,17 @@ import { loadFinanceContext } from "@/lib/finance-data";
 import { getBillPayments, getBillsByProfile } from "@/lib/db/repo-finance";
 import { BillFormButton } from "@/components/finance/bill-form";
 import { BillRowItem } from "@/components/finance/bill-row";
-import { Card } from "@/components/finance/ui/card";
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/finance/ui/card";
+import { Badge } from "@/components/finance/ui/badge";
+import { Progress } from "@/components/finance/ui/progress";
+import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Bills" };
+
+const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+const MONTH_LABEL = (iso: string) =>
+  new Date(`${iso}-01T00:00:00`).toLocaleDateString("en-MY", { month: "long", year: "numeric" });
 
 export default async function BillsPage({ searchParams }: { searchParams: Promise<{ member?: string }> }) {
   const { member } = await searchParams;
@@ -14,18 +22,24 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
   const payments = await getBillPayments(bills.map((b) => b.id));
   const month = ctx.today.slice(0, 7);
   const paymentByBill = new Map(payments.filter((p) => p.month === month).map((p) => [p.billId, p]));
+  const currentDay = Number(ctx.today.slice(8, 10));
 
   const totalDue = bills.reduce((s, b) => s + (paymentByBill.get(b.id)?.amountPaid ?? b.amount), 0);
-  const totalPaid = bills.filter((b) => paymentByBill.get(b.id)?.paidAt).reduce((s, b) => s + (paymentByBill.get(b.id)?.amountPaid ?? b.amount), 0);
+  const paidBills = bills.filter((b) => paymentByBill.get(b.id)?.paidAt);
+  const totalPaid = paidBills.reduce((s, b) => s + (paymentByBill.get(b.id)?.amountPaid ?? b.amount), 0);
+  const unpaidBills = bills.filter((b) => !paymentByBill.get(b.id)?.paidAt);
+  const overdueBills = unpaidBills.filter((b) => b.dueDay < currentDay);
+  const pct = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
+
+  const monthlyIncome = ctx.budget?.monthlyIncome ?? 0;
+  const incomePct = monthlyIncome > 0 ? Math.round((totalDue / monthlyIncome) * 100) : null;
 
   return (
-    <div className="flex flex-col gap-4 md:mx-auto md:max-w-2xl">
+    <div className="flex flex-col gap-4 md:mx-auto md:max-w-5xl">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <h1 className="text-base font-medium">Bills</h1>
-          <p className="text-sm text-muted-foreground">
-            This month · RM {totalPaid.toFixed(2)} / {totalDue.toFixed(2)} paid
-          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Bills</h1>
+          <p className="text-sm text-muted-foreground">What&apos;s due each month, and what&apos;s already paid</p>
         </div>
         {!ctx.readOnly && <BillFormButton categories={ctx.categories} />}
       </div>
@@ -39,21 +53,80 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
           <p className="mx-auto max-w-sm text-sm text-muted-foreground">Add your rent, utilities, and subscriptions so nothing slips past due.</p>
         </Card>
       ) : (
-        <Card className="p-2">
-          <ul className="flex flex-col divide-y divide-border">
-            {bills.map((b) => (
-              <BillRowItem
-                key={b.id}
-                bill={b}
-                payment={paymentByBill.get(b.id) ?? null}
-                month={month}
-                today={ctx.today}
-                categories={ctx.categories}
-                readOnly={ctx.readOnly}
-              />
-            ))}
-          </ul>
-        </Card>
+        <>
+          <Card className="@container/card shadow-xs">
+            <CardHeader>
+              <CardDescription>Bills in {MONTH_LABEL(month)}</CardDescription>
+              <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(totalDue)}</CardTitle>
+              <CardAction>
+                <Badge variant="outline">
+                  {paidBills.length} of {bills.length} paid
+                </Badge>
+              </CardAction>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-4">
+              <Progress value={pct} />
+              <div className="grid grid-cols-3 divide-x divide-border overflow-hidden rounded-lg border border-border">
+                <div className="flex flex-col gap-1 p-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Paid</span>
+                  <span className="text-lg font-semibold tabular-nums">{money(totalPaid)}</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Left to pay</span>
+                  <span className="text-lg font-semibold tabular-nums">{money(totalDue - totalPaid)}</span>
+                </div>
+                <div className="flex flex-col gap-1 p-3">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Overdue</span>
+                  <span className={cn("text-lg font-semibold tabular-nums", overdueBills.length > 0 && "text-destructive")}>
+                    {overdueBills.length > 0 ? overdueBills.length : "None"}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <section className="flex flex-col gap-2">
+              <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">To pay · {unpaidBills.length}</h2>
+              <Card className="p-2">
+                <ul className="flex flex-col divide-y divide-border">
+                  {bills.map((b) => (
+                    <BillRowItem
+                      key={b.id}
+                      bill={b}
+                      payment={paymentByBill.get(b.id) ?? null}
+                      month={month}
+                      today={ctx.today}
+                      categories={ctx.categories}
+                      readOnly={ctx.readOnly}
+                    />
+                  ))}
+                </ul>
+              </Card>
+            </section>
+
+            <Card className="h-fit">
+              <CardHeader>
+                <CardDescription>Against your income</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {incomePct === null ? (
+                  <>
+                    <p className="text-sm font-bold">No income logged for {MONTH_LABEL(month)}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Set your monthly income in Settings to see how much of it your bills take.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm font-bold">Bills take up {incomePct}% of your income</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {money(totalDue)} of {money(monthlyIncome)} monthly income goes to bills this month.
+                    </p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
     </div>
   );

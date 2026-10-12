@@ -112,7 +112,7 @@ export default async function NetWorthPage({ searchParams }: { searchParams: Pro
 
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "good" | "bad" }) {
   return (
-    <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+    <Card className="@container/card shadow-xs">
       <CardHeader>
         <CardDescription>{label}</CardDescription>
         <CardTitle className={cn("text-2xl font-semibold tabular-nums @[250px]/card:text-3xl", tone === "bad" && "text-destructive", tone === "good" && "text-success")}>

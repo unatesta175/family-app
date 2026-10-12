@@ -736,13 +736,13 @@ html:has(.habits-app) {
    */
   --background: #ffffff;
   --foreground: #09090b;
-  --card: #f4f4f5;
+  --card: #fafafa;
   --card-foreground: #09090b;
   --popover: #ffffff;
   --popover-foreground: #09090b;
   --primary: #18181b;
   --primary-foreground: #ffffff;
-  --secondary: #f4f4f5;
+  --secondary: #fafafa;
   --secondary-foreground: #18181b;
   --muted: #e4e4e7;
   --muted-foreground: #71717a;

@@ -185,21 +185,21 @@ export function TransactionsBoard({
       </div>
 
       <div className="flex flex-col gap-3 md:sticky md:top-4 md:self-start">
-        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+        <Card className="@container/card shadow-xs">
           <CardHeader>
             <CardDescription>Income</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums text-success @[250px]/card:text-3xl">{money(totals.income)}</CardTitle>
           </CardHeader>
           <CardFooter className="text-sm text-muted-foreground">This period</CardFooter>
         </Card>
-        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+        <Card className="@container/card shadow-xs">
           <CardHeader>
             <CardDescription>Spent</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums text-destructive @[250px]/card:text-3xl">{money(totals.spent)}</CardTitle>
           </CardHeader>
           <CardFooter className="text-sm text-muted-foreground">This period</CardFooter>
         </Card>
-        <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+        <Card className="@container/card shadow-xs">
           <CardHeader>
             <CardDescription>Net</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(totals.net)}</CardTitle>

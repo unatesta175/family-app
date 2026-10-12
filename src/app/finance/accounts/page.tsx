@@ -23,7 +23,7 @@ export default async function AccountsPage({ searchParams }: { searchParams: Pro
         <h1 className="text-base font-medium">Accounts</h1>
       </div>
 
-      <Card className="@container/card bg-gradient-to-t from-primary/5 to-card shadow-xs">
+      <Card className="@container/card shadow-xs">
         <CardHeader>
           <CardDescription>Available funds</CardDescription>
           <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
