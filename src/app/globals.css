@@ -707,9 +707,11 @@ html:has(.habits-app) {
 .habits-theme.finance-theme {
   /* Matches the Belanje reference app's typeface (Inter); every other module keeps Plus Jakarta Sans. */
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --h-bg: #fafafa;
-  --h-surface: #ffffff;
-  --h-surface-2: #f4f4f5;
+  /* Belanje's actual layout: a near-white page with gray-filled cards/panels on top — the
+     reverse of a typical "white card on off-white page" treatment. */
+  --h-bg: #ffffff;
+  --h-surface: #f4f4f5;
+  --h-surface-2: #e4e4e7;
   --h-border: #e4e4e7;
   --h-fg: #09090b;
   --h-muted: #71717a;

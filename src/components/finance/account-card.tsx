@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Pencil } from "lucide-react";
 import type { AccountRow } from "@/lib/db/repo-finance";
 import { ACCOUNT_TYPE_LABEL, AccountIcon, CARD_THEME_FG, CARD_THEME_GRADIENT } from "@/components/finance/finance-icons";
+import { CardTexture } from "@/components/finance/card-texture";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -22,25 +23,27 @@ export function AccountCard({ account, readOnly, onEdit }: { account: AccountRow
         transition={{ duration: 0.45, ease: "easeInOut" }}
       >
         <div
-          className="fin-flip-face flex flex-col justify-between rounded-2xl p-4 shadow-lg"
+          className="fin-flip-face relative flex flex-col justify-between overflow-hidden rounded-2xl p-4 shadow-lg"
           style={{ background: gradient, color: fg }}
         >
-          <div className="flex items-start justify-between">
+          <CardTexture />
+          <div className="relative z-10 flex items-start justify-between">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/15">
               <AccountIcon icon={account.icon} className="h-5 w-5" />
             </span>
             {!account.isShared && <span className="rounded-full bg-black/15 px-2 py-0.5 text-[10px] font-bold">Private</span>}
           </div>
-          <div>
+          <div className="relative z-10">
             <p className="text-[11px] font-semibold uppercase tracking-wider opacity-80">{account.name}</p>
             <p className="text-2xl font-extrabold tabular-nums">{money(account.balance)}</p>
           </div>
         </div>
         <div
-          className="fin-flip-face fin-flip-back flex flex-col justify-between rounded-2xl p-4 shadow-lg"
+          className="fin-flip-face fin-flip-back relative flex flex-col justify-between overflow-hidden rounded-2xl p-4 shadow-lg"
           style={{ background: gradient, color: fg }}
         >
-          <div className="flex items-start justify-between">
+          <CardTexture />
+          <div className="relative z-10 flex items-start justify-between">
             <p className="text-sm font-extrabold">{account.name}</p>
             {!readOnly && onEdit && (
               <button
@@ -56,7 +59,7 @@ export function AccountCard({ account, readOnly, onEdit }: { account: AccountRow
               </button>
             )}
           </div>
-          <div className="flex flex-col gap-1 text-xs font-semibold opacity-90">
+          <div className="relative z-10 flex flex-col gap-1 text-xs font-semibold opacity-90">
             <span>{ACCOUNT_TYPE_LABEL[account.type]}</span>
             <span>{account.isShared ? "Visible to partner" : "Private"}</span>
             <span className="opacity-70">Tap to flip back</span>

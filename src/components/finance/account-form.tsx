@@ -14,6 +14,7 @@ import {
   CARD_THEME_LABEL,
   FINANCE_ACCOUNT_ICONS,
 } from "@/components/finance/finance-icons";
+import { CardTexture } from "@/components/finance/card-texture";
 import { saveAccountAction, deleteAccountAction } from "@/lib/finance-actions";
 import { FINANCE_ACCOUNT_TYPES, FINANCE_CARD_THEMES } from "@/lib/db/schema";
 import type { AccountRow } from "@/lib/db/repo-finance";
@@ -89,10 +90,11 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
       <div className="flex flex-col gap-5">
         {/* Live hero preview */}
         <div
-          className="flex aspect-[1.75/1] w-full flex-col justify-between rounded-2xl p-4 shadow-lg"
+          className="relative flex aspect-[1.75/1] w-full flex-col justify-between overflow-hidden rounded-2xl p-4 shadow-lg"
           style={{ background: gradient, color: fg }}
         >
-          <div className="flex items-start justify-between">
+          <CardTexture />
+          <div className="relative z-10 flex items-start justify-between">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: chipBg }}>
               <AccountIcon icon={icon} className="h-5 w-5" />
             </span>
@@ -101,14 +103,14 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
             </span>
           </div>
 
-          <div>
+          <div className="relative z-10">
             <p className="truncate text-sm font-bold">{name.trim() || "e.g. Maybank, TnG eWallet"}</p>
             <p className="text-[11px] font-bold uppercase tracking-widest" style={{ opacity: 0.65 }}>
               {ACCOUNT_TYPE_LABEL[type]}
             </p>
           </div>
 
-          <div>
+          <div className="relative z-10">
             <div className="flex items-center gap-1.5">
               <p className="text-[11px] font-bold uppercase tracking-widest" style={{ opacity: 0.55 }}>
                 Balance
@@ -118,7 +120,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
             <p className="text-2xl font-extrabold tabular-nums tracking-tight">{money(balanceNum)}</p>
           </div>
 
-          <div className="flex items-end justify-between">
+          <div className="relative z-10 flex items-end justify-between">
             <div>
               <p className="text-[10px] font-bold uppercase tracking-wider" style={{ opacity: 0.5 }}>
                 Income

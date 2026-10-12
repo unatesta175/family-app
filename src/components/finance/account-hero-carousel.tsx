@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { AccountIcon } from "@/components/finance/finance-icons";
+import { CardTexture } from "@/components/finance/card-texture";
 import type { AccountRow } from "@/lib/db/repo-finance";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -50,9 +51,10 @@ export function AccountHeroCarousel({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="aspect-[1.75/1] w-full cursor-grab rounded-3xl bg-[#121214] p-5 text-white shadow-lg active:cursor-grabbing"
+            className="relative aspect-[1.75/1] w-full cursor-grab overflow-hidden rounded-3xl bg-[#121214] p-5 text-white shadow-lg active:cursor-grabbing"
           >
-            <div className="flex h-full flex-col justify-between">
+            <CardTexture />
+            <div className="relative z-10 flex h-full flex-col justify-between">
               <div className="flex items-start justify-between">
                 <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
                   <AccountIcon icon={account.icon} className="h-5 w-5" />
