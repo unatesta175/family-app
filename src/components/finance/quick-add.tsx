@@ -51,7 +51,7 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
         Quick add spend
       </Button>
       <FinanceModal open={open} onClose={() => setOpen(false)} title="Quick add expense">
-        <div className="flex flex-col gap-3">
+        <div className="flex min-w-0 flex-col gap-3">
           <Input
             type="number"
             inputMode="decimal"

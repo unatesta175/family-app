@@ -65,7 +65,7 @@ export function TripFormModal({ trip, open, onClose }: { trip?: TripRow; open: b
 
   return (
     <FinanceModal open={open} onClose={onClose} title={trip ? "Edit trip" : "New trip"}>
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-muted-foreground">Name</span>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Langkawi weekend" />

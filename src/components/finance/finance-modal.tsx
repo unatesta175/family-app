@@ -19,7 +19,7 @@ export function FinanceModal({
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className={cn("md:max-w-lg", className)}>
+      <DialogContent className={cn("min-w-0 max-h-[90dvh] overflow-y-auto md:max-w-lg", className)}>
         <DialogHeader className="pr-6">
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>

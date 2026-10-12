@@ -57,7 +57,7 @@ export function ReminderFormModal({ reminder, open, onClose }: { reminder?: Remi
 
   return (
     <FinanceModal open={open} onClose={onClose} title={reminder ? "Edit reminder" : "New reminder"}>
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-muted-foreground">Title</span>
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Renew car insurance" />

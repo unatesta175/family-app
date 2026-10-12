@@ -67,7 +67,7 @@ export function LendingFormModal({ entry, open, onClose }: { entry?: LendingRow;
 
   return (
     <FinanceModal open={open} onClose={onClose} title={entry ? "Edit entry" : "New lending entry"}>
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <div className="flex gap-1.5 rounded-lg border border-border bg-muted p-1">
           {FINANCE_LEND_DIRECTIONS.map((d) => (
             <button

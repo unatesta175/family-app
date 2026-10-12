@@ -49,7 +49,7 @@ function TransferFormModal({ accounts, onClose }: { accounts: AccountRow[]; onCl
 
   return (
     <FinanceModal open onClose={onClose} title="New transfer">
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <label className="flex flex-col gap-1">
           <span className="text-xs font-bold text-muted-foreground">From</span>
           <Select value={String(fromAccountId)} onValueChange={(v) => setFromAccountId(Number(v))}>

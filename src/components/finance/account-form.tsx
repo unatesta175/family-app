@@ -88,7 +88,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
 
   return (
     <FinanceModal open={open} onClose={onClose} title={account ? "Edit Account" : "New Account"} className="md:max-w-md">
-      <div className="flex flex-col gap-5">
+      <div className="flex min-w-0 flex-col gap-5">
         {/* Live hero preview */}
         <div
           className="relative flex aspect-[1.75/1] w-full flex-col justify-between overflow-hidden rounded-2xl p-4 shadow-lg"
