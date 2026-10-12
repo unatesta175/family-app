@@ -59,3 +59,56 @@ Status: in progress.
 - [x] `npm run lint` clean
 - [x] No other module touched or visually changed
 - [x] No browser testing performed (per project convention) — static verification only
+
+## Overspending-control pass: 5 predictive insights + 5 SaaS features
+All algorithm-based (weighted/moving averages, pattern detection) — explicitly NO ML/model
+training/external AI calls. Pure functions in `repo-finance.ts`, unit-testable, graceful fallback
+with insufficient history (same convention as the existing `predictTomorrowSpend`).
+
+### 5 predictive/analytical insights
+- [x] 1. Next-day spend prediction (already exists: `predictTomorrowSpend` — surface it more
+      prominently if not already primary on the dashboard; no change needed if already there)
+- [x] 2. Month-end burn-rate / run-out-day projection (already exists: `projectRunOutDay` —
+      same, confirm prominence only)
+- [x] 3. Day-of-week spending pattern ("You spend ~2x more on Fridays than your daily average") —
+      new: average spend per weekday over trailing N weeks, flag weekdays that are
+      significantly (e.g. >30%) above the overall daily average
+- [x] 4. Category spend trend (this month vs last month per category, % change, flag categories
+      trending up) — new: `getCategoryTrends(profileId, month)` 
+- [x] 5. Projected month-end savings/shortfall (if current pace continues: income − projected
+      total spend = projected leftover, negative = projected shortfall before payday) — new,
+      builds on `projectRunOutDay`'s daily-average logic
+
+### 5 SaaS features to prevent overspending
+- [x] 1. "Safe to spend today" indicator — daily budget minus today's spend minus a reserve for
+      upcoming unpaid bills/reminders due before payday, shown prominently on dashboard (bigger/
+      more prominent than the existing today-vs-budget bar; this is the actionable number)
+- [x] 2. Adaptive daily budget with rollover — underspend today increases tomorrow's allowance,
+      overspend shrinks it, recalculated from remaining days to payday and remaining budget
+      (new setting/toggle in Budget Settings: "Adaptive daily budget" on/off, off = current flat
+      monthlyIncome/daysInMonth behavior)
+- [x] 3. Per-category budget caps with progress bars — optional monthly cap per category
+      (extend `financeCategories` or `financeMoneyPlanAllocations`, reuse Money Plan's existing
+      planned-amount field if it already fits rather than adding a new table), visual progress
+      bar + red state when over, shown on a Budgets/Money Plan summary and as a small badge
+      wherever that category is used
+- [x] 4. Overspend push alert — the moment today's spend crosses the daily budget (or the
+      adaptive one), send a push notification via the existing `web-push` infra (same pattern as
+      `src/app/api/cron/prayer-reminders`); add a `src/app/api/cron/finance-overspend-check`
+      route or fold into a new cron route, idempotent per day/profile like `notification_sends`
+- [x] 5. Weekly spending digest card — in-app dashboard card (not email) summarizing the past 7
+      days: total spent, vs. previous 7 days (% change), top category, days over budget — shown
+      on the dashboard, no new page required
+
+### Data layer for this pass
+- [x] Any new fields/tables needed (e.g. adaptive-budget toggle on `financeBudgetSettings`,
+      category cap field) added to `schema.ts` + `REQUIRED_TABLES`/`REQUIRED_COLUMNS` in
+      `migrate.ts`
+- [x] New pure prediction/analytics functions in `repo-finance.ts`
+- [x] New actions in `finance-actions.ts` as needed (e.g. toggling adaptive budget)
+
+### Verification
+- [x] `npx tsc --noEmit` clean
+- [x] `npm run lint` clean
+- [x] No other module touched
+- [x] No browser testing performed — static verification only

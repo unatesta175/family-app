@@ -758,6 +758,10 @@ export const financeBudgetSettings = sqliteTable("finance_budget_settings", {
   monthlyIncome: real("monthly_income").notNull().default(0),
   paydayDay: integer("payday_day").notNull().default(1), // 1-31
   dailyBudgetOverride: real("daily_budget_override"),
+  // When on: today's allowance = remaining monthly budget / remaining days to payday (recalculated
+  // daily, so under/overspending shifts tomorrow's number). When off (default): flat monthlyIncome /
+  // days-in-month, unchanged from the original behavior.
+  adaptiveBudget: integer("adaptive_budget", { mode: "boolean" }).notNull().default(false),
   updatedAt: text("updated_at")
     .notNull()
     .default(sql`(current_timestamp)`),
@@ -818,6 +822,22 @@ export const financeReminders = sqliteTable("finance_reminders", {
     .notNull()
     .default(sql`(current_timestamp)`),
 });
+
+/** One row per profile per day an overspend push alert went out, so the overspend cron never double-fires. */
+export const financeOverspendAlerts = sqliteTable(
+  "finance_overspend_alerts",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    profileId: integer("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // yyyy-mm-dd
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("finance_overspend_alerts_unique").on(table.profileId, table.date)]
+);
 
 /** A record that a given reminder has been sent, so the scheduler is idempotent across ticks and restarts. */
 export const notificationSends = sqliteTable(

@@ -9,6 +9,7 @@ import {
   financeCategories,
   financeLending,
   financeMoneyPlanAllocations,
+  financeOverspendAlerts,
   financeReminders,
   financeTemplates,
   financeTransactions,
@@ -363,7 +364,12 @@ export async function getBudgetSettings(profileId: number): Promise<BudgetSettin
   return row ?? null;
 }
 
-export type BudgetSettingsInput = { monthlyIncome: number; paydayDay: number; dailyBudgetOverride: number | null };
+export type BudgetSettingsInput = {
+  monthlyIncome: number;
+  paydayDay: number;
+  dailyBudgetOverride: number | null;
+  adaptiveBudget: boolean;
+};
 
 export async function upsertBudgetSettings(profileId: number, input: BudgetSettingsInput) {
   await db
@@ -447,6 +453,156 @@ export function projectRunOutDay(monthlyIncome: number, spentSoFar: number, curr
   const daysLeft = remaining / avgDailySpend;
   const runOutDay = currentDay + daysLeft;
   return runOutDay <= dim ? Math.ceil(runOutDay) : null;
+}
+
+/**
+ * Day-of-week spending pattern: average expense per weekday across whatever history is passed in
+ * (callers typically pass ~8 weeks). A weekday is flagged when its average is >30% above the
+ * overall daily average, and at least 2 data points exist for it (avoids flagging off one outlier).
+ * Graceful with no history: returns [].
+ */
+export type WeekdaySpend = { weekday: number; avg: number; count: number; flagged: boolean };
+
+export function getWeekdaySpendPattern(history: DaySpend[]): WeekdaySpend[] {
+  if (history.length === 0) return [];
+  const overallAvg = history.reduce((s, r) => s + r.amount, 0) / history.length;
+  const byWeekday = new Map<number, number[]>();
+  for (const r of history) {
+    const wd = new Date(r.date).getDay();
+    const arr = byWeekday.get(wd) ?? [];
+    arr.push(r.amount);
+    byWeekday.set(wd, arr);
+  }
+  const result: WeekdaySpend[] = [];
+  for (let wd = 0; wd < 7; wd++) {
+    const amounts = byWeekday.get(wd) ?? [];
+    const avg = amounts.length ? amounts.reduce((a, b) => a + b, 0) / amounts.length : 0;
+    const flagged = overallAvg > 0 && amounts.length >= 2 && avg > overallAvg * 1.3;
+    result.push({ weekday: wd, avg, count: amounts.length, flagged });
+  }
+  return result;
+}
+
+/**
+ * This month vs last month spend per category, with % change and an "up" flag (>20% increase).
+ * `pctChange` is null when there was no spend last month to compare against (can't express a %).
+ */
+export type CategoryTrend = { categoryId: number; thisMonth: number; lastMonth: number; pctChange: number | null; trendingUp: boolean };
+
+export async function getCategoryTrends(profileId: number, month: string): Promise<CategoryTrend[]> {
+  const [y, m] = month.split("-").map(Number);
+  const prevDate = new Date(y, m - 2, 1); // m is 1-indexed; month-2 index = previous month
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+  const [thisMap, lastMap] = await Promise.all([getActualSpendByCategory(profileId, month), getActualSpendByCategory(profileId, prevMonth)]);
+  const categoryIds = new Set([...thisMap.keys(), ...lastMap.keys()]);
+  return [...categoryIds].map((categoryId) => {
+    const thisMonthAmt = thisMap.get(categoryId) ?? 0;
+    const lastMonthAmt = lastMap.get(categoryId) ?? 0;
+    const pctChange = lastMonthAmt > 0 ? ((thisMonthAmt - lastMonthAmt) / lastMonthAmt) * 100 : null;
+    return { categoryId, thisMonth: thisMonthAmt, lastMonth: lastMonthAmt, pctChange, trendingUp: pctChange !== null && pctChange > 20 };
+  });
+}
+
+/**
+ * If current pace continues: income − projected total spend (avg daily spend so far × days in
+ * month) = projected leftover. Negative = projected shortfall before payday/month-end.
+ */
+export function projectMonthEndSavings(monthlyIncome: number, spentSoFar: number, currentDay: number, dim: number): number | null {
+  if (monthlyIncome <= 0 || currentDay <= 0) return null;
+  const avgDailySpend = spentSoFar / currentDay;
+  const projectedTotal = avgDailySpend * dim;
+  return monthlyIncome - projectedTotal;
+}
+
+/**
+ * Adaptive daily budget: remaining monthly budget / remaining days to payday (including today).
+ * Recalculated fresh each day from actual spend so far, so under/overspending shifts tomorrow's
+ * number automatically. Floors at 0 (never negative).
+ */
+export function computeAdaptiveDailyBudget(monthlyIncome: number, spentThisMonth: number, remainingDaysToPayday: number): number {
+  if (monthlyIncome <= 0) return 0;
+  const remainingBudget = monthlyIncome - spentThisMonth;
+  if (remainingDaysToPayday <= 0) return Math.max(0, remainingBudget);
+  return Math.max(0, remainingBudget / remainingDaysToPayday);
+}
+
+/**
+ * "Safe to spend today" = daily budget minus what's already spent today minus a reserve set aside
+ * for upcoming unpaid bills due before payday (spread evenly over the remaining days, not
+ * subtracted as one lump, so it reads as a sane daily number). Can go negative (already over).
+ */
+export function computeSafeToSpendToday(dailyBudget: number, todaySpend: number, dailyReserveForBills: number): number {
+  return dailyBudget - todaySpend - dailyReserveForBills;
+}
+
+/**
+ * Past 7 days vs the previous 7 days: total spend, % change (null if nothing to compare against),
+ * the category spent most on this week, and how many of the last 7 days went over the daily budget.
+ */
+export type WeeklyDigest = {
+  thisWeekTotal: number;
+  lastWeekTotal: number;
+  pctChange: number | null;
+  topCategoryId: number | null;
+  daysOverBudget: number;
+};
+
+function shiftIsoDate(dateIso: string, days: number): string {
+  const d = new Date(`${dateIso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+export function computeWeeklyDigest(
+  expenses: { date: string; amount: number; categoryId: number | null }[],
+  today: string,
+  dailyBudget: number
+): WeeklyDigest {
+  const weekStart = shiftIsoDate(today, -6);
+  const prevWeekEnd = shiftIsoDate(today, -7);
+  const prevWeekStart = shiftIsoDate(today, -13);
+
+  const thisWeek = expenses.filter((e) => e.date >= weekStart && e.date <= today);
+  const lastWeek = expenses.filter((e) => e.date >= prevWeekStart && e.date <= prevWeekEnd);
+
+  const thisWeekTotal = thisWeek.reduce((s, e) => s + e.amount, 0);
+  const lastWeekTotal = lastWeek.reduce((s, e) => s + e.amount, 0);
+  const pctChange = lastWeekTotal > 0 ? ((thisWeekTotal - lastWeekTotal) / lastWeekTotal) * 100 : null;
+
+  const byCategory = new Map<number, number>();
+  for (const e of thisWeek) {
+    if (e.categoryId === null) continue;
+    byCategory.set(e.categoryId, (byCategory.get(e.categoryId) ?? 0) + e.amount);
+  }
+  let topCategoryId: number | null = null;
+  let topAmount = 0;
+  for (const [categoryId, amount] of byCategory) {
+    if (amount > topAmount) {
+      topAmount = amount;
+      topCategoryId = categoryId;
+    }
+  }
+
+  const byDate = new Map<string, number>();
+  for (const e of thisWeek) byDate.set(e.date, (byDate.get(e.date) ?? 0) + e.amount);
+  const daysOverBudget = dailyBudget > 0 ? [...byDate.values()].filter((v) => v > dailyBudget).length : 0;
+
+  return { thisWeekTotal, lastWeekTotal, pctChange, topCategoryId, daysOverBudget };
+}
+
+// --- Overspend push alerts (idempotency log) --------------------------------------------------
+
+/**
+ * Claims today's overspend-alert slot for a profile. The unique index makes this idempotent: a
+ * second call for the same (profile, date) returns false, so the cron never double-sends in a day.
+ */
+export async function claimOverspendAlertSlot(profileId: number, date: string): Promise<boolean> {
+  const res = await db
+    .insert(financeOverspendAlerts)
+    .values({ profileId, date })
+    .onConflictDoNothing()
+    .returning({ id: financeOverspendAlerts.id });
+  return res.length > 0;
 }
 
 // --- Templates (quick re-entry) ----------------------------------------------------------------

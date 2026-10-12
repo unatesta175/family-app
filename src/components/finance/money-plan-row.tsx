@@ -22,8 +22,10 @@ export function MoneyPlanRow({
 }) {
   const [value, setValue] = useState(planned ? String(planned) : "");
   const [pending, startTransition] = useTransition();
-  const pct = value ? Math.min(100, (actual / (Number(value) || 1)) * 100) : 0;
+  const rawPct = value ? (actual / (Number(value) || 1)) * 100 : 0;
+  const pct = Math.min(100, rawPct);
   const over = Number(value) > 0 && actual > Number(value);
+  const near = !over && Number(value) > 0 && rawPct >= 80;
 
   function save() {
     startTransition(async () => {
@@ -53,7 +55,7 @@ export function MoneyPlanRow({
         <span className="text-xs font-semibold text-h-muted">planned {pending && "· saving…"}</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-h-surface2">
-        <div className={cn("h-full rounded-full", over ? "bg-h-bad" : "bg-h-brand")} style={{ width: `${pct}%` }} />
+        <div className={cn("h-full rounded-full", over ? "bg-h-bad" : near ? "bg-amber-500" : "bg-h-brand")} style={{ width: `${pct}%` }} />
       </div>
     </li>
   );

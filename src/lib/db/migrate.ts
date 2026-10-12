@@ -46,6 +46,8 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "focus_sessions", column: "paused_at", ddl: "ALTER TABLE focus_sessions ADD COLUMN paused_at INTEGER" },
   // Finance: transactions can be tagged to a trip.
   { table: "finance_transactions", column: "trip_id", ddl: "ALTER TABLE finance_transactions ADD COLUMN trip_id INTEGER REFERENCES finance_trips(id) ON DELETE SET NULL" },
+  // Overspending-control pass: adaptive daily budget toggle.
+  { table: "finance_budget_settings", column: "adaptive_budget", ddl: "ALTER TABLE finance_budget_settings ADD COLUMN adaptive_budget INTEGER NOT NULL DEFAULT 0" },
 ];
 
 /**
@@ -566,6 +568,19 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
     )`,
   },
   { table: "finance_reminders_profile_idx", ddl: `CREATE INDEX IF NOT EXISTS finance_reminders_profile_idx ON finance_reminders (profile_id)` },
+  {
+    table: "finance_overspend_alerts",
+    ddl: `CREATE TABLE IF NOT EXISTS finance_overspend_alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      profile_id INTEGER NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "finance_overspend_alerts_unique",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS finance_overspend_alerts_unique ON finance_overspend_alerts (profile_id, date)`,
+  },
 ];
 
 /** Runs once at server startup (see src/instrumentation.ts) to self-heal schema drift. */

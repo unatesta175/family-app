@@ -1,12 +1,20 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowRight, CalendarClock, TrendingDown } from "lucide-react";
+import { AlertTriangle, ArrowRight, CalendarClock, ShieldCheck, TrendingDown, TrendingUp } from "lucide-react";
 import { loadFinanceContext } from "@/lib/finance-data";
 import {
+  computeAdaptiveDailyBudget,
   computeDailyBudget,
+  computeSafeToSpendToday,
+  computeWeeklyDigest,
   daysInMonth,
   daysUntilPayday,
+  getBillPayments,
+  getBillsByProfile,
+  getCategoryTrends,
   getTransactionsByProfiles,
+  getWeekdaySpendPattern,
   predictTomorrowSpend,
+  projectMonthEndSavings,
   projectRunOutDay,
   type DaySpend,
 } from "@/lib/db/repo-finance";
@@ -28,7 +36,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
   const today = ctx.today;
 
   const monthStart = `${today.slice(0, 7)}-01`;
-  const historyStart = addDays(today, -35);
+  const historyStart = addDays(today, -56); // ~8 weeks, enough for the weekday pattern too
 
   const allTx = await getTransactionsByProfiles([ctx.viewingId], { from: historyStart });
   const visibleTx = ctx.readOnly ? allTx.filter((t) => t.isShared) : allTx;
@@ -45,16 +53,52 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
 
   const monthlyIncome = ctx.budget?.monthlyIncome ?? 0;
   const override = ctx.budget?.dailyBudgetOverride ?? null;
-  const dailyBudget = computeDailyBudget(monthlyIncome, override, today);
-  const overBudget = dailyBudget > 0 && todaySpend > dailyBudget;
-  const pctOfBudget = dailyBudget > 0 ? Math.round((todaySpend / dailyBudget) * 100) : 0;
+  const flatDailyBudget = computeDailyBudget(monthlyIncome, override, today);
 
   const spentThisMonth = expenses.filter((e) => e.date >= monthStart && e.date <= today).reduce((s, e) => s + e.amount, 0);
   const currentDay = Number(today.slice(8, 10));
   const dim = daysInMonth(today);
   const runOutDay = projectRunOutDay(monthlyIncome, spentThisMonth, currentDay, dim);
+  const projectedLeftover = projectMonthEndSavings(monthlyIncome, spentThisMonth, currentDay, dim);
 
   const paydayDays = ctx.budget ? daysUntilPayday(ctx.budget.paydayDay, today) : null;
+
+  // Adaptive daily budget (opt-in): remaining monthly budget / remaining days to payday, so one
+  // overspend or underspend day shifts tomorrow's number. Off (default) keeps the flat behavior.
+  const remainingDaysToPayday = (paydayDays ?? Math.max(0, dim - currentDay)) + 1; // +1 counts today
+  const dailyBudget = ctx.budget?.adaptiveBudget
+    ? computeAdaptiveDailyBudget(monthlyIncome, spentThisMonth - todaySpend, remainingDaysToPayday)
+    : flatDailyBudget;
+  const overBudget = dailyBudget > 0 && todaySpend > dailyBudget;
+  const pctOfBudget = dailyBudget > 0 ? Math.round((todaySpend / dailyBudget) * 100) : 0;
+
+  // Reserve: unpaid bills due this cycle, spread evenly over the remaining days to payday so
+  // "safe to spend today" already sets aside a slice for them. Reminders have no amount field in
+  // the schema (they're a separate, amount-less list from Bills), so they're informational only
+  // here, not part of the money reserve.
+  const bills = ctx.readOnly ? [] : await getBillsByProfile(ctx.viewingId);
+  const activeBills = bills.filter((b) => !b.archivedAt);
+  const payments = await getBillPayments(activeBills.map((b) => b.id));
+  const paidThisMonth = new Set(payments.filter((p) => p.month === today.slice(0, 7)).map((p) => p.billId));
+  const unpaidBillsTotal = activeBills.filter((b) => !paidThisMonth.has(b.id)).reduce((s, b) => s + b.amount, 0);
+  const dailyReserve = remainingDaysToPayday > 0 ? unpaidBillsTotal / remainingDaysToPayday : unpaidBillsTotal;
+  const safeToSpendToday = dailyBudget > 0 ? computeSafeToSpendToday(dailyBudget, todaySpend, dailyReserve) : null;
+
+  const weekdayPattern = getWeekdaySpendPattern(history).filter((w) => w.flagged);
+  const WEEKDAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+  const categoryTrends = ctx.readOnly ? [] : await getCategoryTrends(ctx.viewingId, today.slice(0, 7));
+  const risingCategories = categoryTrends
+    .filter((t) => t.trendingUp)
+    .sort((a, b) => (b.pctChange ?? 0) - (a.pctChange ?? 0))
+    .slice(0, 2);
+  const categoryNameById = new Map(ctx.categories.map((c) => [c.id, c.name]));
+
+  const weeklyDigest = computeWeeklyDigest(
+    expenses.map((e) => ({ date: e.date, amount: e.amount, categoryId: e.categoryId })),
+    today,
+    dailyBudget
+  );
 
   const recent = visibleTx.slice(0, 8);
 
@@ -91,6 +135,28 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
         <AccountHeroCarousel accounts={heroAccounts} statsByAccount={statsByAccount} appName={APP_NAME} />
       )}
 
+      {/* Safe to spend today — the single most actionable number: daily budget minus what's
+          already spent today minus a daily slice set aside for upcoming unpaid bills. */}
+      {safeToSpendToday !== null && (
+        <div className={cn("h-card flex flex-col gap-2 p-6", safeToSpendToday < 0 && "ring-2 ring-h-bad")}>
+          <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-h-muted">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            Safe to spend today
+          </p>
+          <p className={cn("text-5xl font-extrabold tabular-nums tracking-tight", safeToSpendToday < 0 ? "text-h-bad" : "text-h-fg")}>
+            {money(Math.max(0, safeToSpendToday))}
+          </p>
+          <p className="text-xs font-semibold text-h-muted">
+            {safeToSpendToday < 0
+              ? `You're ${money(Math.abs(safeToSpendToday))} past what's safe for today.`
+              : dailyReserve > 0
+                ? `${money(dailyBudget)}/day budget, minus ${money(todaySpend)} spent and ${money(dailyReserve)} set aside for unpaid bills.`
+                : `${money(dailyBudget)}/day budget minus ${money(todaySpend)} spent so far.`}
+            {ctx.budget?.adaptiveBudget && " (adaptive)"}
+          </p>
+        </div>
+      )}
+
       {/* Today vs daily budget — the core overspend indicator */}
       <div className={cn("h-card flex flex-col gap-3 p-5", overBudget && "ring-2 ring-h-bad")}>
         <div className="flex items-center justify-between">
@@ -113,7 +179,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
             </div>
             <p className="text-xs font-semibold text-h-muted">
               {pctOfBudget}% of your {money(dailyBudget)}/day budget
-              {!ctx.budget?.dailyBudgetOverride && " (from monthly income ÷ days in month)"}
+              {ctx.budget?.adaptiveBudget ? " (adaptive, recalculated daily)" : !ctx.budget?.dailyBudgetOverride && " (from monthly income ÷ days in month)"}
             </p>
           </>
         ) : (
@@ -122,6 +188,21 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
           </Link>
         )}
       </div>
+
+      {/* Projected month-end savings/shortfall */}
+      {projectedLeftover !== null && (
+        <div className={cn("h-card flex items-center justify-between gap-3 p-4", projectedLeftover < 0 && "ring-2 ring-h-bad")}>
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Projected by payday, at this pace</p>
+            <p className={cn("text-2xl font-extrabold tabular-nums", projectedLeftover < 0 ? "text-h-bad" : "text-h-good")}>
+              {projectedLeftover < 0 ? `− ${money(Math.abs(projectedLeftover))}` : money(projectedLeftover)}
+            </p>
+          </div>
+          <p className="max-w-[45%] text-right text-[11px] font-semibold text-h-muted">
+            {projectedLeftover < 0 ? "Projected shortfall before payday if this pace continues." : "Projected leftover if this pace continues."}
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="h-card flex flex-col gap-1 p-4">
@@ -164,6 +245,58 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
         <div className="h-card flex items-center justify-between p-4">
           <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Household spent today (shared)</p>
           <p className="text-lg font-extrabold tabular-nums">{money(householdTotal)}</p>
+        </div>
+      )}
+
+      {/* Day-of-week spending pattern */}
+      {weekdayPattern.length > 0 && (
+        <div className="h-card flex flex-col gap-1.5 p-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Spending pattern
+          </p>
+          {weekdayPattern.map((w) => (
+            <p key={w.weekday} className="text-sm font-semibold">
+              You spend about {money(w.avg)} on {WEEKDAY_NAMES[w.weekday]}s — well above your usual daily spend.
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Category spend trend */}
+      {risingCategories.length > 0 && (
+        <div className="h-card flex flex-col gap-1.5 p-4">
+          <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-h-muted">
+            <TrendingUp className="h-3.5 w-3.5" />
+            Trending up this month
+          </p>
+          {risingCategories.map((t) => (
+            <p key={t.categoryId} className="text-sm font-semibold">
+              {categoryNameById.get(t.categoryId) ?? "A category"} is up {Math.round(t.pctChange ?? 0)}% vs last month ({money(t.lastMonth)} → {money(t.thisMonth)}).
+            </p>
+          ))}
+        </div>
+      )}
+
+      {/* Weekly spending digest */}
+      {weeklyDigest.thisWeekTotal > 0 && (
+        <div className="h-card flex flex-col gap-2 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-h-muted">Last 7 days</p>
+          <div className="flex items-center justify-between">
+            <p className="text-2xl font-extrabold tabular-nums">{money(weeklyDigest.thisWeekTotal)}</p>
+            {weeklyDigest.pctChange !== null && (
+              <span className={cn("text-xs font-extrabold", weeklyDigest.pctChange > 0 ? "text-h-bad" : "text-h-good")}>
+                {weeklyDigest.pctChange > 0 ? "+" : ""}
+                {Math.round(weeklyDigest.pctChange)}% vs prior week
+              </span>
+            )}
+          </div>
+          <p className="text-xs font-semibold text-h-muted">
+            {weeklyDigest.topCategoryId !== null && `Top category: ${categoryNameById.get(weeklyDigest.topCategoryId) ?? "—"}. `}
+            {weeklyDigest.daysOverBudget > 0
+              ? `Over budget on ${weeklyDigest.daysOverBudget} of the last 7 days.`
+              : "Within budget every day this week."}
+          </p>
         </div>
       )}
 

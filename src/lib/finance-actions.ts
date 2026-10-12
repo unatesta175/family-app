@@ -432,6 +432,7 @@ const budgetSchema = z.object({
   monthlyIncome: positiveMoney,
   paydayDay: z.number().int().min(1).max(31),
   dailyBudgetOverride: positiveMoney.nullable(),
+  adaptiveBudget: z.boolean(),
 });
 
 export async function saveBudgetSettingsAction(raw: unknown): Promise<FinanceActionResult> {
