@@ -14,7 +14,7 @@ export function TemplateFormButton({ accounts, categories }: { accounts: Account
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90" disabled={accounts.length === 0}>
+      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5" disabled={accounts.length === 0}>
         <Plus className="h-4 w-4" />
         New template
       </Button>
@@ -75,11 +75,11 @@ export function TemplateFormModal({
     <FinanceModal open={open} onClose={onClose} title={template ? "Edit template" : "New template"}>
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Name</span>
+          <span className="text-xs font-bold text-muted-foreground">Name</span>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Morning coffee" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Type</span>
+          <span className="text-xs font-bold text-muted-foreground">Type</span>
           <Select value={type} onValueChange={(v) => setType(v as (typeof FINANCE_TX_TYPES)[number])}>
             <SelectTrigger>
               <SelectValue />
@@ -94,7 +94,7 @@ export function TemplateFormModal({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Account</span>
+          <span className="text-xs font-bold text-muted-foreground">Account</span>
           <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
             <SelectTrigger>
               <SelectValue />
@@ -109,7 +109,7 @@ export function TemplateFormModal({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Category</span>
+          <span className="text-xs font-bold text-muted-foreground">Category</span>
           <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
             <SelectTrigger>
               <SelectValue placeholder="None" />
@@ -125,23 +125,23 @@ export function TemplateFormModal({
           </Select>
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Note</span>
+          <span className="text-xs font-bold text-muted-foreground">Note</span>
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </label>
-        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+        {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
         <div className="flex items-center justify-between gap-2 pt-1">
           {template ? (
-            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-h-bad">
+            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
               Delete
             </button>
           ) : (
             <span />
           )}
-          <Button type="button" onClick={submit} disabled={pending || !name.trim() || !amount || !accountId} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+          <Button type="button" onClick={submit} disabled={pending || !name.trim() || !amount || !accountId} >
             {pending ? "Saving…" : "Save"}
           </Button>
         </div>

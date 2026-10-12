@@ -30,11 +30,11 @@ export function AccountFormButton({ account }: { account?: AccountRow }) {
   return (
     <>
       {account ? (
-        <button type="button" onClick={() => setOpen(true)} className="text-xs font-bold text-h-brand">
+        <button type="button" onClick={() => setOpen(true)} className="text-xs font-bold text-primary">
           Edit
         </button>
       ) : (
-        <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+        <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
           <Plus className="h-4 w-4" />
           Add account
         </Button>
@@ -140,7 +140,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
         {/* Card design */}
         <div className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-h-muted">Card Design</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Card Design</span>
             <span className="text-xs font-extrabold">{CARD_THEME_LABEL[colorTheme]}</span>
           </div>
           <div className="flex gap-2.5 overflow-x-auto pb-1">
@@ -154,18 +154,18 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
                 <span
                   className={cn(
                     "relative flex h-9 w-16 flex-shrink-0 items-end overflow-hidden rounded-lg shadow-sm ring-offset-2 transition-all",
-                    colorTheme === t && "ring-2 ring-h-brand"
+                    colorTheme === t && "ring-2 ring-primary"
                   )}
                   style={{ background: CARD_THEME_GRADIENT[t] }}
                 >
                   <span className="h-1 w-full" style={{ background: CARD_THEME_FG[t], opacity: 0.35 }} />
                   {colorTheme === t && (
-                    <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-h-brand text-[9px] text-h-brand-fg">
+                    <span className="absolute right-1 top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground">
                       ✓
                     </span>
                   )}
                 </span>
-                <span className="text-[10px] font-semibold text-h-muted">{CARD_THEME_LABEL[t]}</span>
+                <span className="text-[10px] font-semibold text-muted-foreground">{CARD_THEME_LABEL[t]}</span>
               </button>
             ))}
           </div>
@@ -173,20 +173,20 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
 
         {/* Account details */}
         <div className="flex flex-col gap-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-h-muted">Account Details</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Account Details</span>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-h-muted">Name</span>
+            <span className="text-xs font-bold text-muted-foreground">Name</span>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Maybank, TnG eWallet" />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-h-muted">Starting / current balance (RM)</span>
+            <span className="text-xs font-bold text-muted-foreground">Starting / current balance (RM)</span>
             <Input type="number" inputMode="decimal" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} />
           </label>
 
           <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-h-muted">Type</span>
+            <span className="text-xs font-bold text-muted-foreground">Type</span>
             <div className="flex flex-wrap gap-1.5">
               {FINANCE_ACCOUNT_TYPES.map((t) => (
                 <button
@@ -195,7 +195,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
                   onClick={() => setType(t)}
                   className={cn(
                     "rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                    type === t ? "border-black bg-black text-white" : "border-h-border bg-white text-h-muted hover:text-h-fg"
+                    type === t ? "border-black bg-black text-white" : "border-border bg-white text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {ACCOUNT_TYPE_LABEL[t]}
@@ -207,7 +207,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
 
         {/* Icon */}
         <div className="flex flex-col gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-h-muted">Icon</span>
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Icon</span>
           <div className="flex gap-2 overflow-x-auto pb-1">
             {Object.entries(FINANCE_ACCOUNT_ICONS).map(([key, Icon]) => (
               <button
@@ -216,7 +216,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
                 onClick={() => setIcon(key)}
                 className={cn(
                   "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border transition-colors",
-                  icon === key ? "border-black bg-black text-white" : "border-h-border bg-white text-h-muted hover:text-h-fg"
+                  icon === key ? "border-black bg-black text-white" : "border-border bg-white text-muted-foreground hover:text-foreground"
                 )}
               >
                 <Icon className="h-4 w-4" />
@@ -230,10 +230,10 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
           <Switch checked={isShared} onCheckedChange={setIsShared} />
         </label>
 
-        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+        {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
 
         {account && (
-          <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-h-bad">
+          <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
             Delete account
           </button>
         )}

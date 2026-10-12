@@ -14,7 +14,7 @@ export function LendingFormButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
         <Plus className="h-4 w-4" />
         Add entry
       </Button>
@@ -68,15 +68,15 @@ export function LendingFormModal({ entry, open, onClose }: { entry?: LendingRow;
   return (
     <FinanceModal open={open} onClose={onClose} title={entry ? "Edit entry" : "New lending entry"}>
       <div className="flex flex-col gap-3">
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 rounded-lg border border-border bg-muted p-1">
           {FINANCE_LEND_DIRECTIONS.map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => setDirection(d)}
               className={cn(
-                "flex-1 rounded-full border px-3 py-1.5 text-xs font-bold capitalize transition-colors",
-                direction === d ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted"
+                "flex-1 rounded-md px-3 py-1.5 text-xs font-bold capitalize transition-colors",
+                direction === d ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {d === "lent" ? "I lent" : "I borrowed"}
@@ -84,36 +84,36 @@ export function LendingFormModal({ entry, open, onClose }: { entry?: LendingRow;
           ))}
         </div>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Who</span>
+          <span className="text-xs font-bold text-muted-foreground">Who</span>
           <Input value={counterpartyName} onChange={(e) => setCounterpartyName(e.target.value)} placeholder="Name" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Due date (optional)</span>
+          <span className="text-xs font-bold text-muted-foreground">Due date (optional)</span>
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Note</span>
+          <span className="text-xs font-bold text-muted-foreground">Note</span>
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </label>
-        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+        {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
         <div className="flex items-center justify-between gap-2 pt-1">
           <div className="flex gap-3">
             {entry && entry.status !== "settled" && (
-              <button type="button" onClick={settle} disabled={pending} className="text-xs font-bold text-h-good">
+              <button type="button" onClick={settle} disabled={pending} className="text-xs font-bold text-success">
                 Mark settled
               </button>
             )}
             {entry && (
-              <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-h-bad">
+              <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
                 Delete
               </button>
             )}
           </div>
-          <Button type="button" onClick={submit} disabled={pending || !counterpartyName.trim() || !amount} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+          <Button type="button" onClick={submit} disabled={pending || !counterpartyName.trim() || !amount} >
             {pending ? "Saving…" : "Save"}
           </Button>
         </div>

@@ -14,7 +14,7 @@ export function BillFormButton({ categories }: { categories: CategoryRow[] }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
         <Plus className="h-4 w-4" />
         Add bill
       </Button>
@@ -61,19 +61,19 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
     <FinanceModal open={open} onClose={onClose} title={bill ? "Edit bill" : "New bill"}>
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Name</span>
+          <span className="text-xs font-bold text-muted-foreground">Name</span>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Electricity (TNB)" />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Due day of month</span>
+          <span className="text-xs font-bold text-muted-foreground">Due day of month</span>
           <Input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Category</span>
+          <span className="text-xs font-bold text-muted-foreground">Category</span>
           <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
             <SelectTrigger>
               <SelectValue placeholder="None" />
@@ -92,16 +92,16 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
           Recurs every month
           <Switch checked={recurring} onCheckedChange={setRecurring} />
         </label>
-        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+        {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
         <div className="flex items-center justify-between gap-2 pt-1">
           {bill ? (
-            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-h-bad">
+            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
               Delete
             </button>
           ) : (
             <span />
           )}
-          <Button type="button" onClick={submit} disabled={pending || !name.trim() || !amount} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+          <Button type="button" onClick={submit} disabled={pending || !name.trim() || !amount} >
             {pending ? "Saving…" : "Save"}
           </Button>
         </div>

@@ -20,7 +20,7 @@ export function TransactionFormButton({ accounts, categories }: { accounts: Acco
   if (accounts.length === 0) return null;
   return (
     <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
         <Plus className="h-4 w-4" />
         Add
       </Button>
@@ -86,15 +86,15 @@ export function TransactionFormModal({
   return (
     <FinanceModal open={open} onClose={onClose} title={tx ? "Edit transaction" : "Add transaction"}>
       <div className="flex flex-col gap-3">
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 rounded-lg border border-border bg-muted p-1">
           {FINANCE_TX_TYPES.map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setType(t)}
               className={cn(
-                "flex-1 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                type === t ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted"
+                "flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors",
+                type === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
               {TYPE_LABEL[t]}
@@ -103,12 +103,12 @@ export function TransactionFormModal({
         </div>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" autoFocus />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Account</span>
+          <span className="text-xs font-bold text-muted-foreground">Account</span>
           <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
             <SelectTrigger>
               <SelectValue />
@@ -125,7 +125,7 @@ export function TransactionFormModal({
 
         {type !== "transfer" && (
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-h-muted">Category</span>
+            <span className="text-xs font-bold text-muted-foreground">Category</span>
             <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
               <SelectTrigger>
                 <SelectValue placeholder="None" />
@@ -144,7 +144,7 @@ export function TransactionFormModal({
 
         {trips.length > 0 && type !== "transfer" && (
           <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-h-muted">Trip</span>
+            <span className="text-xs font-bold text-muted-foreground">Trip</span>
             <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
               <SelectTrigger>
                 <SelectValue placeholder="None" />
@@ -162,12 +162,12 @@ export function TransactionFormModal({
         )}
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Date</span>
+          <span className="text-xs font-bold text-muted-foreground">Date</span>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Note</span>
+          <span className="text-xs font-bold text-muted-foreground">Note</span>
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </label>
 
@@ -176,17 +176,17 @@ export function TransactionFormModal({
           <Switch checked={isShared} onCheckedChange={setIsShared} />
         </label>
 
-        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+        {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
 
         <div className="flex items-center justify-between gap-2 pt-1">
           {tx ? (
-            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-h-bad">
+            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
               Delete
             </button>
           ) : (
             <span />
           )}
-          <Button type="button" onClick={submit} disabled={pending || !amount} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+          <Button type="button" onClick={submit} disabled={pending || !amount}>
             {pending ? "Saving…" : "Save"}
           </Button>
         </div>

@@ -9,7 +9,6 @@ import { FinanceModal } from "@/components/finance/finance-modal";
 import { createTransferAction } from "@/lib/finance-actions";
 import { todayIso } from "@/lib/date";
 import type { AccountRow } from "@/lib/db/repo-finance";
-import { cn } from "@/lib/utils";
 
 export function TransferFormButton({ accounts }: { accounts: AccountRow[] }) {
   const [open, setOpen] = useState(false);
@@ -52,7 +51,7 @@ function TransferFormModal({ accounts, onClose }: { accounts: AccountRow[]; onCl
     <FinanceModal open onClose={onClose} title="New transfer">
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">From</span>
+          <span className="text-xs font-bold text-muted-foreground">From</span>
           <Select value={String(fromAccountId)} onValueChange={(v) => setFromAccountId(Number(v))}>
             <SelectTrigger className="font-semibold">
               <SelectValue />
@@ -68,7 +67,7 @@ function TransferFormModal({ accounts, onClose }: { accounts: AccountRow[]; onCl
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">To</span>
+          <span className="text-xs font-bold text-muted-foreground">To</span>
           <Select value={String(toAccountId)} onValueChange={(v) => setToAccountId(Number(v))}>
             <SelectTrigger className="font-semibold">
               <SelectValue />
@@ -84,23 +83,23 @@ function TransferFormModal({ accounts, onClose }: { accounts: AccountRow[]; onCl
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Amount (RM)</span>
+          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
         </label>
 
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Date</span>
+          <span className="text-xs font-bold text-muted-foreground">Date</span>
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
 
-        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+        {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
 
         <div className="flex items-center justify-end gap-2 pt-1">
           <Button
             type="button"
             onClick={submit}
             disabled={pending || !amount || fromAccountId === toAccountId}
-            className={cn("bg-h-brand text-h-brand-fg hover:opacity-90")}
+            
           >
             {pending ? "Transferring…" : "Transfer"}
           </Button>

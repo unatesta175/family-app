@@ -55,7 +55,7 @@ export function BudgetSettingsForm({ settings }: { settings: BudgetSettingsRow |
       </label>
       {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
       {saved && !error && <p className="text-xs font-semibold text-success">Saved.</p>}
-      <Button type="button" onClick={submit} disabled={pending} className="self-start bg-primary text-primary-foreground hover:opacity-90">
+      <Button type="button" onClick={submit} disabled={pending} className="self-start">
         {pending ? "Saving…" : "Save"}
       </Button>
     </Card>

@@ -22,7 +22,7 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
 
   if (accounts.length === 0) {
     return (
-      <Button asChild size="sm" className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+      <Button asChild size="sm" className="gap-1.5">
         <a href="/finance/accounts">
           <Plus className="h-4 w-4" />
           Add an account first
@@ -46,7 +46,7 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
 
   return (
     <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
         <Plus className="h-4 w-4" />
         Quick add spend
       </Button>
@@ -70,7 +70,7 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
                 onClick={() => setCategoryId(categoryId === c.id ? null : c.id)}
                 className={cn(
                   "rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                  categoryId === c.id ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted"
+                  categoryId === c.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
                 )}
               >
                 {c.name}
@@ -92,8 +92,8 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
             </Select>
           )}
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" />
-          {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
-          <Button type="button" onClick={submit} disabled={pending || !amount} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+          {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
+          <Button type="button" onClick={submit} disabled={pending || !amount} >
             {pending ? "Saving…" : "Add expense"}
           </Button>
         </div>

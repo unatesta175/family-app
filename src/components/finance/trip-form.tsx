@@ -12,7 +12,7 @@ export function TripFormButton() {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5 bg-h-brand text-h-brand-fg hover:opacity-90">
+      <Button type="button" size="sm" onClick={() => setOpen(true)} className="gap-1.5">
         <Plus className="h-4 w-4" />
         New trip
       </Button>
@@ -67,38 +67,38 @@ export function TripFormModal({ trip, open, onClose }: { trip?: TripRow; open: b
     <FinanceModal open={open} onClose={onClose} title={trip ? "Edit trip" : "New trip"}>
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Name</span>
+          <span className="text-xs font-bold text-muted-foreground">Name</span>
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Langkawi weekend" />
         </label>
         <div className="flex gap-3">
           <label className="flex flex-1 flex-col gap-1">
-            <span className="text-xs font-bold text-h-muted">Start date</span>
+            <span className="text-xs font-bold text-muted-foreground">Start date</span>
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </label>
           <label className="flex flex-1 flex-col gap-1">
-            <span className="text-xs font-bold text-h-muted">End date</span>
+            <span className="text-xs font-bold text-muted-foreground">End date</span>
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           </label>
         </div>
         <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-h-muted">Budget (RM)</span>
+          <span className="text-xs font-bold text-muted-foreground">Budget (RM)</span>
           <Input type="number" inputMode="decimal" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} />
         </label>
-        {error && <p className="text-xs font-semibold text-h-bad">{error}</p>}
+        {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
         <div className="flex items-center justify-between gap-2 pt-1">
           {trip ? (
             <div className="flex gap-3">
-              <button type="button" onClick={archive} disabled={pending} className="text-xs font-bold text-h-muted">
+              <button type="button" onClick={archive} disabled={pending} className="text-xs font-bold text-muted-foreground">
                 Archive
               </button>
-              <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-h-bad">
+              <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
                 Delete
               </button>
             </div>
           ) : (
             <span />
           )}
-          <Button type="button" onClick={submit} disabled={pending || !name.trim() || !startDate || !endDate} className="bg-h-brand text-h-brand-fg hover:opacity-90">
+          <Button type="button" onClick={submit} disabled={pending || !name.trim() || !startDate || !endDate} >
             {pending ? "Saving…" : "Save"}
           </Button>
         </div>

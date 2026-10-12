@@ -78,7 +78,7 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
           </div>
           {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
           <div className="flex gap-2">
-            <Button type="button" size="sm" onClick={add} disabled={pending || !name.trim()} className="bg-primary text-primary-foreground hover:opacity-90">
+            <Button type="button" size="sm" onClick={add} disabled={pending || !name.trim()} >
               Add
             </Button>
             <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>

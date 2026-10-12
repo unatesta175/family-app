@@ -37,7 +37,7 @@ export function FinanceBottomNav() {
   const pathname = usePathname();
   const q = useMemberQuery();
   return (
-    <nav className="sticky bottom-0 z-20 flex w-full items-stretch justify-between border-t border-h-border bg-h-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
+    <nav className="sticky bottom-0 z-20 flex w-full items-stretch justify-between border-t border-border bg-card/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
       {ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
@@ -46,10 +46,10 @@ export function FinanceBottomNav() {
             href={`${href}${q}`}
             className={cn(
               "flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1 text-[10px] font-semibold transition-colors",
-              active ? "text-h-brand" : "text-h-muted hover:text-h-fg"
+              active ? "text-primary" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <span className={cn("flex h-7 w-10 items-center justify-center rounded-full transition-colors", active && "bg-h-brand-soft")}>
+            <span className={cn("flex h-7 w-10 items-center justify-center rounded-full transition-colors", active && "bg-primary/10")}>
               <Icon className="h-[17px] w-[17px]" strokeWidth={active ? 2.5 : 2} />
             </span>
             {label}
@@ -65,9 +65,9 @@ export function FinanceSidebar() {
   const q = useMemberQuery();
   const all = [...ITEMS, ...SIDEBAR_EXTRA];
   return (
-    <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-h-border px-3 py-6 md:flex">
+    <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col gap-1 border-r border-border px-3 py-6 md:flex">
       <div className="mb-4 flex items-center gap-2 px-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-h-brand text-h-brand-fg">
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground">
           <Wallet className="h-5 w-5" />
         </span>
         <span className="text-lg font-extrabold tracking-tight">Finance</span>
@@ -80,7 +80,7 @@ export function FinanceSidebar() {
             href={`${href}${q}`}
             className={cn(
               "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
-              active ? "bg-h-brand-soft text-h-brand" : "text-h-muted hover:bg-h-surface2 hover:text-h-fg"
+              active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"
             )}
           >
             <Icon className="h-[18px] w-[18px]" strokeWidth={active ? 2.5 : 2} />
@@ -101,7 +101,7 @@ export function FinanceMoreLinks() {
         <Link
           key={href}
           href={`${href}${q}`}
-          className="flex items-center gap-1.5 rounded-xl border border-h-border bg-h-surface px-3 py-1.5 text-xs font-bold text-h-muted hover:text-h-fg"
+          className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-foreground"
         >
           <Icon className="h-3.5 w-3.5" />
           {label}
