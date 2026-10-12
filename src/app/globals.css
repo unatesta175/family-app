@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 :root {
   --background: #eef5ef;
@@ -829,6 +830,22 @@ html:has(.habits-app) {
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+}
+
+/*
+ * shadcn's own generated globals.css always adds this base-layer reset (`* { @apply
+ * border-border outline-ring/50; }`) so that every unqualified `border`/`outline` utility in the
+ * component source (Card, Dialog, Popover, DropdownMenu, Select content — all shipped with bare
+ * `border`, no color suffix) picks up the theme's `--border` token. Tailwind v4's own preflight
+ * only sets `border: 0 solid` with no color, so without this reset those borders fall back to
+ * `currentColor` — a hard, dark border instead of the soft gray shadcn ships by default. Scoped to
+ * `.finance-theme` so it has no effect on any other module.
+ */
+@layer base {
+  .habits-theme.finance-theme,
+  .habits-theme.finance-theme * {
+    @apply border-border outline-ring/50;
+  }
 }
 
 /* Finance: the flippable account card. */
