@@ -291,6 +291,10 @@ export const habits = sqliteTable("habits", {
   // Kept out of every household-visible surface (another member's Focus page, shared goal views, …):
   // only its own owner ever sees its name, logs or progress.
   private: integer("private", { mode: "boolean" }).notNull().default(false),
+  // Concealed on the owner's own device until they reveal it via the header eye toggle (e.g.
+  // handing their phone to someone else). Unlike `private`, this has nothing to do with other
+  // household members — it only ever hides a habit from its own owner's current view.
+  hidden: integer("hidden", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),

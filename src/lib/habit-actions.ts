@@ -230,6 +230,8 @@ const habitSchema = z
     forEveryone: z.boolean().default(false),
     // Kept off every household-visible surface: only its own owner sees its name, logs or progress.
     private: z.boolean().default(false),
+    // Hidden from the owner's own display until revealed via the header eye toggle.
+    hidden: z.boolean().default(false),
     // Link the habit to one of your life goals (null = none, undefined = leave as is).
     goalId: z.number().int().positive().nullable().optional(),
   })
@@ -305,6 +307,7 @@ async function habitInput(raw: HabitFormInput, profileId: number) {
     checklist: JSON.stringify(checklist),
     goals: JSON.stringify(measured ? v.goals : []),
     private: v.private,
+    hidden: v.hidden,
   };
 }
 
@@ -332,7 +335,8 @@ async function shareWithCircle(ownerProfileId: number, input: Awaited<ReturnType
         ? found.id
         : (await createCategory(member.id, { name: ownCategory.name, color: ownCategory.color, icon: ownCategory.icon })).id;
     }
-    await createHabit(member.id, { ...input, categoryId });
+    // `hidden` is a personal display preference, not something to carry over to someone else's copy.
+    await createHabit(member.id, { ...input, categoryId, hidden: false });
     shared += 1;
   }
   return shared;

@@ -31,7 +31,11 @@ export default async function FocusStatsPage({ searchParams }: { searchParams: P
   const today = await focusToday();
   const tz = await tzOffset();
   const from = addDays(today, -(range - 1));
-  const [sessions, habits] = await Promise.all([getFocusSessionsInRange(profileId, from, today), getHabits(profileId, { includeArchived: true })]);
+  const [allSessions, allHabits] = await Promise.all([getFocusSessionsInRange(profileId, from, today), getHabits(profileId, { includeArchived: true })]);
+  // A private habit's sessions and progress stay off every household-visible surface.
+  const privateHabitIds = readOnly ? new Set(allHabits.filter((h) => h.private).map((h) => h.id)) : new Set<number>();
+  const habits = allHabits.filter((h) => !privateHabitIds.has(h.id));
+  const sessions = allSessions.filter((s) => s.habitId === null || !privateHabitIds.has(s.habitId));
   const names = new Map(habits.map((h) => [h.id, h.name]));
   const lite = sessions.map(toLite);
   const days = byDay(lite);

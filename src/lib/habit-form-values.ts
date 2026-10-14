@@ -48,6 +48,8 @@ export type HabitFormValues = {
   goalId: number | null;
   /** Kept off every household-visible surface: only its own owner sees its name, logs or progress. */
   private: boolean;
+  /** Hidden from the owner's own display until revealed via the header eye toggle. */
+  hidden: boolean;
 };
 
 export function emptyHabit(): HabitFormValues {
@@ -78,6 +80,7 @@ export function emptyHabit(): HabitFormValues {
     priority: 0,
     goalId: null,
     private: false,
+    hidden: false,
   };
 }
 
@@ -109,6 +112,7 @@ export type HabitFormSource = {
   endDate: string | null;
   priority: number;
   private: boolean;
+  hidden: boolean;
 };
 
 export function habitToFormValues(h: HabitFormSource, goalId: number | null = null): HabitFormValues {
@@ -140,5 +144,6 @@ export function habitToFormValues(h: HabitFormSource, goalId: number | null = nu
     priority: h.priority,
     goalId,
     private: h.private,
+    hidden: h.hidden,
   };
 }

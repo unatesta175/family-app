@@ -24,7 +24,7 @@ export async function loadHabitData() {
   // Everyone has their five prayers as habits from the start.
   await ensurePrayerHabits(profileId);
 
-  const [profile, habits, categories, logsByHabit, tasks, completions, skips] = await Promise.all([
+  const [profile, allHabits, categories, logsByHabit, tasks, completions, skips] = await Promise.all([
     getProfile(profileId),
     getHabits(profileId),
     getCategories(profileId),
@@ -33,6 +33,8 @@ export async function loadHabitData() {
     getTaskCompletionsInRange(profileId, FAR_PAST, FAR_FUTURE),
     getTaskSkipsInRange(profileId, FAR_PAST, FAR_FUTURE),
   ]);
+  // A private habit stays off every household-visible surface: only its own owner sees it.
+  const habits = readOnly ? allHabits.filter((h) => !h.private) : allHabits;
 
   return { profileId, profile, readOnly, habits, categories, logsByHabit, tasks, completions, skips };
 }

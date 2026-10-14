@@ -54,6 +54,8 @@ export default async function HabitDetailPage({
   if (!household.some((p) => p.id === habit.profileId)) notFound();
   const ownProfileId = await getOwnProfileId();
   const readOnly = ownProfileId !== habit.profileId;
+  // A private habit's page is only reachable by its own owner, even by direct link.
+  if (habit.private && readOnly) notFound();
   // The five prayers are habits too, but their days are set in the Prayer module.
   const locked = !!habit.systemKey;
 

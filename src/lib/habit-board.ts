@@ -61,6 +61,8 @@ export type BoardHabit = {
   lifeGoal: { id: number; title: string; color: string } | null;
   /** An entry exists for this day (a past day with none just looks "missed"). */
   logged: boolean;
+  /** Concealed on the owner's own display until revealed via the header eye toggle. */
+  hidden: boolean;
 };
 
 export type BoardGoal = {
@@ -147,6 +149,7 @@ export function buildBoardHabits(
       startDate: h.startDate,
       flexible: h.flexible,
       logged: !!log,
+      hidden: h.hidden,
       lifeGoal: goalChips?.get(h.id) ? { id: goalChips.get(h.id)!.goalId, title: goalChips.get(h.id)!.title, color: goalChips.get(h.id)!.color } : null,
       carriedFrom: state === "pending" || state === "flex" ? carriedFromDate(h, date) : null,
     });

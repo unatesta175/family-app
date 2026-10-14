@@ -53,6 +53,7 @@ import { StatusGuideButton } from "@/components/habits/status-guide";
 import type { BoardGoal, BoardHabit, BoardTask } from "@/lib/habit-board";
 import { parseIso } from "@/lib/date";
 import { RankChip } from "@/components/habits/rank-chip";
+import { useVisibleHabits } from "@/components/hidden-habits-context";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "build" | "break" | "tasks";
@@ -198,22 +199,24 @@ export function TodayBoard({
     });
   }
 
+  const visibleHabits = useVisibleHabits(state.habits);
+
   // Categories that actually appear on this day, with how many items each holds.
   const categoryChips = useMemo(() => {
     const counts = new Map<string, number>();
     const bump = (name: string | null) => counts.set(name ?? "", (counts.get(name ?? "") ?? 0) + 1);
-    for (const h of state.habits) if (h.state !== "prestart") bump(h.categoryName);
+    for (const h of visibleHabits) if (h.state !== "prestart") bump(h.categoryName);
     for (const t of state.tasks) bump(t.categoryName);
     const named = [...counts.entries()].filter(([n]) => n !== "").sort((a, b) => a[0].localeCompare(b[0]));
     return { named, none: counts.get("") ?? 0 };
-  }, [state.habits, state.tasks]);
+  }, [visibleHabits, state.tasks]);
   // "" stands for "no category".
   const inCategory = (name: string | null) => category === null || (name ?? "") === category;
 
   const shownHabits = useMemo(
-    () => state.habits.filter((h) => (filter === "all" || filter === h.kind) && inCategory(h.categoryName)),
+    () => visibleHabits.filter((h) => (filter === "all" || filter === h.kind) && inCategory(h.categoryName)),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [state.habits, filter, category]
+    [visibleHabits, filter, category]
   );
   const shownTasks = (filter === "all" || filter === "tasks" ? state.tasks : []).filter((t) => inCategory(t.categoryName));
 
@@ -225,7 +228,7 @@ export function TodayBoard({
   const doneTasks = shownTasks.filter((t) => t.done || t.skipped);
 
   // Habits that haven't started yet on this date aren't part of the day's list, so they aren't counted.
-  const started = state.habits.filter((h) => h.state !== "prestart");
+  const started = visibleHabits.filter((h) => h.state !== "prestart");
   const counts = {
     all: started.length + state.tasks.length,
     build: started.filter((h) => h.kind === "build").length,

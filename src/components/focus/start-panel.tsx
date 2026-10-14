@@ -10,6 +10,7 @@ import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, POMODORO_PRESETS, SPECIES_LABE
 import { FocusTree } from "@/components/focus/focus-tree";
 import { Switch } from "@/components/habits/ui/switch";
 import { useGardenMode } from "@/components/focus/garden-view";
+import { useVisibleHabits } from "@/components/hidden-habits-context";
 
 const Tree3DPreview = dynamic(() => import("@/components/focus/tree-3d-preview"), {
   ssr: false,
@@ -18,7 +19,7 @@ const Tree3DPreview = dynamic(() => import("@/components/focus/tree-3d-preview")
 import { colorHex, tint } from "@/lib/habits";
 import { cn } from "@/lib/utils";
 
-export type TimerHabit = { id: number; name: string; color: string };
+export type TimerHabit = { id: number; name: string; color: string; hidden: boolean };
 
 const PRESETS = [15, 25, 45, 60, 90, 120];
 
@@ -94,7 +95,6 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [focusMin, setFocusMin] = useState(25);
   const [breakMin, setBreakMin] = useState(5);
   const [species, setSpecies] = useState<FocusSpecies>("oak");
-  const [habitId, setHabitId] = useState<number | null>(defaultHabitId && habits.some((h) => h.id === defaultHabitId) ? defaultHabitId : null);
   const [error, setError] = useState<string | null>(null);
   // A new timer habit can be made right here, without leaving to the Habits module first.
   const [extraHabits, setExtraHabits] = useState<TimerHabit[]>([]);
@@ -102,7 +102,8 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [newHabitName, setNewHabitName] = useState("");
   const [creatingPending, startCreatingHabit] = useTransition();
   const [createError, setCreateError] = useState<string | null>(null);
-  const allHabits = [...habits, ...extraHabits];
+  const allHabits = useVisibleHabits([...habits, ...extraHabits]);
+  const [habitId, setHabitId] = useState<number | null>(defaultHabitId && allHabits.some((h) => h.id === defaultHabitId) ? defaultHabitId : null);
 
   function createHabitInline() {
     setCreateError(null);
@@ -111,7 +112,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
     startCreatingHabit(async () => {
       const res = await quickCreateTimerHabitAction(name);
       if (!res.ok) return setCreateError(res.error);
-      setExtraHabits((h) => [...h, { id: res.data.id, name: res.data.name, color: res.data.color }]);
+      setExtraHabits((h) => [...h, { id: res.data.id, name: res.data.name, color: res.data.color, hidden: false }]);
       setHabitId(res.data.id);
       setNewHabitName("");
       setCreatingHabit(false);

@@ -95,6 +95,7 @@ export type HabitInput = {
   checklist?: string; // JSON
   goals?: string; // JSON
   private?: boolean;
+  hidden?: boolean;
 };
 
 export async function getHabits(profileId: number, opts: { includeArchived?: boolean } = {}) {

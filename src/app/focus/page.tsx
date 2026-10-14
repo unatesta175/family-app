@@ -27,7 +27,7 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
   // A private habit's name is only shown to its own owner — never on another member's view of this page.
   const names = new Map(habits.filter((h) => !readOnly || !h.private).map((h) => [h.id, h.name]));
   // A session can count towards any habit, not just timer ones — only on your own page.
-  const pickableHabits = habits.filter((h) => !h.systemKey && CREDITABLE_EVAL_TYPES.includes(h.evalType)).map((h) => ({ id: h.id, name: h.name, color: h.color }));
+  const pickableHabits = habits.filter((h) => !h.systemKey && CREDITABLE_EVAL_TYPES.includes(h.evalType)).map((h) => ({ id: h.id, name: h.name, color: h.color, hidden: h.hidden }));
   // Preselect whichever habit the last session was for, so starting again doesn't ask twice.
   const lastHabitId = [...recent].reverse().find((s) => s.habitId !== null)?.habitId ?? null;
   const days = byDay(recent.map(toLite));

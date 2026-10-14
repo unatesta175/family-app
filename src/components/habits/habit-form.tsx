@@ -301,6 +301,12 @@ export function HabitFormSheet({
           </FormSection>
         )}
 
+        <FormSection title="My display">
+          <ToggleRow title="Hide from my own display" description="Leaves this habit out of your lists until you reveal hidden habits with the eye icon in the header — handy when someone else is holding your phone.">
+            <Switch checked={v.hidden} onCheckedChange={(on) => set("hidden", on)} aria-label="Hide from my own display" />
+          </ToggleRow>
+        </FormSection>
+
         {circleSize > 1 && (
           <FormSection title="Family circle">
             <ToggleRow

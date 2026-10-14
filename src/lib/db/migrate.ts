@@ -45,6 +45,7 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "focus_sessions", column: "paused_seconds", ddl: "ALTER TABLE focus_sessions ADD COLUMN paused_seconds INTEGER NOT NULL DEFAULT 0" },
   { table: "focus_sessions", column: "paused_at", ddl: "ALTER TABLE focus_sessions ADD COLUMN paused_at INTEGER" },
   { table: "habits", column: "private", ddl: "ALTER TABLE habits ADD COLUMN private INTEGER NOT NULL DEFAULT 0" },
+  { table: "habits", column: "hidden", ddl: "ALTER TABLE habits ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0" },
   { table: "focus_sessions", column: "open_ended", ddl: "ALTER TABLE focus_sessions ADD COLUMN open_ended INTEGER NOT NULL DEFAULT 0" },
   // Finance: transactions can be tagged to a trip.
   { table: "finance_transactions", column: "trip_id", ddl: "ALTER TABLE finance_transactions ADD COLUMN trip_id INTEGER REFERENCES finance_trips(id) ON DELETE SET NULL" },
