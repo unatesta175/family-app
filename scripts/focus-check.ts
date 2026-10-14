@@ -50,6 +50,7 @@ const mk = (id: number, date: string, status: SessionLite["status"], mins: numbe
   id,
   date,
   startedAt: new Date(`${date}T${String(hour).padStart(2, "0")}:00:00`).getTime(),
+  endedAt: null,
   habitId: null,
   species: "oak",
   status,

@@ -8,8 +8,8 @@ import { localDateFrom } from "@/lib/focus";
 import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
-import { attachHabitToSession, cfgFromRow, completeFocusSession, completeOpenEndedSession, createFocusSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
-import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, canCreditFocusTime, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
+import { attachHabitToSession, cfgFromRow, completeFocusSession, completeOpenEndedSession, createFocusSession, deleteFinishedSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, setFinishedSessionSeconds, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
+import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, canCreditFocusTime, focusStreak, formatFocus, timeline, type PomodoroConfig } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
 
@@ -245,6 +245,44 @@ export async function resumeFocusAction(id: number): Promise<FocusResult<{ pause
     if (row.status !== "active") throw new Error("This session already ended.");
     const pausedSeconds = await resumeFocusSession(row);
     return { ok: true, data: { pausedSeconds } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Removes a finished session from history and undoes whatever time it credited to its habit. */
+export async function deleteFocusSessionAction(id: number): Promise<FocusResult> {
+  try {
+    const profileId = await ownProfile();
+    const row = await getFocusSession(id);
+    if (!row || row.profileId !== profileId) throw new Error("Session not found.");
+    if (row.status === "active") throw new Error("Can't delete a session that's still running.");
+    await deleteFinishedSession(row);
+    refresh();
+    return { ok: true };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/**
+ * Corrects a finished session's recorded length — for when a forgotten pause (or anything else)
+ * left it reading more focus time than could actually have happened. The most it can be set to is
+ * the session's real wall-clock span (ended minus started): never more than physically possible.
+ */
+export async function editFocusSessionTimeAction(input: { id: number; seconds: number }): Promise<FocusResult<{ seconds: number }>> {
+  try {
+    const v = z.object({ id: z.number().int().positive(), seconds: z.number().int().min(0) }).parse(input);
+    const profileId = await ownProfile();
+    const row = await getFocusSession(v.id);
+    if (!row || row.profileId !== profileId) throw new Error("Session not found.");
+    if (row.status === "active") throw new Error("Can't edit a session that's still running.");
+    if (row.endedAt === null) throw new Error("This session has no end time to check against.");
+    const maxSeconds = Math.floor((row.endedAt - row.startedAt) / 1000);
+    if (v.seconds > maxSeconds) throw new Error(`Can't be more than ${formatFocus(maxSeconds)} — that's as long as the session ran.`);
+    await setFinishedSessionSeconds(row, v.seconds);
+    refresh();
+    return { ok: true, data: { seconds: v.seconds } };
   } catch (err) {
     return fail(err);
   }

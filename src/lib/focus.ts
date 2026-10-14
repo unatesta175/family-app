@@ -254,6 +254,7 @@ export type SessionLite = {
   id: number;
   date: string;
   startedAt: number;
+  endedAt: number | null;
   habitId: number | null;
   species: FocusSpecies;
   status: "active" | "completed" | "withered";

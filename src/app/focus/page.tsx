@@ -104,7 +104,7 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
         <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-[#1c5a45] to-[#123f31] p-4 shadow-md">
           <GardenView sessions={todayTotals?.sessions ?? []} className="mx-auto w-full max-w-sm" />
         </div>
-        <SessionList sessions={todayTotals?.sessions ?? []} names={names} tz={tz} />
+        <SessionList sessions={todayTotals?.sessions ?? []} names={names} tz={tz} readOnly={readOnly} />
       </section>
     </div>
   );

@@ -1,10 +1,11 @@
 import { FocusTree } from "@/components/focus/focus-tree";
+import { SessionRowActions } from "@/components/focus/session-row-actions";
 import { formatClockTime, formatFocus, sessionTrees, tierInfo, type SessionLite } from "@/lib/focus";
 
 export type HabitNames = Map<number, string>;
 
 /** Sessions in the order they were started, with their length, what they were for and the trees they grew. */
-export function SessionList({ sessions, names, tz }: { sessions: SessionLite[]; names: HabitNames; tz: number }) {
+export function SessionList({ sessions, names, tz, readOnly = false }: { sessions: SessionLite[]; names: HabitNames; tz: number; readOnly?: boolean }) {
   const done = sessions.filter((s) => s.status !== "active");
   if (done.length === 0) return null;
   return (
@@ -35,6 +36,15 @@ export function SessionList({ sessions, names, tz }: { sessions: SessionLite[]; 
               </p>
             </div>
             <span className="shrink-0 text-sm font-extrabold tabular-nums">{formatFocus(s.status === "completed" ? s.plannedSeconds : s.focusedSeconds)}</span>
+            {!readOnly && (
+              <SessionRowActions
+                id={s.id}
+                status={s.status}
+                startedAt={s.startedAt}
+                endedAt={s.endedAt}
+                seconds={s.status === "completed" ? s.plannedSeconds : s.focusedSeconds}
+              />
+            )}
           </li>
         );
       })}

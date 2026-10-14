@@ -172,7 +172,7 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
         {sum.sessions > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Sessions</h2>
-            <SessionList sessions={lite} names={names} tz={tz} />
+            <SessionList sessions={lite} names={names} tz={tz} readOnly={readOnly} />
           </section>
         )}
         {sum.sessions === 0 && <p className="rounded-2xl border border-dashed border-h-border p-6 text-center text-sm text-h-muted">No trees in this {view === "day" ? "day" : view}. Start a session and the first one is planted here.</p>}

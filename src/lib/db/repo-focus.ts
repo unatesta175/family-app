@@ -29,7 +29,7 @@ export function effectiveNow(row: Pick<FocusSessionRow, "pausedSeconds" | "pause
 }
 
 export function toLite(r: FocusSessionRow): SessionLite {
-  return { id: r.id, date: r.date, startedAt: r.startedAt, habitId: r.habitId, species: r.species, status: r.status, plannedSeconds: r.plannedSeconds, focusedSeconds: r.focusedSeconds, mode: r.mode, cfg: cfgFromRow(r) };
+  return { id: r.id, date: r.date, startedAt: r.startedAt, endedAt: r.endedAt, habitId: r.habitId, species: r.species, status: r.status, plannedSeconds: r.plannedSeconds, focusedSeconds: r.focusedSeconds, mode: r.mode, cfg: cfgFromRow(r) };
 }
 
 export async function getFocusSession(id: number) {
@@ -136,15 +136,34 @@ async function creditHabit(row: FocusSessionRow, habitId: number | null) {
   await creditHabitSeconds(habitId, row.startedAt, row.plannedSeconds);
 }
 
-/** Adds some seconds of focus to a timer habit's day (the day the session started on, server zone). */
+/** Adds (or, with a negative delta, removes) some seconds of focus from a timer habit's day. */
 async function creditHabitSeconds(habitId: number | null, startedAt: number, seconds: number) {
-  if (habitId === null || seconds <= 0) return;
+  if (habitId === null || seconds === 0) return;
   const habit = await getHabit(habitId);
   if (!habit || habit.systemKey || !canCreditFocusTime(habit)) return;
   const habitDay = isoDate(new Date(startedAt));
   const [log] = await db.select().from(habitLogs).where(and(eq(habitLogs.habitId, habit.id), eq(habitLogs.date, habitDay)));
   const before = log && log.status === "done" ? log.value : 0;
-  await upsertHabitLog(habit.id, habitDay, "done", before + seconds);
+  await upsertHabitLog(habit.id, habitDay, "done", Math.max(0, before + seconds));
+}
+
+/** Deletes a finished (completed or withered) session and undoes whatever time it credited to its habit. */
+export async function deleteFinishedSession(row: FocusSessionRow) {
+  const credited = row.status === "completed" ? row.plannedSeconds : row.focusedSeconds;
+  await creditHabitSeconds(row.habitId, row.startedAt, -credited);
+  await deleteFocusSession(row.id);
+}
+
+/**
+ * Corrects a finished session's recorded length (completed -> plannedSeconds, withered ->
+ * focusedSeconds) and adjusts its habit's credited time by the difference. The caller is
+ * responsible for capping `seconds` to what's physically possible for the session's span.
+ */
+export async function setFinishedSessionSeconds(row: FocusSessionRow, seconds: number) {
+  const before = row.status === "completed" ? row.plannedSeconds : row.focusedSeconds;
+  if (row.status === "completed") await db.update(focusSessions).set({ plannedSeconds: seconds }).where(eq(focusSessions.id, row.id));
+  else await db.update(focusSessions).set({ focusedSeconds: seconds }).where(eq(focusSessions.id, row.id));
+  await creditHabitSeconds(row.habitId, row.startedAt, seconds - before);
 }
 
 /**
