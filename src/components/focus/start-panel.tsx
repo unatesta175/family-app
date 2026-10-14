@@ -3,9 +3,8 @@
 import { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { ArrowUpRight, Box, Check, Coffee, Layers, Loader2, Minus, Pause, Play, Plus } from "lucide-react";
+import { ArrowUpRight, Box, Check, Coffee, Layers, Minus, Pause, Play, Plus } from "lucide-react";
 import { startFocusAction } from "@/lib/focus-actions";
-import { quickCreateTimerHabitAction } from "@/lib/habit-actions";
 import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, POMODORO_PRESETS, SPECIES_LABEL, TREE_TIERS, formatFocus, segmentsFor, tierInfo, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { Switch } from "@/components/habits/ui/switch";
@@ -96,33 +95,13 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [breakMin, setBreakMin] = useState(5);
   const [species, setSpecies] = useState<FocusSpecies>("oak");
   const [error, setError] = useState<string | null>(null);
-  // A new timer habit can be made right here, without leaving to the Habits module first.
-  const [extraHabits, setExtraHabits] = useState<TimerHabit[]>([]);
-  const [creatingHabit, setCreatingHabit] = useState(false);
-  const [newHabitName, setNewHabitName] = useState("");
-  const [creatingPending, startCreatingHabit] = useTransition();
-  const [createError, setCreateError] = useState<string | null>(null);
-  const combinedHabits = [...habits, ...extraHabits];
-  const visibleHabits = useVisibleHabits(combinedHabits);
+  const visibleHabits = useVisibleHabits(habits);
   // The last session's habit stays selectable here even if it's hidden on this device, so coming
   // back from a session always shows what it was for instead of silently falling back to "Anything".
-  const defaultHabit = defaultHabitId ? combinedHabits.find((h) => h.id === defaultHabitId) : undefined;
+  const defaultHabit = defaultHabitId ? habits.find((h) => h.id === defaultHabitId) : undefined;
   const allHabits = defaultHabit && !visibleHabits.some((h) => h.id === defaultHabitId) ? [defaultHabit, ...visibleHabits] : visibleHabits;
   const [habitId, setHabitId] = useState<number | null>(defaultHabit ? defaultHabitId : null);
 
-  function createHabitInline() {
-    setCreateError(null);
-    const name = newHabitName.trim();
-    if (!name) return setCreateError("Name it first.");
-    startCreatingHabit(async () => {
-      const res = await quickCreateTimerHabitAction(name);
-      if (!res.ok) return setCreateError(res.error);
-      setExtraHabits((h) => [...h, { id: res.data.id, name: res.data.name, color: res.data.color, hidden: false }]);
-      setHabitId(res.data.id);
-      setNewHabitName("");
-      setCreatingHabit(false);
-    });
-  }
   // The hero tree grows and starts over, so the screen shows what a session does. Drag the slider to
   // scrub through the growth, or tap play to let it run.
   const [demo, setDemo] = useState(0.45);
@@ -185,6 +164,10 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
       if (!res.ok) return setError(res.error);
       router.push("/focus/session");
     });
+  }
+
+  function goCreateHabit() {
+    router.push(`/habits?newTimerHabit=1&returnTo=${encodeURIComponent("/focus")}`);
   }
 
   return (
@@ -438,7 +421,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
             <p className="text-xs font-extrabold uppercase tracking-wider text-h-muted">Focusing on</p>
             <button
               type="button"
-              onClick={() => router.push(`/habits?newTimerHabit=1&returnTo=${encodeURIComponent("/focus")}`)}
+              onClick={goCreateHabit}
               className="flex shrink-0 items-center gap-1 text-[11px] font-bold text-h-brand hover:underline"
             >
               Create in Habits
@@ -471,37 +454,13 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
             })}
             <button
               type="button"
-              onClick={() => setCreatingHabit((c) => !c)}
-              aria-pressed={creatingHabit}
-              className={cn("flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold", creatingHabit ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-dashed border-h-border text-h-muted hover:text-h-fg")}
+              onClick={goCreateHabit}
+              className="flex shrink-0 items-center gap-1 rounded-full border border-dashed border-h-border px-3 py-1.5 text-xs font-bold text-h-muted hover:text-h-fg"
             >
               <Plus className="h-3 w-3" strokeWidth={3} />
               New habit
             </button>
           </div>
-          {creatingHabit && (
-            <div className="mt-2 flex items-center gap-2">
-              <input
-                type="text"
-                autoFocus
-                value={newHabitName}
-                onChange={(e) => setNewHabitName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && createHabitInline()}
-                placeholder="e.g. Deep reading"
-                maxLength={80}
-                className="min-w-0 flex-1 rounded-xl border border-h-border bg-h-surface px-3 py-2 text-sm font-semibold outline-none focus:border-h-brand"
-              />
-              <button
-                type="button"
-                onClick={createHabitInline}
-                disabled={creatingPending}
-                className="flex shrink-0 items-center gap-1 rounded-xl bg-h-brand px-3 py-2 text-xs font-extrabold text-h-brand-fg disabled:opacity-60"
-              >
-                {creatingPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create"}
-              </button>
-            </div>
-          )}
-          {createError && <p className="mt-1 text-[11px] font-bold text-red-600">{createError}</p>}
           {habitId !== null ? (
             <p className="mt-1 text-[11px] text-h-muted">When the tree is grown, these minutes are added to the habit&apos;s day.</p>
           ) : (
