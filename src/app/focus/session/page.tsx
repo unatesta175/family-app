@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getOwnProfileId } from "@/lib/auth";
 import { getHabit, getHabits } from "@/lib/db/repo-habits";
 import { cfgFromRow, getRecentEndedSession, settleActiveSession } from "@/lib/db/repo-focus";
-import { CREDITABLE_EVAL_TYPES } from "@/lib/focus-actions";
+import { CREDITABLE_EVAL_TYPES } from "@/lib/focus";
 import { nowMs } from "@/lib/now";
 import { SessionRunner } from "@/components/focus/session-runner";
 

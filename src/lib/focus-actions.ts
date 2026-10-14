@@ -8,9 +8,8 @@ import { localDateFrom } from "@/lib/focus";
 import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
-import type { HabitEvalType } from "@/lib/db/schema";
 import { attachHabitToSession, cfgFromRow, completeFocusSession, completeOpenEndedSession, createFocusSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
-import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
+import { CREDITABLE_EVAL_TYPES, FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
 
@@ -34,8 +33,6 @@ function fail(err: unknown): { ok: false; error: string } {
 const MAX_FOCUS_MINUTES = 12 * 60;
 
 /** Habit types a focus session's minutes can sensibly be credited to (checklist/time_of_day can't). */
-export const CREDITABLE_EVAL_TYPES: HabitEvalType[] = ["timer", "numeric", "yes_no"];
-
 const startSchema = z
   .object({
     habitId: z.number().int().positive().nullable(),

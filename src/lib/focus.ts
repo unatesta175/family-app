@@ -4,8 +4,12 @@
  * imports, so the timer on the client and the checks on the server use exactly the same maths.
  */
 
+import type { HabitEvalType } from "@/lib/db/schema";
+
 export const MIN_MINUTES = 5;
 export const MAX_MINUTES = 180;
+/** Habit types a focus session's time can be credited to; checklist/time_of_day have no sensible mapping. */
+export const CREDITABLE_EVAL_TYPES: HabitEvalType[] = ["timer", "numeric", "yes_no"];
 /** Cancelling in the first seconds is a mistaken start: no stump is left behind. */
 export const GRACE_SECONDS = 30;
 
