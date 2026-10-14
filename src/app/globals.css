@@ -884,13 +884,15 @@ html:has(.habits-app) {
   100% { transform: translateY(0); opacity: 1; }
 }
 @keyframes fx-ring {
-  0% { transform: translate(-50%, -50%) scale(0.35); opacity: 0.7; }
-  100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+  0% { transform: scale(0.35); opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
 }
 .fx-confetti { position: absolute; top: 0; animation: fx-confetti linear infinite; }
 .fx-pop { animation: fx-pop 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 .fx-rise { animation: fx-rise 0.7s ease-out both; }
-.fx-ring { position: absolute; left: 50%; top: 50%; border-radius: 9999px; animation: fx-ring 2.6s ease-out infinite; }
+/* Centered with inset + auto margins (not left/top 50% + translate) so the scale animation can't
+   drift off-centre from any rounding in the translate-percentage + scale combo. */
+.fx-ring { position: absolute; inset: 0; margin: auto; border-radius: 9999px; animation: fx-ring 2.6s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .fx-confetti, .fx-ring { display: none; }
   .fx-pop, .fx-rise { animation: none; }
