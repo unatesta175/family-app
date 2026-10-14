@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Inter } from "next/font/google";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { HiddenHabitsProvider } from "@/components/hidden-habits-context";
-import { HiddenHabitsToggle } from "@/components/hidden-habits-toggle";
 import "./globals.css";
 
 const jakarta = Plus_Jakarta_Sans({
@@ -55,10 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-neutral-900">
-        <HiddenHabitsProvider>
-          <HiddenHabitsToggle />
-          {children}
-        </HiddenHabitsProvider>
+        <HiddenHabitsProvider>{children}</HiddenHabitsProvider>
         <ServiceWorkerRegister />
       </body>
     </html>

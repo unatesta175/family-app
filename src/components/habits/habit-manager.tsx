@@ -10,6 +10,7 @@ import { HabitFormSheet } from "@/components/habits/habit-form";
 import type { HabitFormValues } from "@/lib/habit-form-values";
 import { CategorySheet } from "@/components/habits/category-sheet";
 import type { CategoryOption } from "@/components/habits/form-bits";
+import { useVisibleHabits } from "@/components/hidden-habits-context";
 import { cn } from "@/lib/utils";
 
 export type ManageHabit = HabitFormValues & {
@@ -41,8 +42,9 @@ export function HabitManager({
   const [confirm, setConfirm] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  const active = habits.filter((h) => !h.archived);
-  const archived = habits.filter((h) => h.archived);
+  const visibleHabits = useVisibleHabits(habits);
+  const active = visibleHabits.filter((h) => !h.archived);
+  const archived = visibleHabits.filter((h) => h.archived);
 
   const groups = [
     ...categories.map((c) => ({ key: `c${c.id}`, title: c.name, cat: c, items: active.filter((h) => h.categoryId === c.id) })),
@@ -175,7 +177,7 @@ export function HabitManager({
             {categories.map((c) => {
               const hex = colorHex(c.color);
               const Icon = habitIcon(c.icon);
-              const count = habits.filter((h) => h.categoryId === c.id).length;
+              const count = visibleHabits.filter((h) => h.categoryId === c.id).length;
               return (
                 <div key={c.id} className="flex items-center gap-3 px-3 py-2.5">
                   <span

@@ -30,6 +30,7 @@ import { HabitDetailActions } from "@/components/habits/habit-detail-actions";
 import { HabitStatistics } from "@/components/habits/habit-statistics";
 import { WorldRankCard } from "@/components/habits/world-rank-card";
 import { habitStandingInput, standingFor } from "@/lib/world-rank";
+import { HiddenHabitGate } from "@/components/habits/hidden-habit-gate";
 import { cn } from "@/lib/utils";
 
 export default async function HabitDetailPage({
@@ -85,6 +86,7 @@ export default async function HabitDetailPage({
         All habits
       </Link>
 
+      <HiddenHabitGate hidden={!readOnly && habit.hidden}>
       <div className="flex items-start gap-4">
         <span
           className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl"
@@ -163,6 +165,7 @@ export default async function HabitDetailPage({
       ) : (
         <CalendarTab habit={habit} logs={logs} notes={notes} today={today} rawMonth={rawMonth} readOnly={readOnly || locked} hex={hex} />
       )}
+      </HiddenHabitGate>
     </div>
   );
 }
