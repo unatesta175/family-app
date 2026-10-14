@@ -4,8 +4,8 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
-import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, pauseFocusAction, resumeFocusAction, type FinishSummary } from "@/lib/focus-actions";
-import { GRACE_SECONDS, clock, formatFocus, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
+import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, finishOpenEndedAction, pauseFocusAction, resumeFocusAction, type FinishSummary } from "@/lib/focus-actions";
+import { GRACE_SECONDS, clock, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -25,6 +25,8 @@ export type RunningSession = {
   pausedAt: number | null;
   /** When the session ended on the server (epoch ms), if it has. */
   endedAt?: number;
+  /** No preset length: the tree grows with elapsed time and is finished by choice, not by a timer. */
+  openEnded?: boolean;
 };
 
 /** A short, soft chime made in the browser (no sound files): a rising triad, or one low note for a break. */
@@ -220,7 +222,7 @@ function FocusAura({ progress, tier, resting }: { progress: number; tier: TreeTi
  * clock. The time comes from the session's start time, so a reload (or a phone that slept) lands on
  * exactly the right moment.
  */
-export function SessionRunner({ session, serverNow, initialOutcome, timerHabits = [] }: { session: RunningSession; serverNow: number; initialOutcome?: "done" | "withered"; timerHabits?: { id: number; name: string }[] }) {
+export function SessionRunner({ session, serverNow, initialOutcome, timerHabits: pickableHabits = [] }: { session: RunningSession; serverNow: number; initialOutcome?: "done" | "withered"; timerHabits?: { id: number; name: string }[] }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // The server's clock and this device's can differ a little; the gap is measured once and kept.
@@ -258,10 +260,15 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
   // exactly where it left off. The same maths runs on the server, so a reload lands on the right moment.
   const effectiveNow = now - pausedMsAt(pausedSeconds, pausedAt, now);
   const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, effectiveNow, session.cfg);
+  // An open-ended session has no target: the tree's tier and growth follow elapsed time directly.
+  const openGrowth = session.openEnded ? openEndedGrowth(tl.focusElapsed) : null;
   // Each focus block grows its own tree, so the live tree takes the current block's tier and growth.
-  const tier = treeTier(tl.blockSeconds);
+  const tier = openGrowth?.tier ?? treeTier(tl.blockSeconds);
+  // The actual length an open-ended session ran, once it's been stopped.
+  const [openFocusedSeconds, setOpenFocusedSeconds] = useState<number | null>(null);
+  const finishedPlannedSeconds = session.openEnded ? openFocusedSeconds ?? Math.round(tl.focusElapsed) : session.plannedSeconds;
   // The trees a finished session leaves (one per focus block), for the celebration and notification.
-  const grownTrees = sessionTrees({ mode: session.mode, plannedSeconds: session.plannedSeconds, cfg: session.cfg, status: "completed", focusedSeconds: session.plannedSeconds });
+  const grownTrees = sessionTrees({ mode: session.mode, plannedSeconds: finishedPlannedSeconds, cfg: session.cfg, status: "completed", focusedSeconds: finishedPlannedSeconds });
 
   useEffect(() => {
     if (outcome) return;
@@ -347,19 +354,35 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
     });
   }
 
+  /** Stops an open-ended session on the spot: no target to reach, so stopping is finishing. */
+  function finishOpen() {
+    if (outcome) return;
+    startTransition(async () => {
+      const res = await finishOpenEndedAction(session.id);
+      if (!res.ok) return setError(res.error);
+      if (!res.data.kept) return router.push("/focus");
+      setOpenFocusedSeconds(Math.round(res.data.focusedSeconds));
+      setSummary(res.data.summary);
+      setSaved("saved");
+      finishing.current = true;
+      if (!muted) chime("done");
+      setOutcome({ kind: "done" });
+    });
+  }
+
   // --- Finished or given up ------------------------------------------------------------------
   if (outcome) {
     if (outcome.kind === "done") {
       return (
         <Celebration
-          session={session}
+          session={{ ...session, plannedSeconds: finishedPlannedSeconds }}
           trees={grownTrees}
           saved={saved}
           summary={summary}
           error={error}
           onRetry={() => void save()}
-          timerHabits={timerHabits}
-          canOvertime={session.mode === "single"}
+          timerHabits={pickableHabits}
+          canOvertime={!session.openEnded && session.mode === "single"}
           endedAtMs={session.endedAt ?? session.startedAt + tl.wallTotal * 1000}
           onSummary={setSummary}
         />
@@ -423,15 +446,15 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
       </div>
 
       <div className="flex flex-1 items-center justify-center py-3">
-        <TreeOnIsland resting={resting} aura={<FocusAura progress={tl.blockProgress} tier={tier} resting={resting} />}>
+        <TreeOnIsland resting={resting} aura={<FocusAura progress={openGrowth?.progress ?? tl.blockProgress} tier={tier} resting={resting} />}>
           <div className="nrg-sway relative z-10">
-            <FocusTree progress={tl.blockProgress} species={session.species} tier={tier} className="h-[34svh] max-h-80 min-h-44 w-auto" />
+            <FocusTree progress={openGrowth?.progress ?? tl.blockProgress} species={session.species} tier={tier} className="h-[34svh] max-h-80 min-h-44 w-auto" />
           </div>
         </TreeOnIsland>
       </div>
 
       <div className="flex flex-col items-center gap-4 text-center">
-        <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(tl.phaseRemaining)}</p>
+        <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(session.openEnded ? tl.focusElapsed : tl.phaseRemaining)}</p>
         <p className="flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md" aria-live="off">
           {paused ? (
             <span className="flex items-center gap-1.5">
@@ -444,14 +467,14 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
               <span key={verb} className="nrg-verb">
                 {verb}
               </span>
-              {!resting && <span className="tabular-nums text-lime-200">{Math.round(tl.blockProgress * 100)}%</span>}
+              {!resting && !session.openEnded && <span className="tabular-nums text-lime-200">{Math.round(tl.blockProgress * 100)}%</span>}
             </>
           )}
         </p>
         <p className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
           {resting && <Coffee className="h-3.5 w-3.5" />}
-          {tierInfo(tier).name} · {stageName(tl.blockProgress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}
-          {tl.blocks > 1 && ` · ${clock(tl.wallTotal - tl.wallElapsed)} left in all`}
+          {session.openEnded ? <>{tierInfo(tier).name} · {formatFocus(tl.focusElapsed)} focused so far</> : <>{tierInfo(tier).name} · {stageName(tl.blockProgress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}</>}
+          {!session.openEnded && tl.blocks > 1 && ` · ${clock(tl.wallTotal - tl.wallElapsed)} left in all`}
         </p>
         {tl.blocks > 1 && (
           <div className="flex gap-1.5" aria-hidden>
@@ -470,17 +493,31 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits 
           >
             {paused ? <Play className="h-5 w-5" fill="currentColor" /> : <Pause className="h-5 w-5" fill="currentColor" />}
           </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(true)}
-            disabled={pending}
-            aria-label={grace ? "Cancel session" : "Give up"}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
-          >
-            <Square className="h-5 w-5" fill="currentColor" />
-          </button>
+          {session.openEnded ? (
+            <button
+              type="button"
+              onClick={finishOpen}
+              disabled={pending}
+              aria-label="Finish session"
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
+            >
+              <Check className="h-5 w-5" strokeWidth={3} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirming(true)}
+              disabled={pending}
+              aria-label={grace ? "Cancel session" : "Give up"}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
+            >
+              <Square className="h-5 w-5" fill="currentColor" />
+            </button>
+          )}
         </div>
-        <p className="text-[11px] font-medium text-white/65">{paused ? "Paused — tap play to carry on" : grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}</p>
+        <p className="text-[11px] font-medium text-white/65">
+          {paused ? "Paused — tap play to carry on" : session.openEnded ? (grace ? "Finish after the first 30 seconds to keep a tree" : "Finish anytime — your tree keeps whatever you've grown") : grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}
+        </p>
       </div>
 
       {confirming && (

@@ -56,6 +56,7 @@ export async function createFocusSession(input: {
   mode: FocusMode;
   species: FocusSpecies;
   cfg?: PomodoroConfig | null;
+  openEnded?: boolean;
 }) {
   const { cfg, ...rest } = input;
   const [row] = await db
@@ -101,6 +102,21 @@ export async function completeFocusSession(row: FocusSessionRow) {
 }
 
 /**
+ * Finishes an open-ended session on demand: there is no fixed target to reach, so whatever the clock
+ * reads when you stop becomes the session's length. The tree grows to whichever tier that time earns.
+ */
+export async function completeOpenEndedSession(row: FocusSessionRow, focusedSeconds: number) {
+  const seconds = Math.max(0, Math.round(focusedSeconds));
+  const ended = await db
+    .update(focusSessions)
+    .set({ status: "completed", plannedSeconds: seconds, focusedSeconds: seconds, endedAt: Date.now() })
+    .where(and(eq(focusSessions.id, row.id), eq(focusSessions.status, "active")))
+    .returning({ id: focusSessions.id });
+  if (ended.length === 0) return;
+  await creditHabitSeconds(row.habitId, row.startedAt, seconds);
+}
+
+/**
  * A finished session that was started without a habit can be counted towards one afterwards: the
  * session is linked to it and its minutes go onto the habit's day, exactly once.
  */
@@ -120,15 +136,21 @@ async function creditHabit(row: FocusSessionRow, habitId: number | null) {
   await creditHabitSeconds(habitId, row.startedAt, row.plannedSeconds);
 }
 
-/** Adds some seconds of focus to a timer habit's day (the day the session started on, server zone). */
+/**
+ * Adds some seconds of focus to a habit's day (the day the session started on, server zone). A timer
+ * habit's target is in seconds, so the raw time is added; a numeric habit's target is its own unit, so
+ * minutes focused are added instead; a yes/no habit just gets marked done, however long the session ran.
+ */
 async function creditHabitSeconds(habitId: number | null, startedAt: number, seconds: number) {
   if (habitId === null || seconds <= 0) return;
   const habit = await getHabit(habitId);
-  if (!habit || habit.evalType !== "timer" || habit.systemKey) return;
+  if (!habit || habit.systemKey) return;
   const habitDay = isoDate(new Date(startedAt));
   const [log] = await db.select().from(habitLogs).where(and(eq(habitLogs.habitId, habit.id), eq(habitLogs.date, habitDay)));
   const before = log && log.status === "done" ? log.value : 0;
-  await upsertHabitLog(habit.id, habitDay, "done", before + seconds);
+  if (habit.evalType === "timer") await upsertHabitLog(habit.id, habitDay, "done", before + seconds);
+  else if (habit.evalType === "numeric") await upsertHabitLog(habit.id, habitDay, "done", before + Math.round(seconds / 60));
+  else if (habit.evalType === "yes_no") await upsertHabitLog(habit.id, habitDay, "done", 1);
 }
 
 /**
@@ -203,6 +225,8 @@ export async function getRecentEndedSession(profileId: number, withinMs: number)
 export async function settleActiveSession(profileId: number): Promise<FocusSessionRow | null> {
   const active = await getActiveFocusSession(profileId);
   if (!active) return null;
+  // Open-ended sessions have no target to run out, so they're never auto-completed here.
+  if (active.openEnded) return active;
   // A paused session's clock is held still, so effectiveNow freezes it and it never auto-completes.
   const tl = timeline(active.startedAt, active.plannedSeconds, active.mode, effectiveNow(active), cfgFromRow(active));
   if (tl.done) {

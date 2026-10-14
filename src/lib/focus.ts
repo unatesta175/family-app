@@ -187,6 +187,20 @@ export function treeTier(plannedSeconds: number): TreeTier {
 
 export const tierInfo = (tier: TreeTier) => TREE_TIERS[tier - 1];
 
+/**
+ * How an open-ended session's tree stands at `elapsedSeconds` in: no fixed target to grow towards, so
+ * the tier is whichever one the time put in has already earned, and `progress` grows continuously from
+ * that tier's threshold towards the next one (capped at the legendary tier, which just keeps filling).
+ */
+export function openEndedGrowth(elapsedSeconds: number): { tier: TreeTier; progress: number } {
+  const tier = treeTier(elapsedSeconds);
+  const info = tierInfo(tier);
+  const next = TREE_TIERS[tier] as (typeof TREE_TIERS)[number] | undefined;
+  const floor = info.minMinutes * 60;
+  const ceil = next ? next.minMinutes * 60 : floor + 45 * 60; // legendary tier: fills every 45 more minutes
+  return { tier, progress: Math.max(0, Math.min(1, (elapsedSeconds - floor) / (ceil - floor))) };
+}
+
 // --- The user's own time zone --------------------------------------------------------------
 // The server may run in another zone (UTC), so days and clock times are worked out from the
 // browser's offset (minutes, as `Date.getTimezoneOffset()` gives it: UTC+8 is -480).

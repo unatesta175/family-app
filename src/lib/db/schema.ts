@@ -288,6 +288,9 @@ export const habits = sqliteTable("habits", {
   // Prayer module, so they cannot be edited, deleted or logged from the Habits module.
   systemKey: text("system_key"),
   sortOrder: integer("sort_order").notNull().default(0),
+  // Kept out of every household-visible surface (another member's Focus page, shared goal views, …):
+  // only its own owner ever sees its name, logs or progress.
+  private: integer("private", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at")
     .notNull()
     .default(sql`(current_timestamp)`),
@@ -558,6 +561,9 @@ export const focusSessions = sqliteTable("focus_sessions", {
   pausedSeconds: integer("paused_seconds").notNull().default(0),
   pausedAt: integer("paused_at"),
   endedAt: integer("ended_at"),
+  // No preset length: the session just runs until stopped. `plannedSeconds` still holds whatever was
+  // focused so far (kept in step as the session runs), so every other calculation reads it unchanged.
+  openEnded: integer("open_ended", { mode: "boolean" }).notNull().default(false),
 });
 
 // ---------------------------------------------------------------------------------------------

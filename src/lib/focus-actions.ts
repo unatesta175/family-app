@@ -8,7 +8,8 @@ import { localDateFrom } from "@/lib/focus";
 import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
-import { attachHabitToSession, cfgFromRow, completeFocusSession, createFocusSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
+import type { HabitEvalType } from "@/lib/db/schema";
+import { attachHabitToSession, cfgFromRow, completeFocusSession, completeOpenEndedSession, createFocusSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
 import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
@@ -32,12 +33,18 @@ function fail(err: unknown): { ok: false; error: string } {
 /** A session's whole focus time (breaks excluded) is capped well above a single block. */
 const MAX_FOCUS_MINUTES = 12 * 60;
 
+/** Habit types a focus session's minutes can sensibly be credited to (checklist/time_of_day can't). */
+export const CREDITABLE_EVAL_TYPES: HabitEvalType[] = ["timer", "numeric", "yes_no"];
+
 const startSchema = z
   .object({
     habitId: z.number().int().positive().nullable(),
-    minutes: z.number().int().min(MIN_MINUTES, `A session is at least ${MIN_MINUTES} minutes.`).max(MAX_MINUTES, `A session is at most ${MAX_MINUTES} minutes.`),
+    // Ignored (any value accepted) when `openEnded` is true: there's no preset length to validate.
+    minutes: z.number().int(),
     mode: z.enum(["single", "pomodoro"]),
     species: z.enum(FOCUS_SPECIES),
+    // No preset duration: the session just runs until it's stopped, and the tree grows with the clock.
+    openEnded: z.boolean().optional(),
     // Only read when `mode` is "pomodoro": the rhythm and how many focus blocks to run.
     pomodoro: z
       .object({
@@ -49,10 +56,17 @@ const startSchema = z
       })
       .optional(),
   })
+  .refine((v) => v.openEnded || (v.minutes >= MIN_MINUTES && v.minutes <= MAX_MINUTES), {
+    message: `A session is between ${MIN_MINUTES} minutes and ${MAX_MINUTES / 60} hours.`,
+  })
+  .refine((v) => !v.openEnded || v.mode === "single", { message: "An open-ended session can't run Pomodoro breaks." })
   .refine((v) => v.mode !== "pomodoro" || v.pomodoro, { message: "Pick a Pomodoro rhythm." })
   .refine((v) => v.mode !== "pomodoro" || !v.pomodoro || v.pomodoro.focusMin * v.pomodoro.cycles <= MAX_FOCUS_MINUTES, {
     message: `A Pomodoro session is at most ${MAX_FOCUS_MINUTES / 60} hours of focus.`,
   });
+
+/** An open-ended session's `plannedSeconds` just needs to be large enough that it never "runs out". */
+const OPEN_ENDED_SENTINEL_SECONDS = 24 * 60 * 60;
 
 /** Starts growing a tree. Only one session can run at a time. */
 export async function startFocusAction(input: z.input<typeof startSchema>): Promise<FocusResult<{ id: number }>> {
@@ -63,17 +77,17 @@ export async function startFocusAction(input: z.input<typeof startSchema>): Prom
     if (v.habitId !== null) {
       const habit = await getHabit(v.habitId);
       if (!habit || habit.profileId !== profileId) throw new Error("Habit not found.");
-      if (habit.evalType !== "timer") throw new Error("Only timer habits can start a focus session.");
+      if (!CREDITABLE_EVAL_TYPES.includes(habit.evalType)) throw new Error("This habit can't take focus time.");
     }
     // Pomodoro plans a whole number of focus blocks; single mode uses the slider's minutes.
-    let plannedSeconds = v.minutes * 60;
+    let plannedSeconds = v.openEnded ? OPEN_ENDED_SENTINEL_SECONDS : v.minutes * 60;
     let cfg: PomodoroConfig | null = null;
     if (v.mode === "pomodoro" && v.pomodoro) {
       const p = v.pomodoro;
       cfg = { focus: p.focusMin * 60, short: p.breakMin * 60, long: p.longBreakMin * 60, every: p.every };
       plannedSeconds = cfg.focus * p.cycles;
     }
-    const row = await createFocusSession({ profileId, habitId: v.habitId, date: localDateFrom(nowMs(), await tzOffset()), startedAt: nowMs(), plannedSeconds, mode: v.mode, species: v.species, cfg });
+    const row = await createFocusSession({ profileId, habitId: v.habitId, date: localDateFrom(nowMs(), await tzOffset()), startedAt: nowMs(), plannedSeconds, mode: v.mode, species: v.species, cfg, openEnded: v.openEnded });
     refresh();
     return { ok: true, data: { id: row.id } };
   } catch (err) {
@@ -105,6 +119,29 @@ export async function finishFocusAction(id: number): Promise<FocusResult<FinishS
     await completeFocusSession(row);
     refresh();
     return { ok: true, data: await summaryFor(profileId, row.date) };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Stops an open-ended session right now: whatever time is on the clock becomes the tree's size. */
+export async function finishOpenEndedAction(id: number): Promise<FocusResult<{ summary: FinishSummary; focusedSeconds: number; kept: boolean }>> {
+  try {
+    const profileId = await ownProfile();
+    const row = await getFocusSession(id);
+    if (!row || row.profileId !== profileId) throw new Error("Session not found.");
+    if (row.status === "completed") return { ok: true, data: { summary: await summaryFor(profileId, row.date), focusedSeconds: row.focusedSeconds, kept: true } };
+    if (row.status !== "active") throw new Error("This session already ended.");
+    if (!row.openEnded) throw new Error("This session isn't open-ended.");
+    const focusedSeconds = Math.max(0, (effectiveNow(row) - row.startedAt) / 1000);
+    if (focusedSeconds < GRACE_SECONDS) {
+      await deleteFocusSession(row.id);
+      refresh();
+      return { ok: true, data: { summary: await summaryFor(profileId, row.date), focusedSeconds: 0, kept: false } };
+    }
+    await completeOpenEndedSession(row, focusedSeconds);
+    refresh();
+    return { ok: true, data: { summary: await summaryFor(profileId, row.date), focusedSeconds, kept: true } };
   } catch (err) {
     return fail(err);
   }
@@ -150,7 +187,7 @@ export async function attachFocusHabitAction(input: { sessionId: number; habitId
     if (row.habitId !== null) throw new Error("This session already counts towards a habit.");
     const habit = await getHabit(v.habitId);
     if (!habit || habit.profileId !== profileId) throw new Error("Habit not found.");
-    if (habit.evalType !== "timer" || habit.systemKey) throw new Error("Only timer habits can take focus time.");
+    if (!CREDITABLE_EVAL_TYPES.includes(habit.evalType) || habit.systemKey) throw new Error("This habit can't take focus time.");
     await attachHabitToSession(row, habit.id);
     refresh();
     return { ok: true, data: { habitName: habit.name } };

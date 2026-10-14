@@ -3,8 +3,9 @@
 import { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Box, Check, Coffee, Layers, Minus, Pause, Play, Plus } from "lucide-react";
+import { Box, Check, Coffee, Layers, Loader2, Minus, Pause, Play, Plus } from "lucide-react";
 import { startFocusAction } from "@/lib/focus-actions";
+import { quickCreateTimerHabitAction } from "@/lib/habit-actions";
 import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, POMODORO_PRESETS, SPECIES_LABEL, TREE_TIERS, formatFocus, segmentsFor, tierInfo, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { Switch } from "@/components/habits/ui/switch";
@@ -84,6 +85,8 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [pending, startTransition] = useTransition();
   const [minutes, setMinutes] = useState(30);
   const [pomodoro, setPomodoro] = useState(false);
+  // No preset length: the tree just grows for as long as the session runs, stopped whenever you like.
+  const [flexible, setFlexible] = useState(false);
   // The chosen rhythm: a preset key, or "custom" with its own focus/break lengths. `cycles` is how
   // many focus blocks to run, so a Pomodoro session grows that many trees.
   const [presetKey, setPresetKey] = useState("classic");
@@ -93,6 +96,27 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [species, setSpecies] = useState<FocusSpecies>("oak");
   const [habitId, setHabitId] = useState<number | null>(defaultHabitId && habits.some((h) => h.id === defaultHabitId) ? defaultHabitId : null);
   const [error, setError] = useState<string | null>(null);
+  // A new timer habit can be made right here, without leaving to the Habits module first.
+  const [extraHabits, setExtraHabits] = useState<TimerHabit[]>([]);
+  const [creatingHabit, setCreatingHabit] = useState(false);
+  const [newHabitName, setNewHabitName] = useState("");
+  const [creatingPending, startCreatingHabit] = useTransition();
+  const [createError, setCreateError] = useState<string | null>(null);
+  const allHabits = [...habits, ...extraHabits];
+
+  function createHabitInline() {
+    setCreateError(null);
+    const name = newHabitName.trim();
+    if (!name) return setCreateError("Name it first.");
+    startCreatingHabit(async () => {
+      const res = await quickCreateTimerHabitAction(name);
+      if (!res.ok) return setCreateError(res.error);
+      setExtraHabits((h) => [...h, { id: res.data.id, name: res.data.name, color: res.data.color }]);
+      setHabitId(res.data.id);
+      setNewHabitName("");
+      setCreatingHabit(false);
+    });
+  }
   // The hero tree grows and starts over, so the screen shows what a session does. Drag the slider to
   // scrub through the growth, or tap play to let it run.
   const [demo, setDemo] = useState(0.45);
@@ -144,10 +168,11 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
     startTransition(async () => {
       const res = await startFocusAction({
         habitId,
-        minutes: pomodoro ? Math.round(cfg.focus / 60) : minutes,
-        mode,
+        minutes: flexible ? MIN_MINUTES : pomodoro ? Math.round(cfg.focus / 60) : minutes,
+        mode: flexible ? "single" : mode,
         species,
-        pomodoro: pomodoro
+        openEnded: flexible,
+        pomodoro: !flexible && pomodoro
           ? { focusMin: Math.round(cfg.focus / 60), breakMin: Math.round(cfg.short / 60), longBreakMin: Math.round(cfg.long / 60), every: cfg.every, cycles }
           : undefined,
       });
@@ -211,20 +236,30 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
       {/* the sheet */}
       <div className="-mt-2 rounded-t-[2rem] bg-white/90 p-5 text-[#0d1f16] backdrop-blur-xl [.dark_&]:bg-[#0e1c14]/92 [.dark_&]:text-[#e6f4ea]">
         <div className="text-center">
-          <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{pomodoro ? "Each focus block" : "Timer"}</p>
-          <p className="mt-1 text-5xl font-extrabold leading-none tabular-nums tracking-tight">
-            {pomodoro ? Math.round(cfg.focus / 60) : minutes}
-            <span className="ml-1.5 text-xl font-bold text-h-muted">min</span>
-          </p>
-          {pomodoro && (
-            <p className="mt-1 text-xs font-semibold text-h-muted">
-              {cycles} block{cycles === 1 ? "" : "s"} → <span className="font-extrabold text-h-brand">{cycles} tree{cycles === 1 ? "" : "s"}</span> · {formatFocus(wall)} on the clock
-            </p>
+          {flexible ? (
+            <>
+              <p className="text-xs font-bold uppercase tracking-wider text-h-muted">Open-ended</p>
+              <p className="mt-1 text-2xl font-extrabold leading-tight">Runs until you stop it</p>
+              <p className="mx-auto mt-1 max-w-[16rem] text-xs font-semibold text-h-muted">The tree grows with however long you actually focus — no length to pick.</p>
+            </>
+          ) : (
+            <>
+              <p className="text-xs font-bold uppercase tracking-wider text-h-muted">{pomodoro ? "Each focus block" : "Timer"}</p>
+              <p className="mt-1 text-5xl font-extrabold leading-none tabular-nums tracking-tight">
+                {pomodoro ? Math.round(cfg.focus / 60) : minutes}
+                <span className="ml-1.5 text-xl font-bold text-h-muted">min</span>
+              </p>
+              {pomodoro && (
+                <p className="mt-1 text-xs font-semibold text-h-muted">
+                  {cycles} block{cycles === 1 ? "" : "s"} → <span className="font-extrabold text-h-brand">{cycles} tree{cycles === 1 ? "" : "s"}</span> · {formatFocus(wall)} on the clock
+                </p>
+              )}
+            </>
           )}
         </div>
 
         {/* a ruler to slide along (single sessions choose a total length here) */}
-        {!pomodoro && (
+        {!pomodoro && !flexible && (
         <>
         <div className="relative mt-5 h-10">
           <div className="absolute inset-x-0 top-1/2 flex -translate-y-1/2 justify-between px-1" aria-hidden>
@@ -271,7 +306,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           />
           <span className="w-9 shrink-0 text-right text-xs font-extrabold tabular-nums text-h-muted">{Math.round(demo * 100)}%</span>
         </div>
-        {!pomodoro && (
+        {!pomodoro && !flexible && (
           <>
             <div className="mt-2 flex flex-wrap justify-center gap-1.5">
               {TREE_TIERS.map((t) => (
@@ -300,8 +335,31 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           </>
         )}
 
-        {/* Pomodoro */}
+        {/* Flexible / open-ended */}
         <div className="mt-4 rounded-2xl bg-h-surface2/80 p-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-h-brand-soft text-h-brand">
+              <Play className="h-4 w-4" fill="currentColor" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-extrabold leading-tight">Flexible, on the go</p>
+              <p className="mt-0.5 text-xs leading-snug text-h-muted">
+                {flexible ? "No preset length — stop whenever you're done, and the tree grows by however long you actually focused." : "Skip picking a length. Start now, stop whenever."}
+              </p>
+            </div>
+            <Switch
+              checked={flexible}
+              onCheckedChange={(on) => {
+                setFlexible(on);
+                if (on) setPomodoro(false);
+              }}
+              aria-label="Flexible, on the go"
+            />
+          </div>
+        </div>
+
+        {/* Pomodoro */}
+        <div className={cn("mt-4 rounded-2xl bg-h-surface2/80 p-4", flexible && "opacity-40")}>
           <div className="flex items-start gap-3">
             <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-h-brand-soft text-h-brand">
               <Coffee className="h-4 w-4" />
@@ -309,15 +367,17 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
             <div className="min-w-0 flex-1">
               <p className="text-sm font-extrabold leading-tight">Pomodoro breaks</p>
               <p className="mt-0.5 text-xs leading-snug text-h-muted">
-                {!pomodoro
+                {flexible
+                  ? "Not available for a flexible session."
+                  : !pomodoro
                   ? "One unbroken stretch. Turn on to work in blocks with rest breaks — each block grows its own tree."
                   : `${blocks} block${blocks === 1 ? "" : "s"} and ${breaks} break${breaks === 1 ? "" : "s"}. You'll grow ${blocks} tree${blocks === 1 ? "" : "s"}, resting during the breaks.`}
               </p>
             </div>
-            <Switch checked={pomodoro} onCheckedChange={setPomodoro} aria-label="Pomodoro breaks" />
+            <Switch checked={pomodoro} onCheckedChange={setPomodoro} disabled={flexible} aria-label="Pomodoro breaks" />
           </div>
 
-          {pomodoro && (
+          {pomodoro && !flexible && (
             <div className="mt-4 flex flex-col gap-3">
               {/* Research-backed rhythms, plus a custom one */}
               <div className="grid grid-cols-1 gap-1.5">
@@ -367,41 +427,71 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
         </div>
 
         {/* Tag */}
-        {habits.length > 0 && (
-          <div className="mt-4">
-            <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wider text-h-muted">Focusing on</p>
-            <div className="scrollbar-hide -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+        <div className="mt-4">
+          <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wider text-h-muted">Focusing on</p>
+          <div className="scrollbar-hide -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
+            <button
+              type="button"
+              onClick={() => setHabitId(null)}
+              className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold", habitId === null ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted hover:text-h-fg")}
+            >
+              Anything
+            </button>
+            {allHabits.map((h) => {
+              const hex = colorHex(h.color);
+              const on = habitId === h.id;
+              return (
+                <button
+                  key={h.id}
+                  type="button"
+                  onClick={() => setHabitId(h.id)}
+                  style={on ? { background: tint(hex, 0.16), borderColor: hex, color: hex } : undefined}
+                  className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold", !on && "border-h-border text-h-muted hover:text-h-fg")}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ background: hex }} />
+                  {h.name}
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setCreatingHabit((c) => !c)}
+              aria-pressed={creatingHabit}
+              className={cn("flex shrink-0 items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold", creatingHabit ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-dashed border-h-border text-h-muted hover:text-h-fg")}
+            >
+              <Plus className="h-3 w-3" strokeWidth={3} />
+              New habit
+            </button>
+          </div>
+          {creatingHabit && (
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                type="text"
+                autoFocus
+                value={newHabitName}
+                onChange={(e) => setNewHabitName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && createHabitInline()}
+                placeholder="e.g. Deep reading"
+                maxLength={80}
+                className="min-w-0 flex-1 rounded-xl border border-h-border bg-h-surface px-3 py-2 text-sm font-semibold outline-none focus:border-h-brand"
+              />
               <button
                 type="button"
-                onClick={() => setHabitId(null)}
-                className={cn("shrink-0 rounded-full border px-3 py-1.5 text-xs font-bold", habitId === null ? "border-h-brand bg-h-brand-soft text-h-brand" : "border-h-border text-h-muted hover:text-h-fg")}
+                onClick={createHabitInline}
+                disabled={creatingPending}
+                className="flex shrink-0 items-center gap-1 rounded-xl bg-h-brand px-3 py-2 text-xs font-extrabold text-h-brand-fg disabled:opacity-60"
               >
-                Anything
+                {creatingPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Create"}
               </button>
-              {habits.map((h) => {
-                const hex = colorHex(h.color);
-                const on = habitId === h.id;
-                return (
-                  <button
-                    key={h.id}
-                    type="button"
-                    onClick={() => setHabitId(h.id)}
-                    style={on ? { background: tint(hex, 0.16), borderColor: hex, color: hex } : undefined}
-                    className={cn("flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold", !on && "border-h-border text-h-muted hover:text-h-fg")}
-                  >
-                    <span className="h-2 w-2 rounded-full" style={{ background: hex }} />
-                    {h.name}
-                  </button>
-                );
-              })}
             </div>
-            {habitId !== null ? (
-              <p className="mt-1 text-[11px] text-h-muted">When the tree is grown, these minutes are added to the habit&apos;s day.</p>
-            ) : (
-              <p className="mt-1 text-[11px] font-semibold text-amber-600 [.dark_&]:text-amber-300">Not linked to a habit, so the time won&apos;t be added to one. Pick a habit above to count it.</p>
-            )}
-          </div>
-        )}
+          )}
+          {createError && <p className="mt-1 text-[11px] font-bold text-red-600">{createError}</p>}
+          {habitId !== null ? (
+            <p className="mt-1 text-[11px] text-h-muted">When the tree is grown, these minutes are added to the habit&apos;s day.</p>
+          ) : (
+            <p className="mt-1 text-[11px] font-semibold text-amber-600 [.dark_&]:text-amber-300">Not linked to a habit, so the time won&apos;t be added to one. Pick a habit above to count it.</p>
+          )}
+        </div>
 
         {/* Tree */}
         <div className="mt-4">
@@ -438,7 +528,9 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           <Play className="h-5 w-5" fill="currentColor" />
           Start focus
         </button>
-        <p className="mt-2 text-center text-[11px] text-h-muted">Give up after the first 30 seconds and the tree withers. Finish and it joins your grove.</p>
+        <p className="mt-2 text-center text-[11px] text-h-muted">
+          {flexible ? "Stop anytime after 30 seconds and the tree grown so far joins your grove." : "Give up after the first 30 seconds and the tree withers. Finish and it joins your grove."}
+        </p>
       </div>
     </div>
   );

@@ -46,6 +46,8 @@ export type HabitFormValues = {
   priority: number;
   /** The life goal (Goals module) this habit contributes to, if any. */
   goalId: number | null;
+  /** Kept off every household-visible surface: only its own owner sees its name, logs or progress. */
+  private: boolean;
 };
 
 export function emptyHabit(): HabitFormValues {
@@ -75,6 +77,7 @@ export function emptyHabit(): HabitFormValues {
     endDate: null,
     priority: 0,
     goalId: null,
+    private: false,
   };
 }
 
@@ -105,6 +108,7 @@ export type HabitFormSource = {
   startDate: string;
   endDate: string | null;
   priority: number;
+  private: boolean;
 };
 
 export function habitToFormValues(h: HabitFormSource, goalId: number | null = null): HabitFormValues {
@@ -135,5 +139,6 @@ export function habitToFormValues(h: HabitFormSource, goalId: number | null = nu
     endDate: h.endDate,
     priority: h.priority,
     goalId,
+    private: h.private,
   };
 }

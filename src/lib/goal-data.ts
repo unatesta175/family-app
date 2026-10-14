@@ -99,7 +99,8 @@ export async function loadGoalsData(): Promise<GoalsData> {
     let bestStreak = 0;
     for (const link of links.filter((l) => l.goalId === goal.id)) {
       const habit = habitById.get(link.habitId);
-      if (!habit) continue;
+      // A private habit's progress stays off every view but its own owner's, even on a shared goal.
+      if (!habit || (habit.private && habit.profileId !== viewerId)) continue;
       const logs = logsByHabit.get(habit.id) ?? {};
       let checkins = 0;
       for (const [date, log] of Object.entries(logs)) {

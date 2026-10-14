@@ -6,6 +6,7 @@ import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getActiveFocusSession, getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
 import { byDay, focusStreak, formatFocus } from "@/lib/focus";
+import { CREDITABLE_EVAL_TYPES } from "@/lib/focus-actions";
 import { SessionList } from "@/components/focus/grove-views";
 import { FocusMemberStrip, FocusViewerBanner, type FocusMemberCard } from "@/components/focus/focus-members";
 import { GardenView } from "@/components/focus/garden-view";
@@ -23,9 +24,12 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
   // Only settle (a write) your own session; another member's is read as-is.
   const active = readOnly ? await getActiveFocusSession(viewedId) : await settleActiveSession(viewedId);
   const [habits, recent] = await Promise.all([getHabits(viewedId), getFocusSessionsInRange(viewedId, addDays(today, -60), today)]);
-  const names = new Map(habits.map((h) => [h.id, h.name]));
-  // Timer habits can start a session from here (and from the menu on Today) — only on your own page.
-  const timerHabits = habits.filter((h) => h.evalType === "timer" && !h.systemKey).map((h) => ({ id: h.id, name: h.name, color: h.color }));
+  // A private habit's name is only shown to its own owner — never on another member's view of this page.
+  const names = new Map(habits.filter((h) => !readOnly || !h.private).map((h) => [h.id, h.name]));
+  // A session can count towards any habit, not just timer ones — only on your own page.
+  const pickableHabits = habits.filter((h) => !h.systemKey && CREDITABLE_EVAL_TYPES.includes(h.evalType)).map((h) => ({ id: h.id, name: h.name, color: h.color }));
+  // Preselect whichever habit the last session was for, so starting again doesn't ask twice.
+  const lastHabitId = [...recent].reverse().find((s) => s.habitId !== null)?.habitId ?? null;
   const days = byDay(recent.map(toLite));
   const todayTotals = days.get(today);
   const streak = focusStreak(days, today, addDays);
@@ -89,7 +93,7 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
           <p className="text-xs text-h-muted">Their grove and stats are below.</p>
         </div>
       ) : (
-        <StartPanel habits={timerHabits} defaultHabitId={rawHabit && /^\d+$/.test(rawHabit) ? Number(rawHabit) : null} />
+        <StartPanel habits={pickableHabits} defaultHabitId={rawHabit && /^\d+$/.test(rawHabit) ? Number(rawHabit) : lastHabitId} />
       )}
 
       <section className="flex flex-col gap-2">

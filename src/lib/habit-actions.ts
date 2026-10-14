@@ -228,6 +228,8 @@ const habitSchema = z
     priority: z.number().int().min(0).max(99).nullable().optional(),
     // Also add the habit for everyone else in the family circle (household).
     forEveryone: z.boolean().default(false),
+    // Kept off every household-visible surface: only its own owner sees its name, logs or progress.
+    private: z.boolean().default(false),
     // Link the habit to one of your life goals (null = none, undefined = leave as is).
     goalId: z.number().int().positive().nullable().optional(),
   })
@@ -302,6 +304,7 @@ async function habitInput(raw: HabitFormInput, profileId: number) {
     priority: v.priority ?? 0,
     checklist: JSON.stringify(checklist),
     goals: JSON.stringify(measured ? v.goals : []),
+    private: v.private,
   };
 }
 
@@ -333,6 +336,33 @@ async function shareWithCircle(ownerProfileId: number, input: Awaited<ReturnType
     shared += 1;
   }
   return shared;
+}
+
+/** A minimal timer habit, created inline from the focus session screen so you don't have to leave it. */
+export async function quickCreateTimerHabitAction(name: string): Promise<ActionResult<{ id: number; name: string; color: string }>> {
+  try {
+    const trimmed = z.string().trim().min(1, "Name it first.").max(80).parse(name);
+    const profileId = await requireOwnProfileId();
+    const habit = await createHabit(profileId, {
+      name: trimmed,
+      description: null,
+      categoryId: null,
+      kind: "build",
+      icon: "target",
+      color: "indigo",
+      schedule: "daily",
+      weekdays: "0,1,2,3,4,5,6",
+      weeklyTarget: 3,
+      dailyTarget: 1500,
+      unit: null,
+      startDate: todayIso(),
+      evalType: "timer",
+    });
+    refresh();
+    return { ok: true, data: { id: habit.id, name: habit.name, color: habit.color } };
+  } catch (err) {
+    return fail(err);
+  }
 }
 
 export async function createHabitAction(raw: HabitFormInput): Promise<ActionResult<{ id: number; shared: number }>> {

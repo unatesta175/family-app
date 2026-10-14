@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Ban, Sprout, Users, X } from "lucide-react";
+import { Ban, Lock, Sprout, Users, X } from "lucide-react";
 import { createHabitAction, updateHabitAction, type HabitFormInput } from "@/lib/habit-actions";
 import { colorHex } from "@/lib/habits";
 import { emptyHabit, type HabitFormValues } from "@/lib/habit-form-values";
@@ -104,6 +104,7 @@ export function HabitFormSheet({
       priority: v.priority,
       forEveryone,
       goalId: v.goalId,
+      private: v.private,
     };
     startTransition(async () => {
       const res = editing ? await updateHabitAction(initial.id!, payload) : await createHabitAction(payload);
@@ -285,6 +286,20 @@ export function HabitFormSheet({
             <span className="text-[11px] leading-snug text-h-muted">1 is the highest priority and sits at the top of your list.</span>
           </label>
         </FormSection>
+
+        {circleSize > 1 && (
+          <FormSection title="Privacy">
+            <ToggleRow title="Private" description="Keeps this habit off your family circle's shared views — only you see its name, logs or progress.">
+              <Switch checked={v.private} onCheckedChange={(on) => set("private", on)} aria-label="Private habit" />
+            </ToggleRow>
+            {v.private && (
+              <p className="-mt-1 flex items-center gap-1.5 text-[11px] font-semibold text-h-muted">
+                <Lock className="h-3.5 w-3.5" />
+                Hidden from the rest of your circle, even where it&apos;s linked to a shared goal.
+              </p>
+            )}
+          </FormSection>
+        )}
 
         {circleSize > 1 && (
           <FormSection title="Family circle">
