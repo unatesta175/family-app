@@ -105,6 +105,7 @@ export function HabitFormSheet({
       forEveryone,
       goalId: v.goalId,
       private: v.private,
+      hidden: v.hidden,
     };
     startTransition(async () => {
       const res = editing ? await updateHabitAction(initial.id!, payload) : await createHabitAction(payload);
