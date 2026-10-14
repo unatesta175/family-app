@@ -34,6 +34,7 @@ export function HabitFormSheet({
   categories: initialCategories,
   circleSize = 1,
   goals = [],
+  lockEvalType = false,
 }: {
   open: boolean;
   onClose: () => void;
@@ -45,6 +46,9 @@ export function HabitFormSheet({
   circleSize?: number;
   /** Life goals the habit can contribute to (Goals module). The field shows when there are any. */
   goals?: { id: number; title: string }[];
+  /** Locks "How do you evaluate it?" to `initial.evalType` — e.g. creating a timer habit on the go
+   * from Focus, which only makes sense as a timer. */
+  lockEvalType?: boolean;
 }) {
   const editing = initial.id !== undefined;
   const [v, setV] = useState<HabitFormValues>(initial);
@@ -234,7 +238,7 @@ export function HabitFormSheet({
           title="How do you evaluate it?"
           description={v.kind === "break" ? "Choose how a day counts as clean." : "Choose how a day counts as done."}
         >
-          <EvaluationFields v={v} set={set} hex={hex} />
+          <EvaluationFields v={v} set={set} hex={hex} lockType={lockEvalType} />
         </FormSection>
 
         <FormSection title="Frequency" description="How often does this come up?">

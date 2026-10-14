@@ -28,6 +28,8 @@ export function AddFab({
   const [habitOpen, setHabitOpen] = useState(openedFromQuery);
   const [taskOpen, setTaskOpen] = useState(false);
   const [habitInitial, setHabitInitial] = useState<HabitFormValues>(openedFromQuery ? emptyTimerHabit : emptyHabit);
+  // Opened from Focus's "on the go" flow: the habit can only be a timer, so lock that choice in.
+  const [lockEvalType, setLockEvalType] = useState(openedFromQuery);
   // On save, hop straight back to whichever module opened this sheet instead of leaving the user on Habits.
   const [returnTo, setReturnTo] = useState<string | null>(() => {
     if (!openedFromQuery) return null;
@@ -65,6 +67,7 @@ export function AddFab({
               onClick={() => {
                 setMenu(false);
                 setHabitInitial(emptyHabit());
+                setLockEvalType(false);
                 setReturnTo(null);
                 setHabitOpen(true);
               }}
@@ -105,6 +108,7 @@ export function AddFab({
           categories={categories}
           circleSize={circleSize}
           goals={goals}
+          lockEvalType={lockEvalType}
         />
       )}
       {taskOpen && (

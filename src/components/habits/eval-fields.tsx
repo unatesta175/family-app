@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CheckCircle2, Clock, Hash, ListChecks, Plus, Timer, Trash2, X } from "lucide-react";
+import { CheckCircle2, Clock, Hash, ListChecks, Lock, Plus, Timer, Trash2, X } from "lucide-react";
 import { GOAL_PERIOD_LABEL, OP_LABEL, TIME_OP_LABEL, formatDuration, formatTimeOfDay, type HabitGoal } from "@/lib/habits";
 import { GOAL_PERIODS, TARGET_OPS, type GoalPeriod, type HabitEvalType } from "@/lib/db/schema";
 import type { HabitFormValues } from "@/lib/habit-form-values";
@@ -22,7 +22,19 @@ const EVAL_OPTIONS: { value: HabitEvalType; title: string; description: string; 
 
 const newId = () => Math.random().toString(36).slice(2, 10);
 
-export function EvaluationFields({ v, set, hex }: { v: HabitFormValues; set: SetField; hex: string }) {
+export function EvaluationFields({
+  v,
+  set,
+  hex,
+  lockType,
+}: {
+  v: HabitFormValues;
+  set: SetField;
+  hex: string;
+  /** When set, the evaluation type can't be changed away from what `v.evalType` already is — e.g.
+   * a timer habit created on the go from Focus, which only makes sense as a timer. */
+  lockType?: boolean;
+}) {
   function pickType(type: HabitEvalType) {
     if (type === v.evalType) return;
     set("evalType", type);
@@ -39,21 +51,36 @@ export function EvaluationFields({ v, set, hex }: { v: HabitFormValues; set: Set
     if (type !== "numeric") set("unit", null);
   }
 
+  const lockedOption = EVAL_OPTIONS.find((o) => o.value === v.evalType);
+
   return (
     <div className="flex flex-col gap-3">
-      <div role="radiogroup" aria-label="How do you evaluate this habit?" className="grid grid-cols-2 gap-2">
-        {EVAL_OPTIONS.map((o) => (
-          <OptionCard
-            key={o.value}
-            active={v.evalType === o.value}
-            onClick={() => pickType(o.value)}
-            icon={o.icon}
-            title={o.title}
-            description={o.description}
-            accent={hex}
-          />
-        ))}
-      </div>
+      {lockType && lockedOption ? (
+        <div className="flex items-center gap-3 rounded-xl border-2 p-3" style={{ borderColor: hex, background: `${hex}14` }}>
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ background: `${hex}22`, color: hex }}>
+            <lockedOption.icon className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-extrabold leading-tight">{lockedOption.title}</p>
+            <p className="text-[11px] leading-snug text-h-muted">{lockedOption.description}</p>
+          </div>
+          <Lock className="h-3.5 w-3.5 shrink-0 text-h-muted" aria-label="Locked to a timer habit" />
+        </div>
+      ) : (
+        <div role="radiogroup" aria-label="How do you evaluate this habit?" className="grid grid-cols-2 gap-2">
+          {EVAL_OPTIONS.map((o) => (
+            <OptionCard
+              key={o.value}
+              active={v.evalType === o.value}
+              onClick={() => pickType(o.value)}
+              icon={o.icon}
+              title={o.title}
+              description={o.description}
+              accent={hex}
+            />
+          ))}
+        </div>
+      )}
 
       {(v.evalType === "numeric" || v.evalType === "timer") && (
         <div className="flex flex-col gap-3 rounded-xl bg-h-surface2 p-3">
