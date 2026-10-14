@@ -14,7 +14,7 @@ const MODULES = [
     hint: "Salah, streaks & garden",
     href: "/",
     icon: MoonStar,
-    tile: "bg-zinc-200 text-zinc-700",
+    tile: "bg-emerald-100 text-emerald-700",
   },
   {
     key: "habits",
@@ -22,7 +22,7 @@ const MODULES = [
     hint: "Build, break & track daily",
     href: "/habits",
     icon: ListChecks,
-    tile: "bg-zinc-200 text-zinc-700",
+    tile: "bg-indigo-100 text-indigo-600",
   },
   {
     key: "goals",
@@ -30,7 +30,7 @@ const MODULES = [
     hint: "Life goals, milestones & vision",
     href: "/goals",
     icon: Target,
-    tile: "bg-zinc-200 text-zinc-700",
+    tile: "bg-amber-100 text-amber-600",
   },
   {
     key: "focus",
@@ -38,7 +38,7 @@ const MODULES = [
     hint: "Grow trees while you focus",
     href: "/focus",
     icon: Sprout,
-    tile: "bg-zinc-200 text-zinc-700",
+    tile: "bg-green-100 text-green-700",
   },
   {
     key: "finance",
@@ -46,7 +46,7 @@ const MODULES = [
     hint: "Spending, bills & budget",
     href: "/finance",
     icon: Wallet,
-    tile: "bg-zinc-200 text-zinc-700",
+    tile: "bg-zinc-100 text-zinc-900",
   },
 ] as const;
 
@@ -128,7 +128,7 @@ export function ModuleSwitcher({ current, tone }: { current: ModuleKey; tone: "p
                 className={cn(
                   "flex items-center gap-3 rounded-xl px-2 py-2 transition-colors",
                   habitsTone ? "hover:bg-h-surface2" : "hover:bg-neutral-50",
-                  isCurrent && (habitsTone ? "bg-h-surface2" : "bg-emerald-50")
+                  isCurrent && (habitsTone ? "bg-h-brand-soft" : "bg-emerald-50")
                 )}
               >
                 <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", m.tile)}>
