@@ -9,7 +9,7 @@ import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
 import { attachHabitToSession, cfgFromRow, completeFocusSession, completeOpenEndedSession, createFocusSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
-import { CREDITABLE_EVAL_TYPES, FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
+import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, canCreditFocusTime, focusStreak, timeline, type PomodoroConfig } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
 
@@ -74,7 +74,7 @@ export async function startFocusAction(input: z.input<typeof startSchema>): Prom
     if (v.habitId !== null) {
       const habit = await getHabit(v.habitId);
       if (!habit || habit.profileId !== profileId) throw new Error("Habit not found.");
-      if (!CREDITABLE_EVAL_TYPES.includes(habit.evalType)) throw new Error("This habit can't take focus time.");
+      if (!canCreditFocusTime(habit)) throw new Error("This habit can't take focus time.");
     }
     // Pomodoro plans a whole number of focus blocks; single mode uses the slider's minutes.
     let plannedSeconds = v.openEnded ? OPEN_ENDED_SENTINEL_SECONDS : v.minutes * 60;
@@ -184,7 +184,7 @@ export async function attachFocusHabitAction(input: { sessionId: number; habitId
     if (row.habitId !== null) throw new Error("This session already counts towards a habit.");
     const habit = await getHabit(v.habitId);
     if (!habit || habit.profileId !== profileId) throw new Error("Habit not found.");
-    if (!CREDITABLE_EVAL_TYPES.includes(habit.evalType) || habit.systemKey) throw new Error("This habit can't take focus time.");
+    if (!canCreditFocusTime(habit) || habit.systemKey) throw new Error("This habit can't take focus time.");
     await attachHabitToSession(row, habit.id);
     refresh();
     return { ok: true, data: { habitName: habit.name } };

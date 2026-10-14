@@ -5,7 +5,7 @@ import { focusSessions, habitLogs } from "@/lib/db/schema";
 import { upsertHabitLog } from "@/lib/db/repo-habits";
 import { isoDate } from "@/lib/date";
 import { getHabit } from "@/lib/db/repo-habits";
-import { POMODORO, pausedMsAt, timeline, type FocusMode, type FocusSpecies, type PomodoroConfig, type SessionLite } from "@/lib/focus";
+import { POMODORO, canCreditFocusTime, pausedMsAt, timeline, type FocusMode, type FocusSpecies, type PomodoroConfig, type SessionLite } from "@/lib/focus";
 
 export type FocusSessionRow = typeof focusSessions.$inferSelect;
 
@@ -136,21 +136,15 @@ async function creditHabit(row: FocusSessionRow, habitId: number | null) {
   await creditHabitSeconds(habitId, row.startedAt, row.plannedSeconds);
 }
 
-/**
- * Adds some seconds of focus to a habit's day (the day the session started on, server zone). A timer
- * habit's target is in seconds, so the raw time is added; a numeric habit's target is its own unit, so
- * minutes focused are added instead; a yes/no habit just gets marked done, however long the session ran.
- */
+/** Adds some seconds of focus to a timer habit's day (the day the session started on, server zone). */
 async function creditHabitSeconds(habitId: number | null, startedAt: number, seconds: number) {
   if (habitId === null || seconds <= 0) return;
   const habit = await getHabit(habitId);
-  if (!habit || habit.systemKey) return;
+  if (!habit || habit.systemKey || !canCreditFocusTime(habit)) return;
   const habitDay = isoDate(new Date(startedAt));
   const [log] = await db.select().from(habitLogs).where(and(eq(habitLogs.habitId, habit.id), eq(habitLogs.date, habitDay)));
   const before = log && log.status === "done" ? log.value : 0;
-  if (habit.evalType === "timer") await upsertHabitLog(habit.id, habitDay, "done", before + seconds);
-  else if (habit.evalType === "numeric") await upsertHabitLog(habit.id, habitDay, "done", before + Math.round(seconds / 60));
-  else if (habit.evalType === "yes_no") await upsertHabitLog(habit.id, habitDay, "done", 1);
+  await upsertHabitLog(habit.id, habitDay, "done", before + seconds);
 }
 
 /**

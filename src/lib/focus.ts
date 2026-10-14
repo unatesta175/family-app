@@ -8,8 +8,13 @@ import type { HabitEvalType } from "@/lib/db/schema";
 
 export const MIN_MINUTES = 5;
 export const MAX_MINUTES = 180;
-/** Habit types a focus session's time can be credited to; checklist/time_of_day have no sensible mapping. */
-export const CREDITABLE_EVAL_TYPES: HabitEvalType[] = ["timer", "numeric", "yes_no"];
+/** Habit types a focus session's time can be credited to: timer only. */
+export const CREDITABLE_EVAL_TYPES: HabitEvalType[] = ["timer"];
+
+/** Whether a habit can take focus time. */
+export function canCreditFocusTime(habit: { evalType: HabitEvalType }): boolean {
+  return CREDITABLE_EVAL_TYPES.includes(habit.evalType);
+}
 /** Cancelling in the first seconds is a mistaken start: no stump is left behind. */
 export const GRACE_SECONDS = 30;
 
