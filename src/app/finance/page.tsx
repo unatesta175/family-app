@@ -166,7 +166,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
                 {money(Math.max(0, safeToSpendToday))}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline">
+                <Badge className="border-transparent bg-blue-500/10 text-blue-600">
                   <ShieldCheck className="size-3.5" />
                   {ctx.budget?.adaptiveBudget ? "Adaptive" : "Daily"}
                 </Badge>
@@ -203,7 +203,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
                   Over budget
                 </Badge>
               ) : (
-                <Badge variant="outline">
+                <Badge className="border-transparent bg-blue-500/10 text-blue-600">
                   <TrendingUp className="size-3.5" />
                   {dailyBudget > 0 ? `${pctOfBudget}%` : "No budget"}
                 </Badge>
@@ -237,7 +237,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
                 {projectedLeftover < 0 ? `− ${money(Math.abs(projectedLeftover))}` : money(projectedLeftover)}
               </CardTitle>
               <CardAction>
-                <Badge variant="outline">
+                <Badge className={cn("border-transparent", projectedLeftover < 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
                   {projectedLeftover < 0 ? <TrendingDown className="size-3.5" /> : <TrendingUp className="size-3.5" />}
                   {projectedLeftover < 0 ? "Shortfall" : "Leftover"}
                 </Badge>
@@ -256,7 +256,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
             <CardDescription>Predicted tomorrow</CardDescription>
             <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(prediction.amount)}</CardTitle>
             <CardAction>
-              <Badge variant="outline">
+              <Badge className={cn("border-transparent", prediction.confident ? "bg-success/10 text-success" : "bg-amber-500/10 text-amber-600")}>
                 <TrendingDown className="size-3.5" />
                 {prediction.confident ? "Confident" : "Estimate"}
               </Badge>
@@ -276,7 +276,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
               {paydayDays === null ? "—" : paydayDays === 0 ? "Today" : `${paydayDays}d`}
             </CardTitle>
             <CardAction>
-              <Badge variant="outline">
+              <Badge className="border-transparent bg-violet-500/10 text-violet-600">
                 <CalendarClock className="size-3.5" />
                 Payday
               </Badge>
@@ -318,7 +318,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
           {weekdayPattern.length > 0 && (
             <Card className="flex flex-col gap-1.5 p-4">
               <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                <TrendingUp className="h-3.5 w-3.5" />
+                <TrendingUp className="h-3.5 w-3.5 text-amber-500" />
                 Spending pattern
               </p>
               {weekdayPattern.map((w) => (
@@ -333,7 +333,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
           {risingCategories.length > 0 && (
             <Card className="flex flex-col gap-1.5 p-4">
               <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                <TrendingUp className="h-3.5 w-3.5" />
+                <TrendingUp className="h-3.5 w-3.5 text-destructive" />
                 Trending up this month
               </p>
               {risingCategories.map((t) => (
@@ -352,7 +352,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
                 <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">{money(weeklyDigest.thisWeekTotal)}</CardTitle>
                 {weeklyDigest.pctChange !== null && (
                   <CardAction>
-                    <Badge variant="outline">
+                    <Badge className={cn("border-transparent", weeklyDigest.pctChange > 0 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success")}>
                       {weeklyDigest.pctChange > 0 ? <TrendingUp className="size-3.5" /> : <TrendingDown className="size-3.5" />}
                       {weeklyDigest.pctChange > 0 ? "+" : ""}
                       {Math.round(weeklyDigest.pctChange)}%

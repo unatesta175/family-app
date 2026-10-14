@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { LendingFormModal } from "@/components/finance/lending-form";
 import { Badge } from "@/components/finance/ui/badge";
 import type { LendingRow } from "@/lib/db/repo-finance";
@@ -18,10 +19,23 @@ export function LendingList({ entries }: { entries: LendingRow[] }) {
         {entries.map((e) => (
           <li key={e.id}>
             <button type="button" onClick={() => setEditing(e)} className="flex w-full items-center gap-3 py-3 text-left">
+              <span
+                className={cn(
+                  "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
+                  e.direction === "lent" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                )}
+              >
+                {e.direction === "lent" ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
                   <span className="truncate text-sm font-bold">{e.counterpartyName}</span>
-                  <Badge variant={e.status === "settled" ? "secondary" : "default"} className="text-[10px]">
+                  <Badge
+                    className={cn(
+                      "text-[10px]",
+                      e.status === "settled" ? "border-transparent bg-success/15 text-success" : "border-transparent bg-amber-500/15 text-amber-600"
+                    )}
+                  >
                     {e.status}
                   </Badge>
                 </span>

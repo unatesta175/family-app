@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { saveMoneyPlanAllocationAction } from "@/lib/finance-actions";
+import { FinanceCategoryIcon } from "@/components/finance/finance-icons";
 import { Progress } from "@/components/finance/ui/progress";
 import type { CategoryRow } from "@/lib/db/repo-finance";
+import { colorHex } from "@/lib/habits";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -36,7 +38,15 @@ export function MoneyPlanRow({
   return (
     <li className="flex flex-col gap-1.5 py-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold">{category.name}</span>
+        <span className="flex items-center gap-2">
+          <span
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg"
+            style={{ background: `${colorHex(category.color)}1f`, color: colorHex(category.color) }}
+          >
+            <FinanceCategoryIcon icon={category.icon} className="h-3.5 w-3.5" />
+          </span>
+          <span className="text-sm font-bold">{category.name}</span>
+        </span>
         <span className="text-xs font-semibold text-muted-foreground">{money(actual)} spent</span>
       </div>
       <div className="flex items-center gap-2">

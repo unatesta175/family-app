@@ -6,8 +6,10 @@ import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
 import { FinanceModal } from "@/components/finance/finance-modal";
+import { FinanceCategoryIcon } from "@/components/finance/finance-icons";
 import { quickAddExpenseAction } from "@/lib/finance-actions";
 import type { AccountRow, CategoryRow } from "@/lib/db/repo-finance";
+import { colorHex } from "@/lib/habits";
 import { cn } from "@/lib/utils";
 
 /** The dashboard's fast path: log today's expense in two taps. */
@@ -63,19 +65,25 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
             className="h-14 text-center text-2xl font-extrabold"
           />
           <div className="flex flex-wrap gap-1.5">
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCategoryId(categoryId === c.id ? null : c.id)}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
-                  categoryId === c.id ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground"
-                )}
-              >
-                {c.name}
-              </button>
-            ))}
+            {categories.map((c) => {
+              const active = categoryId === c.id;
+              const hex = colorHex(c.color);
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCategoryId(active ? null : c.id)}
+                  style={active ? { borderColor: hex, background: `${hex}1a`, color: hex } : undefined}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
+                    !active && "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <FinanceCategoryIcon icon={c.icon} className="h-3.5 w-3.5" />
+                  {c.name}
+                </button>
+              );
+            })}
           </div>
           {accounts.length > 1 && (
             <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>

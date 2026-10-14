@@ -6,6 +6,7 @@ import { TransactionFormModal } from "@/components/finance/transaction-form";
 import { FinanceCategoryIcon } from "@/components/finance/finance-icons";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/finance/ui/tooltip";
 import type { AccountRow, CategoryRow, TransactionRow } from "@/lib/db/repo-finance";
+import { colorHex } from "@/lib/habits";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -43,7 +44,10 @@ export function TransactionList({
                 onClick={() => !readOnly && setEditing(tx)}
                 className="flex w-full items-center gap-3 py-3 text-left disabled:cursor-default"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <span
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                  style={{ background: `${colorHex(cat?.color ?? "steel")}1f`, color: colorHex(cat?.color ?? "steel") }}
+                >
                   <FinanceCategoryIcon icon={cat?.icon} className="h-4 w-4" />
                 </span>
                 <span className="min-w-0 flex-1">

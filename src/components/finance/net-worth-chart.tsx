@@ -11,8 +11,8 @@ export function NetWorthTrendChart({ series }: { series: NetWorthPoint[] }) {
         <AreaChart data={series} margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
           <defs>
             <linearGradient id="fin-net-worth" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--primary)" stopOpacity={0.35} />
-              <stop offset="100%" stopColor="var(--primary)" stopOpacity={0} />
+              <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+              <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid vertical={false} stroke="var(--border)" />
@@ -22,7 +22,7 @@ export function NetWorthTrendChart({ series }: { series: NetWorthPoint[] }) {
             contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid var(--border)", background: "var(--popover)", color: "var(--popover-foreground)" }}
             formatter={(v) => [`RM ${Number(v ?? 0).toFixed(2)}`, "Net worth"]}
           />
-          <Area type="monotone" dataKey="netWorth" stroke="var(--primary)" strokeWidth={2} fill="url(#fin-net-worth)" />
+          <Area type="monotone" dataKey="netWorth" stroke="#10b981" strokeWidth={2} fill="url(#fin-net-worth)" />
         </AreaChart>
       </ResponsiveContainer>
     </div>

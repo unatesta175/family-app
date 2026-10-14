@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { AccountFormModal } from "@/components/finance/account-form";
-import { AccountIcon, ACCOUNT_TYPE_LABEL } from "@/components/finance/finance-icons";
+import { AccountIcon, ACCOUNT_TYPE_LABEL, CARD_THEME_FG, CARD_THEME_GRADIENT } from "@/components/finance/finance-icons";
 import { archiveAccountAction, deleteAccountAction } from "@/lib/finance-actions";
 import type { AccountRow } from "@/lib/db/repo-finance";
 
@@ -18,7 +18,10 @@ export function AccountRowList({ accounts, readOnly }: { accounts: AccountRow[];
       <ul className="flex flex-col divide-y divide-border">
         {accounts.map((a, i) => (
           <li key={a.id} className="relative flex items-center gap-3 p-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-foreground">
+            <span
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+              style={{ backgroundImage: CARD_THEME_GRADIENT[a.colorTheme], color: CARD_THEME_FG[a.colorTheme] }}
+            >
               <AccountIcon icon={a.icon} className="h-4 w-4" />
             </span>
             <span className="min-w-0 flex-1">

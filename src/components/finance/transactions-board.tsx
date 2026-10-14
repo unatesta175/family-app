@@ -9,6 +9,7 @@ import { addDays } from "@/lib/date";
 import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/finance/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/finance/ui/tooltip";
 import type { AccountRow, CategoryRow, TransactionRow } from "@/lib/db/repo-finance";
+import { colorHex } from "@/lib/habits";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -96,7 +97,10 @@ export function TransactionsBoard({
                     const color = tx.type === "income" ? "text-success" : tx.type === "expense" ? "text-destructive" : "text-muted-foreground";
                     return (
                       <li key={tx.id} className="relative flex items-center gap-3 px-2 py-2.5">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                        <span
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+                          style={{ background: `${colorHex(cat?.color ?? "steel")}1f`, color: colorHex(cat?.color ?? "steel") }}
+                        >
                           <FinanceCategoryIcon icon={cat?.icon} className="h-4 w-4" />
                         </span>
                         <button
