@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus } from "lucide-react";
+import { Plus, CalendarDays, Users } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
 import { Switch } from "@/components/finance/ui/switch";
-import { FinanceModal } from "@/components/finance/finance-modal";
+import { FinanceSheet } from "@/components/finance/finance-modal";
 import { saveTransactionAction, deleteTransactionAction } from "@/lib/finance-actions";
 import { FINANCE_TX_TYPES } from "@/lib/db/schema";
 import type { AccountRow, CategoryRow, TransactionRow, TripRow } from "@/lib/db/repo-finance";
@@ -94,16 +94,23 @@ export function TransactionFormModal({
   }
 
   return (
-    <FinanceModal open={open} onClose={onClose} title={tx ? "Edit transaction" : "Add transaction"}>
-      <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex gap-1.5 rounded-lg border border-border bg-muted p-1">
+    <FinanceSheet
+      open={open}
+      onClose={onClose}
+      title={tx ? `Edit ${TYPE_LABEL[type]}` : `Add ${TYPE_LABEL[type]}`}
+      onSave={submit}
+      saveLabel={pending ? "Saving…" : "Save"}
+      saveDisabled={pending || !amount}
+    >
+      <div className="flex min-w-0 flex-col gap-5">
+        <div className="flex gap-1 rounded-full border border-border bg-muted p-1">
           {FINANCE_TX_TYPES.map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setType(t)}
               className={cn(
-                "flex-1 rounded-md px-3 py-1.5 text-xs font-bold transition-colors",
+                "flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
                 type === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -112,99 +119,115 @@ export function TransactionFormModal({
           ))}
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
-          <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" autoFocus />
-        </label>
+        <div className="flex items-center justify-center gap-2 py-1">
+          <span className="rounded-full bg-muted px-2.5 py-1 text-sm font-bold text-muted-foreground">RM</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="0.00"
+            autoFocus
+            className="w-40 min-w-0 bg-transparent text-center text-4xl font-extrabold text-foreground outline-none placeholder:text-muted-foreground/40"
+          />
+        </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <label className={cn("flex flex-col gap-1", !showCategory && "col-span-2")}>
-            <span className="text-xs font-bold text-muted-foreground">Account</span>
-            <Select value={String(accountId)} onValueChange={(v) => setAccountId(Number(v))}>
-              <SelectTrigger>
-                <SelectValue />
+        <div className="flex flex-col gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Account</p>
+          <div className="scrollbar-hide flex gap-2 overflow-x-auto">
+            {accounts.map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setAccountId(a.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-colors",
+                  accountId === a.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {a.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {showCategory && (
+          <label className="flex flex-col gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Category</span>
+            <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
+              <SelectTrigger className="h-auto w-full rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-bold">
+                <SelectValue placeholder="None" />
               </SelectTrigger>
               <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={String(a.id)}>
-                    {a.name}
+                <SelectItem value="none">None</SelectItem>
+                {categories.map((c) => (
+                  <SelectItem key={c.id} value={String(c.id)}>
+                    {c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </label>
+        )}
 
-          {showCategory && (
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold text-muted-foreground">Category</span>
-              <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          )}
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <label className={cn("flex flex-col gap-1", !showTrip && "col-span-2")}>
-            <span className="text-xs font-bold text-muted-foreground">Date</span>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        {showTrip && (
+          <label className="flex flex-col gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Trip</span>
+            <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
+              <SelectTrigger className="h-auto w-full rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-bold">
+                <SelectValue placeholder="None" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {trips.map((t) => (
+                  <SelectItem key={t.id} value={String(t.id)}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </label>
+        )}
 
-          {showTrip && (
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-bold text-muted-foreground">Trip</span>
-              <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {trips.map((t) => (
-                    <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </label>
-          )}
+        <div className="flex flex-col gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Details</p>
+          <div className="flex items-center gap-3 rounded-xl bg-muted px-3.5 py-3">
+            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="min-w-0 flex-1 bg-transparent text-sm font-bold text-foreground outline-none"
+            />
+          </div>
+          <Input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Note (e.g. lunch at mamak)"
+            className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none placeholder:font-normal placeholder:text-muted-foreground"
+          />
         </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Note</span>
-          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
-        </label>
-
-        <label className="flex items-center justify-between gap-2 text-sm font-semibold">
-          Visible to my partner
+        <label className="flex items-center justify-between gap-3 rounded-xl bg-muted px-3.5 py-3">
+          <span className="flex items-center gap-3">
+            <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="flex flex-col">
+              <span className="text-sm font-bold text-foreground">Visible to my partner</span>
+              <span className="text-xs text-muted-foreground">They&apos;ll see this transaction too</span>
+            </span>
+          </span>
           <Switch checked={isShared} onCheckedChange={setIsShared} />
         </label>
 
         {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
 
-        <div className="flex items-center justify-between gap-2 pt-1">
-          {tx ? (
-            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
-              Delete
-            </button>
-          ) : (
-            <span />
-          )}
-          <Button type="button" onClick={submit} disabled={pending || !amount}>
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        {tx && (
+          <button type="button" onClick={remove} disabled={pending} className="self-center text-xs font-bold text-destructive">
+            Delete transaction
+          </button>
+        )}
       </div>
-    </FinanceModal>
+    </FinanceSheet>
   );
 }
