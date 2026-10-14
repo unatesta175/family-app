@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ListTodo, Plus, Sprout } from "lucide-react";
 import { HabitFormSheet, emptyHabit } from "@/components/habits/habit-form";
+import { emptyTimerHabit, type HabitFormValues } from "@/lib/habit-form-values";
 import { TaskFormSheet, emptyTask } from "@/components/habits/task-form";
 import type { CategoryOption } from "@/components/habits/form-bits";
 import { cn } from "@/lib/utils";
@@ -17,10 +19,28 @@ export function AddFab({
   circleSize?: number;
   goals?: { id: number; title: string }[];
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // Another module (e.g. Focus's "create a timer habit on the go") can open this sheet pre-filled
+  // via a query param on first load — read it once, lazily, instead of reacting to it in an effect.
+  const openedFromQuery = searchParams.get("newTimerHabit") === "1";
   const [menu, setMenu] = useState(false);
-  const [habitOpen, setHabitOpen] = useState(false);
+  const [habitOpen, setHabitOpen] = useState(openedFromQuery);
   const [taskOpen, setTaskOpen] = useState(false);
+  const [habitInitial, setHabitInitial] = useState<HabitFormValues>(openedFromQuery ? emptyTimerHabit : emptyHabit);
+  // On save, hop straight back to whichever module opened this sheet instead of leaving the user on Habits.
+  const [returnTo, setReturnTo] = useState<string | null>(() => {
+    if (!openedFromQuery) return null;
+    const back = searchParams.get("returnTo");
+    return back && back.startsWith("/") ? back : "/focus";
+  });
   const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (openedFromQuery) router.replace("/habits", { scroll: false });
+    // Only ever react to the query params this page was first loaded with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!menu) return;
@@ -44,6 +64,8 @@ export function AddFab({
               type="button"
               onClick={() => {
                 setMenu(false);
+                setHabitInitial(emptyHabit());
+                setReturnTo(null);
                 setHabitOpen(true);
               }}
               className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-bold hover:bg-h-surface2"
@@ -78,7 +100,8 @@ export function AddFab({
         <HabitFormSheet
           open
           onClose={() => setHabitOpen(false)}
-          initial={emptyHabit()}
+          onSaved={returnTo ? () => router.push(returnTo) : undefined}
+          initial={habitInitial}
           categories={categories}
           circleSize={circleSize}
           goals={goals}

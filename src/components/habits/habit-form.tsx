@@ -29,6 +29,7 @@ export type { HabitFormValues };
 export function HabitFormSheet({
   open,
   onClose,
+  onSaved,
   initial,
   categories: initialCategories,
   circleSize = 1,
@@ -36,6 +37,8 @@ export function HabitFormSheet({
 }: {
   open: boolean;
   onClose: () => void;
+  /** Called right before `onClose`, only when the save actually succeeded — e.g. to redirect back to wherever this sheet was opened from. */
+  onSaved?: () => void;
   initial: HabitFormValues;
   categories: CategoryOption[];
   /** Number of people in the family circle, including the user. The share option shows when above 1. */
@@ -113,6 +116,7 @@ export function HabitFormSheet({
         setError(res.error);
         return;
       }
+      onSaved?.();
       onClose();
     });
   }

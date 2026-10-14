@@ -3,7 +3,7 @@
 import { useEffect, useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Box, Check, Coffee, Layers, Loader2, Minus, Pause, Play, Plus } from "lucide-react";
+import { ArrowUpRight, Box, Check, Coffee, Layers, Loader2, Minus, Pause, Play, Plus } from "lucide-react";
 import { startFocusAction } from "@/lib/focus-actions";
 import { quickCreateTimerHabitAction } from "@/lib/habit-actions";
 import { FOCUS_SPECIES, MAX_MINUTES, MIN_MINUTES, POMODORO_PRESETS, SPECIES_LABEL, TREE_TIERS, formatFocus, segmentsFor, tierInfo, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig } from "@/lib/focus";
@@ -102,8 +102,13 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
   const [newHabitName, setNewHabitName] = useState("");
   const [creatingPending, startCreatingHabit] = useTransition();
   const [createError, setCreateError] = useState<string | null>(null);
-  const allHabits = useVisibleHabits([...habits, ...extraHabits]);
-  const [habitId, setHabitId] = useState<number | null>(defaultHabitId && allHabits.some((h) => h.id === defaultHabitId) ? defaultHabitId : null);
+  const combinedHabits = [...habits, ...extraHabits];
+  const visibleHabits = useVisibleHabits(combinedHabits);
+  // The last session's habit stays selectable here even if it's hidden on this device, so coming
+  // back from a session always shows what it was for instead of silently falling back to "Anything".
+  const defaultHabit = defaultHabitId ? combinedHabits.find((h) => h.id === defaultHabitId) : undefined;
+  const allHabits = defaultHabit && !visibleHabits.some((h) => h.id === defaultHabitId) ? [defaultHabit, ...visibleHabits] : visibleHabits;
+  const [habitId, setHabitId] = useState<number | null>(defaultHabit ? defaultHabitId : null);
 
   function createHabitInline() {
     setCreateError(null);
@@ -429,7 +434,17 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
 
         {/* Tag */}
         <div className="mt-4">
-          <p className="mb-1.5 text-xs font-extrabold uppercase tracking-wider text-h-muted">Focusing on</p>
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <p className="text-xs font-extrabold uppercase tracking-wider text-h-muted">Focusing on</p>
+            <button
+              type="button"
+              onClick={() => router.push(`/habits?newTimerHabit=1&returnTo=${encodeURIComponent("/focus")}`)}
+              className="flex shrink-0 items-center gap-1 text-[11px] font-bold text-h-brand hover:underline"
+            >
+              Create in Habits
+              <ArrowUpRight className="h-3 w-3" />
+            </button>
+          </div>
           <div className="scrollbar-hide -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1">
             <button
               type="button"

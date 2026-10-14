@@ -84,6 +84,13 @@ export function emptyHabit(): HabitFormValues {
   };
 }
 
+/** A blank habit pre-set to a timer (so it can be credited from a Focus session), e.g. when creating
+ * one on the go from the Focus module's "Focusing on" picker. Matches `quickCreateTimerHabitAction`'s
+ * defaults (25 min / daily) so the two creation paths produce the same kind of habit. */
+export function emptyTimerHabit(): HabitFormValues {
+  return { ...emptyHabit(), evalType: "timer", dailyTarget: 1500 };
+}
+
 /** The columns of a habit row that the form edits (a structural subset of the DB row). */
 export type HabitFormSource = {
   id: number;
