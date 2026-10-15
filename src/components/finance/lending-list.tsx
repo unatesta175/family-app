@@ -29,7 +29,7 @@ export function LendingList({ entries }: { entries: LendingRow[] }) {
               </span>
               <span className="min-w-0 flex-1">
                 <span className="flex items-center gap-1.5">
-                  <span className="truncate text-sm font-bold">{e.counterpartyName}</span>
+                  <span className="min-w-0 truncate text-sm font-bold">{e.counterpartyName}</span>
                   <Badge
                     className={cn(
                       "text-[10px]",

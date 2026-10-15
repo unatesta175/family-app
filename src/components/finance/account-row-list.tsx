@@ -26,7 +26,7 @@ export function AccountRowList({ accounts, readOnly }: { accounts: AccountRow[];
             </span>
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-1.5">
-                <span className="truncate text-sm font-bold">{a.name}</span>
+                <span className="min-w-0 truncate text-sm font-bold">{a.name}</span>
                 <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">
                   {i === 0 ? "Default" : ACCOUNT_TYPE_LABEL[a.type]}
                 </span>

@@ -70,7 +70,7 @@ export function BillRowItem({
       </span>
       <button type="button" disabled={readOnly} onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left disabled:cursor-default">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-bold">{bill.name}</span>
+          <span className="min-w-0 truncate text-sm font-bold">{bill.name}</span>
           {bill.frequency !== "monthly" && (
             <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
               {bill.frequency === "yearly" ? "Yearly" : "One-time"}
@@ -116,7 +116,7 @@ export function BillUpcomingItem({
       </span>
       <button type="button" disabled={readOnly} onClick={() => setEditing(true)} className="min-w-0 flex-1 text-left disabled:cursor-default">
         <span className="flex items-center gap-1.5">
-          <span className="truncate text-sm font-bold">{bill.name}</span>
+          <span className="min-w-0 truncate text-sm font-bold">{bill.name}</span>
           <span className="flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
             {bill.frequency === "yearly" ? <Repeat className="h-2.5 w-2.5" /> : <CalendarClock className="h-2.5 w-2.5" />}
             {bill.frequency === "yearly" ? "Yearly" : "One-time"}

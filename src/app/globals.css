@@ -20,7 +20,10 @@
 
 html,
 body {
-  overflow-x: hidden;
+  /* `clip` (not `hidden`) — `hidden` on only one axis makes the browser implicitly set the other
+     axis to `auto`, turning body into its own scroll container and breaking `position: sticky`
+     elements (like the bottom tab bar) that were sticking to the viewport. */
+  overflow-x: clip;
 }
 
 body {

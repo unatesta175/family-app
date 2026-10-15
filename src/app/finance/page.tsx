@@ -384,7 +384,7 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
         </div>
 
         <section className="flex flex-col gap-2">
-          <div className="flex items-center justify-between px-1">
+          <div className="flex flex-wrap items-center justify-between gap-y-1 px-1">
             <h2 className="text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Recent activity</h2>
             <div className="flex items-center gap-3">
               {!ctx.readOnly && <QuickAddButton accounts={ctx.accounts} categories={ctx.categories} />}
