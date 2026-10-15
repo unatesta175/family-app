@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { AccountIcon } from "@/components/finance/finance-icons";
+import { AccountIcon, CARD_THEME_FG, CARD_THEME_GRADIENT } from "@/components/finance/finance-icons";
 import { CardTexture } from "@/components/finance/card-texture";
 import type { AccountRow } from "@/lib/db/repo-finance";
 
@@ -12,9 +12,9 @@ const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDi
 export type AccountStats = { income: number; spending: number };
 
 /**
- * Dashboard-only dark hero carousel: one near-black card per account, swipeable, with balance
- * front-and-center and this-month income/spending mini-stats in the corners. The 3D flip cards
- * stay on the dedicated Accounts page — this is a separate, dashboard-specific visual treatment.
+ * Dashboard-only hero carousel: one card per account in its chosen colorTheme, swipeable, with
+ * balance front-and-center and this-month income/spending mini-stats in the corners. The 3D flip
+ * cards stay on the dedicated Accounts page — this is a separate, dashboard-specific visual treatment.
  */
 export function AccountHeroCarousel({
   accounts,
@@ -31,6 +31,8 @@ export function AccountHeroCarousel({
   const clamped = Math.min(index, accounts.length - 1);
   const account = accounts[clamped];
   const stats = statsByAccount.get(account.id) ?? { income: 0, spending: 0 };
+  const gradient = CARD_THEME_GRADIENT[account.colorTheme];
+  const fg = CARD_THEME_FG[account.colorTheme];
 
   const go = (dir: 1 | -1) => setIndex((i) => Math.max(0, Math.min(accounts.length - 1, i + dir)));
 
@@ -51,30 +53,31 @@ export function AccountHeroCarousel({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -24 }}
             transition={{ duration: 0.25, ease: "easeInOut" }}
-            className="relative aspect-[1.75/1] w-full cursor-grab overflow-hidden rounded-3xl bg-[#121214] p-5 text-white shadow-lg active:cursor-grabbing"
+            className="relative aspect-[1.75/1] w-full cursor-grab overflow-hidden rounded-3xl p-5 shadow-lg active:cursor-grabbing"
+            style={{ background: gradient, color: fg }}
           >
             <CardTexture />
             <div className="relative z-10 flex h-full flex-col justify-between">
               <div className="flex items-start justify-between">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/15">
                   <AccountIcon icon={account.icon} className="h-5 w-5" />
                 </span>
-                <span className="text-xs font-extrabold uppercase tracking-widest text-white/50">{appName}</span>
+                <span className="text-xs font-extrabold uppercase tracking-widest opacity-50">{appName}</span>
               </div>
 
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-widest text-white/50">Balance</p>
+                <p className="text-[11px] font-bold uppercase tracking-widest opacity-50">Balance</p>
                 <p className="text-3xl font-extrabold tabular-nums tracking-tight">{money(account.balance)}</p>
               </div>
 
               <div className="flex items-end justify-between">
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Income</p>
-                  <p className="text-sm font-extrabold tabular-nums text-emerald-400">{money(stats.income)}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-40">Income</p>
+                  <p className="text-sm font-extrabold tabular-nums text-emerald-500">{money(stats.income)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-white/40">Spending</p>
-                  <p className="text-sm font-extrabold tabular-nums text-rose-400">{money(stats.spending)}</p>
+                  <p className="text-[10px] font-bold uppercase tracking-wider opacity-40">Spending</p>
+                  <p className="text-sm font-extrabold tabular-nums text-rose-500">{money(stats.spending)}</p>
                 </div>
               </div>
             </div>
