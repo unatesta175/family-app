@@ -44,7 +44,12 @@ export function BillRowItem({
   }
 
   return (
-    <li className={cn("flex items-center gap-3 py-3", overdue && "rounded-xl bg-destructive/10 px-2")}>
+    <li
+      className={cn(
+        "flex items-center gap-3 py-3",
+        overdue && "!border-t-0 my-1 rounded-xl bg-destructive/10 px-2 first:mt-0 last:mb-0"
+      )}
+    >
       <button
         type="button"
         disabled={readOnly || pending}
