@@ -730,6 +730,7 @@ export const financeTransactions = sqliteTable("finance_transactions", {
   name: text("name"),
   note: text("note"),
   date: text("date").notNull(), // yyyy-mm-dd
+  time: text("time"), // HH:MM:SS, local to the device that logged it
   isShared: integer("is_shared", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at")
     .notNull()

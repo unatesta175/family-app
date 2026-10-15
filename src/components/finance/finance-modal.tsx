@@ -1,92 +1,92 @@
 "use client";
 
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/finance/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose } from "@/components/finance/ui/dialog";
 
-/** Thin wrapper around the shadcn Dialog primitive, keeping the existing call-site API stable. */
+/**
+ * The shared finance modal shell — rounded-3xl card, bold title with a circular close button,
+ * generously spaced body, and (optionally) a right-aligned Cancel/primary pill footer. Every
+ * finance form (bills, transactions, accounts, trips, templates, reminders, lending, transfers)
+ * renders through this so every popup in the module looks and behaves the same way.
+ */
 export function FinanceModal({
   open,
   onClose,
   title,
   children,
   className,
+  onSave,
+  saveLabel = "Save",
+  saveDisabled,
+  cancelLabel = "Cancel",
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: React.ReactNode;
   className?: string;
+  /** When given, renders a Cancel / primary action footer bar instead of leaving it to `children`. */
+  onSave?: () => void;
+  saveLabel?: string;
+  saveDisabled?: boolean;
+  cancelLabel?: string;
 }) {
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className={cn("min-w-0 max-h-[90dvh] overflow-y-auto md:max-w-lg", className)}>
-        <DialogHeader className="pr-6">
-          <DialogTitle>{title}</DialogTitle>
+      <DialogContent
+        showCloseButton={false}
+        className={cn("min-w-0 max-h-[90dvh] gap-0 overflow-y-auto rounded-3xl border-border/60 p-6 shadow-xl sm:max-w-md md:max-w-lg", className)}
+      >
+        <DialogHeader className="flex-row items-center justify-between gap-3 space-y-0 pr-0 text-left">
+          <DialogTitle className="text-xl font-bold tracking-tight">{title}</DialogTitle>
+          <DialogClose className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground transition-colors hover:bg-accent hover:text-foreground">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogClose>
         </DialogHeader>
-        {children}
+        <div className="flex flex-col gap-5 pt-5">{children}</div>
+        {onSave && (
+          <div className="flex items-center justify-end gap-2 pt-6">
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-11 rounded-full border border-border bg-card px-5 text-sm font-bold text-foreground transition-colors hover:bg-muted"
+            >
+              {cancelLabel}
+            </button>
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saveDisabled}
+              className="h-11 rounded-full bg-foreground px-6 text-sm font-bold text-background transition-opacity disabled:opacity-40"
+            >
+              {saveLabel}
+            </button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
 }
 
 /**
- * Bottom sheet on phones, centred dialog on larger screens, with a Cancel / Title / Save action
- * bar in place of a floating close button — matches the reference "Add Expense" sheet convention
- * (drag handle, text actions in the header) instead of the generic shadcn dialog chrome.
+ * A field label + input/control pair matching the reference modal: small bold label above a
+ * tall, rounded-xl, softly-filled control. Pass the control as `children`.
  */
-export function FinanceSheet({
-  open,
-  onClose,
-  title,
-  onSave,
-  saveLabel = "Save",
-  saveDisabled,
+export function FinanceField({
+  label,
   children,
   className,
 }: {
-  open: boolean;
-  onClose: () => void;
-  title: string;
-  onSave?: () => void;
-  saveLabel?: string;
-  saveDisabled?: boolean;
+  label: string;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent
-        showCloseButton={false}
-        className={cn(
-          "top-auto bottom-0 left-0 right-0 translate-x-0 translate-y-0 gap-0 rounded-b-none rounded-t-3xl border-b-0 p-0",
-          "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom data-[state=closed]:zoom-out-100 data-[state=open]:zoom-in-100",
-          "max-h-[92dvh] w-full max-w-none overflow-hidden sm:top-[50%] sm:bottom-auto sm:left-[50%] sm:right-auto sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl sm:border-b",
-          className
-        )}
-      >
-        <div className="flex justify-center pb-1 pt-2 sm:hidden">
-          <span className="h-1 w-9 rounded-full bg-muted-foreground/25" />
-        </div>
-        <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
-          <button type="button" onClick={onClose} className="text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground">
-            Cancel
-          </button>
-          <DialogTitle className="text-base font-bold">{title}</DialogTitle>
-          {onSave ? (
-            <button
-              type="button"
-              onClick={onSave}
-              disabled={saveDisabled}
-              className="text-sm font-bold text-foreground transition-opacity disabled:opacity-40"
-            >
-              {saveLabel}
-            </button>
-          ) : (
-            <span className="w-[42px]" />
-          )}
-        </div>
-        <div className="overflow-y-auto px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">{children}</div>
-      </DialogContent>
-    </Dialog>
+    <label className={cn("flex flex-col gap-2", className)}>
+      <span className="text-sm font-semibold text-foreground">{label}</span>
+      {children}
+    </label>
   );
 }

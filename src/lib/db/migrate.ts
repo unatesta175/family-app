@@ -53,6 +53,8 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "finance_budget_settings", column: "adaptive_budget", ddl: "ALTER TABLE finance_budget_settings ADD COLUMN adaptive_budget INTEGER NOT NULL DEFAULT 0" },
   // Transactions get an optional short title, separate from the free-text note.
   { table: "finance_transactions", column: "name", ddl: "ALTER TABLE finance_transactions ADD COLUMN name TEXT" },
+  // Transactions track time-of-day (HH:MM:SS), not just the date.
+  { table: "finance_transactions", column: "time", ddl: "ALTER TABLE finance_transactions ADD COLUMN time TEXT" },
   // Bills: monthly/yearly/one-time frequency (yearly subscriptions like domain renewals).
   { table: "finance_bills", column: "frequency", ddl: "ALTER TABLE finance_bills ADD COLUMN frequency TEXT NOT NULL DEFAULT 'monthly'" },
   { table: "finance_bills", column: "due_month", ddl: "ALTER TABLE finance_bills ADD COLUMN due_month INTEGER" },
@@ -458,6 +460,7 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       name TEXT,
       note TEXT,
       date TEXT NOT NULL,
+      time TEXT,
       is_shared INTEGER NOT NULL DEFAULT 1,
       created_at TEXT NOT NULL DEFAULT (current_timestamp)
     )`,

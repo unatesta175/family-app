@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, CalendarDays } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
-import { FinanceSheet } from "@/components/finance/finance-modal";
+import { FinanceModal, FinanceField } from "@/components/finance/finance-modal";
 import { saveBillAction, deleteBillAction } from "@/lib/finance-actions";
 import { FINANCE_BILL_FREQUENCIES } from "@/lib/db/schema";
 import type { FinanceBillFrequency } from "@/lib/db/schema";
@@ -77,7 +77,7 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
   }
 
   return (
-    <FinanceSheet
+    <FinanceModal
       open={open}
       onClose={onClose}
       title={bill ? "Edit bill" : "New bill"}
@@ -100,18 +100,12 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
           />
         </div>
 
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Name</span>
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Domain renewal (Namecheap)"
-            className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none placeholder:font-normal placeholder:text-muted-foreground"
-          />
-        </label>
+        <FinanceField label="Name">
+          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Domain renewal (Namecheap)" />
+        </FinanceField>
 
         <div className="flex flex-col gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">How often</p>
+          <span className="text-sm font-semibold text-foreground">How often</span>
           <div className="flex gap-1 rounded-full border border-border bg-muted p-1">
             {FINANCE_BILL_FREQUENCIES.map((f) => (
               <button
@@ -131,25 +125,16 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
         </div>
 
         {frequency === "monthly" && (
-          <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Due day of month</span>
-            <Input
-              type="number"
-              min={1}
-              max={31}
-              value={dueDay}
-              onChange={(e) => setDueDay(e.target.value)}
-              className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none"
-            />
-          </label>
+          <FinanceField label="Due day of month">
+            <Input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
+          </FinanceField>
         )}
 
         {frequency === "yearly" && (
           <div className="grid grid-cols-2 gap-3">
-            <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Month</span>
+            <FinanceField label="Month">
               <Select value={dueMonth} onValueChange={setDueMonth}>
-                <SelectTrigger className="h-auto w-full rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-bold">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -160,40 +145,22 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
                   ))}
                 </SelectContent>
               </Select>
-            </label>
-            <label className="flex flex-col gap-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Day</span>
-              <Input
-                type="number"
-                min={1}
-                max={31}
-                value={dueDay}
-                onChange={(e) => setDueDay(e.target.value)}
-                className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none"
-              />
-            </label>
+            </FinanceField>
+            <FinanceField label="Day">
+              <Input type="number" min={1} max={31} value={dueDay} onChange={(e) => setDueDay(e.target.value)} />
+            </FinanceField>
           </div>
         )}
 
         {frequency === "once" && (
-          <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Due date</span>
-            <div className="flex items-center gap-3 rounded-xl bg-muted px-3.5 py-3">
-              <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="min-w-0 flex-1 bg-transparent text-sm font-bold text-foreground outline-none"
-              />
-            </div>
-          </label>
+          <FinanceField label="Due date">
+            <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+          </FinanceField>
         )}
 
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Category</span>
+        <FinanceField label="Category">
           <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
-            <SelectTrigger className="h-auto w-full rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-bold">
+            <SelectTrigger>
               <SelectValue placeholder="None" />
             </SelectTrigger>
             <SelectContent>
@@ -205,7 +172,7 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
               ))}
             </SelectContent>
           </Select>
-        </label>
+        </FinanceField>
 
         {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
 
@@ -215,6 +182,6 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
           </button>
         )}
       </div>
-    </FinanceSheet>
+    </FinanceModal>
   );
 }

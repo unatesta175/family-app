@@ -190,8 +190,9 @@ const transactionSchema = z.object({
   name: z.string().trim().max(80).nullable().optional(),
   note: z.string().trim().max(240).nullable(),
   date: isoDate,
+  time: z.string().regex(/^\d{2}:\d{2}:\d{2}$/).nullable().optional(),
   isShared: z.boolean(),
-}).transform((v) => ({ ...v, name: v.name || null }));
+}).transform((v) => ({ ...v, name: v.name || null, time: v.time || null }));
 
 export async function saveTransactionAction(id: number | null, raw: unknown): Promise<FinanceActionResult> {
   try {
@@ -230,6 +231,7 @@ export async function toggleTransactionSharedAction(id: number): Promise<Finance
       name: tx.name,
       note: tx.note,
       date: tx.date,
+      time: tx.time,
       isShared: !tx.isShared,
     });
     refresh();

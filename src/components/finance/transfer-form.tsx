@@ -5,7 +5,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
-import { FinanceModal } from "@/components/finance/finance-modal";
+import { FinanceModal, FinanceField } from "@/components/finance/finance-modal";
 import { createTransferAction } from "@/lib/finance-actions";
 import { todayIso } from "@/lib/date";
 import type { AccountRow } from "@/lib/db/repo-finance";
@@ -48,62 +48,56 @@ function TransferFormModal({ accounts, onClose }: { accounts: AccountRow[]; onCl
   }
 
   return (
-    <FinanceModal open onClose={onClose} title="New transfer">
-      <div className="flex min-w-0 flex-col gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">From</span>
-          <Select value={String(fromAccountId)} onValueChange={(v) => setFromAccountId(Number(v))}>
-            <SelectTrigger className="font-semibold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((a) => (
-                <SelectItem key={a.id} value={String(a.id)}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
+    <FinanceModal
+      open
+      onClose={onClose}
+      title="New transfer"
+      onSave={submit}
+      saveLabel={pending ? "Transferring…" : "Transfer"}
+      saveDisabled={pending || !amount || fromAccountId === toAccountId}
+    >
+      <div className="flex min-w-0 flex-col gap-5">
+        <div className="grid grid-cols-2 gap-3">
+          <FinanceField label="From">
+            <Select value={String(fromAccountId)} onValueChange={(v) => setFromAccountId(Number(v))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FinanceField>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">To</span>
-          <Select value={String(toAccountId)} onValueChange={(v) => setToAccountId(Number(v))}>
-            <SelectTrigger className="font-semibold">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((a) => (
-                <SelectItem key={a.id} value={String(a.id)}>
-                  {a.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
+          <FinanceField label="To">
+            <Select value={String(toAccountId)} onValueChange={(v) => setToAccountId(Number(v))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    {a.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </FinanceField>
+        </div>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
+        <FinanceField label="Amount (RM)">
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
-        </label>
+        </FinanceField>
 
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Date</span>
+        <FinanceField label="Date">
           <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        </label>
+        </FinanceField>
 
         {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
-
-        <div className="flex items-center justify-end gap-2 pt-1">
-          <Button
-            type="button"
-            onClick={submit}
-            disabled={pending || !amount || fromAccountId === toAccountId}
-            
-          >
-            {pending ? "Transferring…" : "Transfer"}
-          </Button>
-        </div>
       </div>
     </FinanceModal>
   );

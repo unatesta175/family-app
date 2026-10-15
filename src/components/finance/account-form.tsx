@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Eye, Plus } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
-import { FinanceModal } from "@/components/finance/finance-modal";
+import { FinanceModal, FinanceField } from "@/components/finance/finance-modal";
 import { Switch } from "@/components/finance/ui/switch";
 import {
   ACCOUNT_TYPE_LABEL,
@@ -87,7 +87,15 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
   const balanceNum = Number(balance) || 0;
 
   return (
-    <FinanceModal open={open} onClose={onClose} title={account ? "Edit Account" : "New Account"} className="md:max-w-md">
+    <FinanceModal
+      open={open}
+      onClose={onClose}
+      title={account ? "Edit account" : "New account"}
+      className="md:max-w-md"
+      onSave={submit}
+      saveLabel={pending ? "Saving…" : "Save changes"}
+      saveDisabled={pending || !name.trim()}
+    >
       <div className="flex min-w-0 flex-col gap-5">
         {/* Live hero preview */}
         <div
@@ -175,18 +183,16 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
         <div className="flex flex-col gap-3">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Account Details</span>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-muted-foreground">Name</span>
+          <FinanceField label="Name">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Maybank, TnG eWallet" />
-          </label>
+          </FinanceField>
 
-          <label className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-muted-foreground">Starting / current balance (RM)</span>
+          <FinanceField label="Starting / current balance (RM)">
             <Input type="number" inputMode="decimal" step="0.01" value={balance} onChange={(e) => setBalance(e.target.value)} />
-          </label>
+          </FinanceField>
 
-          <div className="flex flex-col gap-1">
-            <span className="text-xs font-bold text-muted-foreground">Type</span>
+          <div className="flex flex-col gap-2">
+            <span className="text-sm font-semibold text-foreground">Type</span>
             <div className="flex flex-wrap gap-1.5">
               {FINANCE_ACCOUNT_TYPES.map((t) => (
                 <button
@@ -233,19 +239,10 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
         {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
 
         {account && (
-          <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
+          <button type="button" onClick={remove} disabled={pending} className="self-center text-xs font-bold text-destructive">
             Delete account
           </button>
         )}
-
-        <Button
-          type="button"
-          onClick={submit}
-          disabled={pending || !name.trim()}
-          className="w-full bg-black py-5 text-sm font-bold text-white hover:bg-black/90"
-        >
-          {pending ? "Saving…" : "Save Changes"}
-        </Button>
       </div>
     </FinanceModal>
   );

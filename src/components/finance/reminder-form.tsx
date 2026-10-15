@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
-import { FinanceModal } from "@/components/finance/finance-modal";
+import { FinanceModal, FinanceField } from "@/components/finance/finance-modal";
 import { Switch } from "@/components/finance/ui/switch";
 import { saveReminderAction, deleteReminderAction } from "@/lib/finance-actions";
 import type { ReminderRow } from "@/lib/db/repo-finance";
@@ -56,37 +56,34 @@ export function ReminderFormModal({ reminder, open, onClose }: { reminder?: Remi
   }
 
   return (
-    <FinanceModal open={open} onClose={onClose} title={reminder ? "Edit reminder" : "New reminder"}>
-      <div className="flex min-w-0 flex-col gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Title</span>
+    <FinanceModal
+      open={open}
+      onClose={onClose}
+      title={reminder ? "Edit reminder" : "New reminder"}
+      onSave={submit}
+      saveLabel={pending ? "Saving…" : "Save"}
+      saveDisabled={pending || !title.trim() || !dueDate}
+    >
+      <div className="flex min-w-0 flex-col gap-5">
+        <FinanceField label="Title">
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Renew car insurance" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Due date</span>
+        </FinanceField>
+        <FinanceField label="Due date">
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Note</span>
+        </FinanceField>
+        <FinanceField label="Note">
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
-        </label>
-        <label className="flex items-center justify-between gap-2 text-sm font-semibold">
-          Recurring (yearly)
+        </FinanceField>
+        <label className="flex items-center justify-between gap-3 rounded-xl bg-muted px-4 py-3.5">
+          <span className="text-sm font-semibold text-foreground">Recurring (yearly)</span>
           <Switch checked={recurring} onCheckedChange={setRecurring} />
         </label>
         {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
-        <div className="flex items-center justify-between gap-2 pt-1">
-          {reminder ? (
-            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
-              Delete
-            </button>
-          ) : (
-            <span />
-          )}
-          <Button type="button" onClick={submit} disabled={pending || !title.trim() || !dueDate} >
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        {reminder && (
+          <button type="button" onClick={remove} disabled={pending} className="self-center text-xs font-bold text-destructive">
+            Delete
+          </button>
+        )}
       </div>
     </FinanceModal>
   );

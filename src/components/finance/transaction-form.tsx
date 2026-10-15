@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, CalendarDays, Users } from "lucide-react";
+import { Plus, Users } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
 import { Switch } from "@/components/finance/ui/switch";
-import { FinanceSheet } from "@/components/finance/finance-modal";
+import { FinanceModal, FinanceField } from "@/components/finance/finance-modal";
 import { saveTransactionAction, deleteTransactionAction } from "@/lib/finance-actions";
 import { FINANCE_TX_TYPES } from "@/lib/db/schema";
 import type { AccountRow, CategoryRow, TransactionRow, TripRow } from "@/lib/db/repo-finance";
-import { todayIso } from "@/lib/date";
+import { todayIso, nowTime } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 const TYPE_LABEL: Record<string, string> = { income: "Income", expense: "Expense", transfer: "Transfer" };
@@ -60,6 +60,7 @@ export function TransactionFormModal({
   const [name, setName] = useState(tx?.name ?? "");
   const [note, setNote] = useState(tx?.note ?? "");
   const [date, setDate] = useState(tx?.date ?? todayIso());
+  const [time, setTime] = useState(tx?.time ?? nowTime());
   const [isShared, setIsShared] = useState(tx?.isShared ?? true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -78,6 +79,7 @@ export function TransactionFormModal({
         name: name.trim() || null,
         note: note.trim() || null,
         date,
+        time: time || null,
         isShared,
       });
       if (!res.ok) setError(res.error);
@@ -96,7 +98,7 @@ export function TransactionFormModal({
   }
 
   return (
-    <FinanceSheet
+    <FinanceModal
       open={open}
       onClose={onClose}
       title={tx ? `Edit ${TYPE_LABEL[type]}` : `Add ${TYPE_LABEL[type]}`}
@@ -135,18 +137,16 @@ export function TransactionFormModal({
           />
         </div>
 
-        <label className="flex flex-col gap-2">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Name</span>
+        <FinanceField label="Name">
           <Input
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={type === "income" ? "Salary, freelance gig…" : "Groceries at Mydin…"}
-            className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none placeholder:font-normal placeholder:text-muted-foreground"
           />
-        </label>
+        </FinanceField>
 
         <div className="flex flex-col gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Account</p>
+          <span className="text-sm font-semibold text-foreground">Account</span>
           <div className="scrollbar-hide flex gap-2 overflow-x-auto">
             {accounts.map((a) => (
               <button
@@ -164,64 +164,60 @@ export function TransactionFormModal({
           </div>
         </div>
 
-        {showCategory && (
-          <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Category</span>
-            <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
-              <SelectTrigger className="h-auto w-full rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-bold">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-        )}
+        {(showCategory || showTrip) && (
+          <div className="grid grid-cols-2 gap-3">
+            {showCategory && (
+              <FinanceField label="Category">
+                <Select value={categoryId ? String(categoryId) : "none"} onValueChange={(v) => setCategoryId(v === "none" ? null : Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {categories.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FinanceField>
+            )}
 
-        {showTrip && (
-          <label className="flex flex-col gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Trip</span>
-            <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
-              <SelectTrigger className="h-auto w-full rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-bold">
-                <SelectValue placeholder="None" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {trips.map((t) => (
-                  <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </label>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Details</p>
-          <div className="flex items-center gap-3 rounded-xl bg-muted px-3.5 py-3">
-            <CalendarDays className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="min-w-0 flex-1 bg-transparent text-sm font-bold text-foreground outline-none"
-            />
+            {showTrip && (
+              <FinanceField label="Trip">
+                <Select value={tripId ? String(tripId) : "none"} onValueChange={(v) => setTripId(v === "none" ? null : Number(v))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="None" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {trips.map((t) => (
+                      <SelectItem key={t.id} value={String(t.id)}>
+                        {t.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FinanceField>
+            )}
           </div>
-          <Input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Memo (optional extra detail)"
-            className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none placeholder:font-normal placeholder:text-muted-foreground"
-          />
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <FinanceField label="Date">
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </FinanceField>
+          <FinanceField label="Time">
+            <Input type="time" step={1} value={time} onChange={(e) => setTime(e.target.value)} />
+          </FinanceField>
         </div>
 
-        <label className="flex items-center justify-between gap-3 rounded-xl bg-muted px-3.5 py-3">
+        <FinanceField label="Memo">
+          <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional extra detail" />
+        </FinanceField>
+
+        <label className="flex items-center justify-between gap-3 rounded-xl bg-muted px-4 py-3.5">
           <span className="flex items-center gap-3">
             <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="flex flex-col">
@@ -240,6 +236,6 @@ export function TransactionFormModal({
           </button>
         )}
       </div>
-    </FinanceSheet>
+    </FinanceModal>
   );
 }

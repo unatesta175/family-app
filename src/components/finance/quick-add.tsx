@@ -52,8 +52,15 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
         <Plus className="h-4 w-4" />
         Quick add spend
       </Button>
-      <FinanceModal open={open} onClose={() => setOpen(false)} title="Quick add expense">
-        <div className="flex min-w-0 flex-col gap-3">
+      <FinanceModal
+        open={open}
+        onClose={() => setOpen(false)}
+        title="Quick add expense"
+        onSave={submit}
+        saveLabel={pending ? "Saving…" : "Add expense"}
+        saveDisabled={pending || !amount}
+      >
+        <div className="flex min-w-0 flex-col gap-5">
           <Input
             type="number"
             inputMode="decimal"
@@ -62,7 +69,7 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="h-14 text-center text-2xl font-extrabold"
+            className="h-16 text-center text-2xl font-extrabold"
           />
           <div className="flex flex-wrap gap-1.5">
             {categories.map((c) => {
@@ -101,9 +108,6 @@ export function QuickAddButton({ accounts, categories }: { accounts: AccountRow[
           )}
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Note (optional)" />
           {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
-          <Button type="button" onClick={submit} disabled={pending || !amount} >
-            {pending ? "Saving…" : "Add expense"}
-          </Button>
         </div>
       </FinanceModal>
     </>

@@ -10,6 +10,14 @@ import { colorHex } from "@/lib/habits";
 
 const money = (n: number) => `RM ${n.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+function formatTime(time: string | null) {
+  if (!time) return null;
+  const [h, m] = time.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 export function TransactionList({
   transactions,
   accounts,
@@ -52,7 +60,7 @@ export function TransactionList({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-bold">{tx.name || tx.note || cat?.name || TYPE_NAME(tx.type)}</span>
+                    <span className="min-w-0 truncate text-sm font-bold">{tx.name || tx.note || cat?.name || TYPE_NAME(tx.type)}</span>
                     {!tx.isShared && (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -64,6 +72,7 @@ export function TransactionList({
                   </span>
                   <span className="block text-[11px] font-semibold text-muted-foreground">
                     {accountName.get(tx.accountId) ?? "—"} · {tx.date}
+                    {formatTime(tx.time) ? ` · ${formatTime(tx.time)}` : ""}
                     {tx.name && tx.note ? ` · ${tx.note}` : ""}
                   </span>
                 </span>

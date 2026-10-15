@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
-import { FinanceModal } from "@/components/finance/finance-modal";
+import { FinanceModal, FinanceField } from "@/components/finance/finance-modal";
 import { saveTripAction, archiveTripAction, deleteTripAction } from "@/lib/finance-actions";
 import type { TripRow } from "@/lib/db/repo-finance";
 
@@ -64,44 +64,40 @@ export function TripFormModal({ trip, open, onClose }: { trip?: TripRow; open: b
   }
 
   return (
-    <FinanceModal open={open} onClose={onClose} title={trip ? "Edit trip" : "New trip"}>
-      <div className="flex min-w-0 flex-col gap-3">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Name</span>
+    <FinanceModal
+      open={open}
+      onClose={onClose}
+      title={trip ? "Edit trip" : "New trip"}
+      onSave={submit}
+      saveLabel={pending ? "Saving…" : "Save"}
+      saveDisabled={pending || !name.trim() || !startDate || !endDate}
+    >
+      <div className="flex min-w-0 flex-col gap-5">
+        <FinanceField label="Name">
           <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Langkawi weekend" />
-        </label>
-        <div className="flex gap-3">
-          <label className="flex flex-1 flex-col gap-1">
-            <span className="text-xs font-bold text-muted-foreground">Start date</span>
+        </FinanceField>
+        <div className="grid grid-cols-2 gap-3">
+          <FinanceField label="Starts">
             <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </label>
-          <label className="flex flex-1 flex-col gap-1">
-            <span className="text-xs font-bold text-muted-foreground">End date</span>
+          </FinanceField>
+          <FinanceField label="Ends">
             <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </label>
+          </FinanceField>
         </div>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Budget (RM)</span>
+        <FinanceField label="Budget (RM)">
           <Input type="number" inputMode="decimal" step="0.01" value={budget} onChange={(e) => setBudget(e.target.value)} />
-        </label>
+        </FinanceField>
         {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
-        <div className="flex items-center justify-between gap-2 pt-1">
-          {trip ? (
-            <div className="flex gap-3">
-              <button type="button" onClick={archive} disabled={pending} className="text-xs font-bold text-muted-foreground">
-                Archive
-              </button>
-              <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
-                Delete
-              </button>
-            </div>
-          ) : (
-            <span />
-          )}
-          <Button type="button" onClick={submit} disabled={pending || !name.trim() || !startDate || !endDate} >
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        {trip && (
+          <div className="flex items-center justify-center gap-4">
+            <button type="button" onClick={archive} disabled={pending} className="text-xs font-bold text-muted-foreground">
+              Archive
+            </button>
+            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
+              Delete
+            </button>
+          </div>
+        )}
       </div>
     </FinanceModal>
   );

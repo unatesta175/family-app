@@ -202,6 +202,7 @@ export type TransactionInput = {
   name: string | null;
   note: string | null;
   date: string;
+  time: string | null;
   isShared: boolean;
 };
 

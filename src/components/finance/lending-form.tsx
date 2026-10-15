@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
-import { FinanceModal } from "@/components/finance/finance-modal";
+import { FinanceModal, FinanceField } from "@/components/finance/finance-modal";
 import { saveLendingAction, deleteLendingAction, setLendingStatusAction } from "@/lib/finance-actions";
 import { FINANCE_LEND_DIRECTIONS } from "@/lib/db/schema";
 import type { LendingRow } from "@/lib/db/repo-finance";
@@ -66,16 +66,23 @@ export function LendingFormModal({ entry, open, onClose }: { entry?: LendingRow;
   }
 
   return (
-    <FinanceModal open={open} onClose={onClose} title={entry ? "Edit entry" : "New lending entry"}>
-      <div className="flex min-w-0 flex-col gap-3">
-        <div className="flex gap-1.5 rounded-lg border border-border bg-muted p-1">
+    <FinanceModal
+      open={open}
+      onClose={onClose}
+      title={entry ? "Edit entry" : "New lending entry"}
+      onSave={submit}
+      saveLabel={pending ? "Saving…" : "Save"}
+      saveDisabled={pending || !counterpartyName.trim() || !amount}
+    >
+      <div className="flex min-w-0 flex-col gap-5">
+        <div className="flex gap-1 rounded-full border border-border bg-muted p-1">
           {FINANCE_LEND_DIRECTIONS.map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => setDirection(d)}
               className={cn(
-                "flex-1 rounded-md px-3 py-1.5 text-xs font-bold capitalize transition-colors",
+                "flex-1 rounded-full px-3 py-1.5 text-xs font-bold capitalize transition-colors",
                 direction === d ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -83,40 +90,31 @@ export function LendingFormModal({ entry, open, onClose }: { entry?: LendingRow;
             </button>
           ))}
         </div>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Who</span>
+        <FinanceField label="Who">
           <Input value={counterpartyName} onChange={(e) => setCounterpartyName(e.target.value)} placeholder="Name" />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Amount (RM)</span>
+        </FinanceField>
+        <FinanceField label="Amount (RM)">
           <Input type="number" inputMode="decimal" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Due date (optional)</span>
+        </FinanceField>
+        <FinanceField label="Due date (optional)">
           <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="text-xs font-bold text-muted-foreground">Note</span>
+        </FinanceField>
+        <FinanceField label="Note">
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
-        </label>
+        </FinanceField>
         {error && <p className="text-xs font-semibold text-destructive">{error}</p>}
-        <div className="flex items-center justify-between gap-2 pt-1">
-          <div className="flex gap-3">
-            {entry && entry.status !== "settled" && (
+        {entry && (
+          <div className="flex items-center justify-center gap-4">
+            {entry.status !== "settled" && (
               <button type="button" onClick={settle} disabled={pending} className="text-xs font-bold text-success">
                 Mark settled
               </button>
             )}
-            {entry && (
-              <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
-                Delete
-              </button>
-            )}
+            <button type="button" onClick={remove} disabled={pending} className="text-xs font-bold text-destructive">
+              Delete
+            </button>
           </div>
-          <Button type="button" onClick={submit} disabled={pending || !counterpartyName.trim() || !amount} >
-            {pending ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        )}
       </div>
     </FinanceModal>
   );

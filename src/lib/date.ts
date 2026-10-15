@@ -10,6 +10,14 @@ export function todayIso(): string {
   return isoDate(new Date());
 }
 
+/** Local time as HH:MM:SS, never UTC-shifted — for transaction timestamps. */
+export function nowTime(date: Date = new Date()): string {
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  const s = String(date.getSeconds()).padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 export function addDays(iso: string, days: number): string {
   const [y, m, d] = iso.split("-").map(Number);
   const dt = new Date(y, m - 1, d);
