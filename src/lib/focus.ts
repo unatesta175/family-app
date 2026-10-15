@@ -392,6 +392,23 @@ export function hourDistribution(sessions: SessionLite[], tzOffsetMin: number = 
   return hours;
 }
 
+export type HabitTotals = { habitId: number | null; seconds: number; sessions: number; avgSeconds: number };
+
+/** Focused time grouped by habit (null for sessions with no habit), sorted by time descending. */
+export function byHabit(sessions: SessionLite[]): HabitTotals[] {
+  const out = new Map<number | null, HabitTotals>();
+  for (const s of sessions) {
+    if (s.status === "active") continue;
+    const key = s.habitId;
+    const t = out.get(key) ?? { habitId: key, seconds: 0, sessions: 0, avgSeconds: 0 };
+    t.seconds += s.focusedSeconds;
+    t.sessions += 1;
+    out.set(key, t);
+  }
+  for (const t of out.values()) t.avgSeconds = t.sessions ? Math.round(t.seconds / t.sessions) : 0;
+  return [...out.values()].sort((a, b) => b.seconds - a.seconds);
+}
+
 /** Days in a row, ending today or yesterday, with at least one finished tree. */
 export function focusStreak(days: Map<string, DayTotals>, today: string, addDays: (iso: string, n: number) => string): number {
   let d = days.get(today)?.trees ? today : addDays(today, -1);

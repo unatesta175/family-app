@@ -5,7 +5,7 @@ import { focusToday, tzOffset } from "@/lib/focus-date";
 import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
-import { byDay, formatFocus, hourDistribution, summarize } from "@/lib/focus";
+import { byDay, byHabit, formatFocus, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT, WEEKDAY_SHORT, weekDates } from "@/lib/habits";
 import { Distribution, type DistBar } from "@/components/focus/distribution";
 import { FocusViewerBanner } from "@/components/focus/focus-members";
@@ -74,6 +74,8 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
   const lite = sessions.map(toLite);
   const days = byDay(lite);
   const sum = summarize(lite);
+  const habitTotals = byHabit(lite);
+  const maxHabitSeconds = Math.max(1, ...habitTotals.map((h) => h.seconds));
   const link = (v: string, d: string) => `/focus/grove?view=${v}&date=${d}`;
 
   // The distribution chart: by hour for a day, by day for a week or month, by month for a year.
@@ -169,6 +171,22 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
           {view === "day" ? "This day" : view === "week" ? "This week" : view === "month" ? "This month" : "This year"}: <b className="text-h-fg">{sum.trees}</b> tree{sum.trees === 1 ? "" : "s"} grown{sum.withered ? `, ${sum.withered} withered` : ""}, <b className="text-h-fg">{formatFocus(sum.seconds)}</b> focused
         </p>
         <Distribution title={chartTitle} subtitle={chartSub} bars={bars} />
+        {habitTotals.length > 0 && (
+          <section className="h-card flex flex-col gap-3 p-4">
+            <h2 className="text-xs font-extrabold uppercase tracking-wider text-h-muted">By habit</h2>
+            {habitTotals.map((h) => (
+              <div key={h.habitId ?? "none"}>
+                <div className="mb-1 flex items-center justify-between text-xs font-bold">
+                  <span className="truncate">{h.habitId ? (names.get(h.habitId) ?? "Habit") : "No habit"}</span>
+                  <span className="tabular-nums text-h-muted">{formatFocus(h.seconds)}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-h-surface2">
+                  <div className="h-full rounded-full bg-h-brand" style={{ width: `${(h.seconds / maxHabitSeconds) * 100}%` }} />
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
         {sum.sessions > 0 && (
           <section className="flex flex-col gap-2">
             <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Sessions</h2>

@@ -5,7 +5,7 @@ import { focusToday, tzOffset } from "@/lib/focus-date";
 import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
-import { byDay, focusStreak, formatFocus, hourDistribution, summarize } from "@/lib/focus";
+import { byDay, byHabit, focusStreak, formatFocus, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT } from "@/lib/habits";
 import { FocusViewerBanner } from "@/components/focus/focus-members";
 import { cn } from "@/lib/utils";
@@ -85,14 +85,8 @@ export default async function FocusStatsPage({ searchParams }: { searchParams: P
   const hourLabel = (h: number) => `${h % 12 === 0 ? 12 : h % 12}${h < 12 ? "am" : "pm"}`;
 
   // Time per habit.
-  const perHabit = new Map<string, number>();
-  for (const s of lite) {
-    if (s.status === "active") continue;
-    const key = s.habitId ? (names.get(s.habitId) ?? "Habit") : "No habit";
-    perHabit.set(key, (perHabit.get(key) ?? 0) + s.focusedSeconds);
-  }
-  const habitRows = [...perHabit.entries()].sort((a, b) => b[1] - a[1]);
-  const maxHabit = Math.max(1, ...habitRows.map((r) => r[1]));
+  const habitTotals = byHabit(lite);
+  const maxHabit = Math.max(1, ...habitTotals.map((h) => h.seconds));
 
   const bestDay = [...days.values()].sort((a, b) => b.seconds - a.seconds)[0];
   const mostTrees = [...days.values()].sort((a, b) => b.trees - a.trees)[0];
@@ -172,17 +166,19 @@ export default async function FocusStatsPage({ searchParams }: { searchParams: P
             </div>
           </section>
 
-          {habitRows.length > 0 && (
+          {habitTotals.length > 0 && (
             <section className="h-card flex flex-col gap-3 p-4">
               <h2 className="text-sm font-extrabold">By habit</h2>
-              {habitRows.map(([name, seconds]) => (
-                <div key={name}>
+              {habitTotals.map((h) => (
+                <div key={h.habitId ?? "none"}>
                   <div className="mb-1 flex items-center justify-between text-xs font-bold">
-                    <span className="truncate">{name}</span>
-                    <span className="tabular-nums text-h-muted">{formatFocus(seconds)}</span>
+                    <span className="truncate">{h.habitId ? (names.get(h.habitId) ?? "Habit") : "No habit"}</span>
+                    <span className="tabular-nums text-h-muted">
+                      {formatFocus(h.seconds)} <span className="font-semibold text-h-muted/70">· avg {formatFocus(h.avgSeconds)}</span>
+                    </span>
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-h-surface2">
-                    <div className="h-full rounded-full bg-h-brand" style={{ width: `${(seconds / maxHabit) * 100}%` }} />
+                    <div className="h-full rounded-full bg-h-brand" style={{ width: `${(h.seconds / maxHabit) * 100}%` }} />
                   </div>
                 </div>
               ))}
