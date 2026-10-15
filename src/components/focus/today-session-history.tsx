@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { SessionList, type HabitNames } from "@/components/focus/grove-views";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/habits/ui/select";
 import type { SessionLite } from "@/lib/focus";
 
 /** Today's session list with a dropdown to filter down to one habit (or "No habit"). */
@@ -26,19 +27,19 @@ export function TodaySessionHistory({ sessions, names, tz, readOnly = false }: {
   return (
     <div className="flex flex-col gap-2">
       {options.length > 1 && (
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          aria-label="Filter sessions by habit"
-          className="h-9 w-full rounded-xl border border-h-border bg-h-surface px-3 text-xs font-bold text-h-fg focus:outline-none focus:ring-2 focus:ring-h-brand"
-        >
-          <option value="all">All habits</option>
-          {options.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <Select value={filter} onValueChange={setFilter}>
+          <SelectTrigger aria-label="Filter sessions by habit" className="font-bold">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All habits</SelectItem>
+            {options.map((o) => (
+              <SelectItem key={o.value} value={o.value}>
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       )}
       <SessionList sessions={filtered} names={names} tz={tz} readOnly={readOnly} />
     </div>
