@@ -52,7 +52,7 @@ export function TransactionList({
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-bold">{tx.note || cat?.name || TYPE_NAME(tx.type)}</span>
+                    <span className="truncate text-sm font-bold">{tx.name || tx.note || cat?.name || TYPE_NAME(tx.type)}</span>
                     {!tx.isShared && (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -64,6 +64,7 @@ export function TransactionList({
                   </span>
                   <span className="block text-[11px] font-semibold text-muted-foreground">
                     {accountName.get(tx.accountId) ?? "—"} · {tx.date}
+                    {tx.name && tx.note ? ` · ${tx.note}` : ""}
                   </span>
                 </span>
                 <span className={`shrink-0 text-sm font-extrabold tabular-nums ${color}`}>

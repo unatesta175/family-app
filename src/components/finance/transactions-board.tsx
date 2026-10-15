@@ -38,7 +38,7 @@ export function TransactionsBoard({
     if (!q) return transactions;
     return transactions.filter((t) => {
       const cat = t.categoryId ? categoryById.get(t.categoryId) : null;
-      const haystack = `${t.note ?? ""} ${cat?.name ?? ""} ${t.amount}`.toLowerCase();
+      const haystack = `${t.name ?? ""} ${t.note ?? ""} ${cat?.name ?? ""} ${t.amount}`.toLowerCase();
       return haystack.includes(q);
     });
   }, [transactions, query, categoryById]);
@@ -78,7 +78,7 @@ export function TransactionsBoard({
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by note, category, or amount"
+            placeholder="Search by name, note, category, or amount"
             className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm font-semibold outline-none focus:border-ring"
           />
         </div>
@@ -110,7 +110,7 @@ export function TransactionsBoard({
                           className="min-w-0 flex-1 text-left disabled:cursor-default"
                         >
                           <span className="flex items-center gap-1.5">
-                            <span className="truncate text-sm font-bold">{cat?.name ?? TYPE_NAME(tx.type)}</span>
+                            <span className="truncate text-sm font-bold">{tx.name || cat?.name || TYPE_NAME(tx.type)}</span>
                             {!tx.isShared && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -122,6 +122,7 @@ export function TransactionsBoard({
                           </span>
                           <span className="block text-[11px] font-semibold text-muted-foreground">
                             {accountName.get(tx.accountId) ?? "—"}
+                            {tx.name && cat?.name ? ` · ${cat.name}` : ""}
                             {tx.note ? ` · ${tx.note}` : ""}
                           </span>
                         </button>

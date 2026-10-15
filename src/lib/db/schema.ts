@@ -657,6 +657,9 @@ export type FinanceCategoryGroup = (typeof FINANCE_CATEGORY_GROUPS)[number];
 export const FINANCE_TX_TYPES = ["income", "expense", "transfer"] as const;
 export type FinanceTxType = (typeof FINANCE_TX_TYPES)[number];
 
+export const FINANCE_BILL_FREQUENCIES = ["monthly", "yearly", "once"] as const;
+export type FinanceBillFrequency = (typeof FINANCE_BILL_FREQUENCIES)[number];
+
 export const FINANCE_LEND_DIRECTIONS = ["lent", "borrowed"] as const;
 export type FinanceLendDirection = (typeof FINANCE_LEND_DIRECTIONS)[number];
 
@@ -724,6 +727,7 @@ export const financeTransactions = sqliteTable("finance_transactions", {
   tripId: integer("trip_id").references(() => financeTrips.id, { onDelete: "set null" }),
   type: text("type", { enum: FINANCE_TX_TYPES }).notNull().default("expense"),
   amount: real("amount").notNull(),
+  name: text("name"),
   note: text("note"),
   date: text("date").notNull(), // yyyy-mm-dd
   isShared: integer("is_shared", { mode: "boolean" }).notNull().default(true),
@@ -740,6 +744,9 @@ export const financeBills = sqliteTable("finance_bills", {
   name: text("name").notNull(),
   amount: real("amount").notNull(),
   dueDay: integer("due_day").notNull().default(1), // 1-31
+  frequency: text("frequency", { enum: FINANCE_BILL_FREQUENCIES }).notNull().default("monthly"),
+  dueMonth: integer("due_month"), // 1-12, used when frequency = "yearly"
+  dueDate: text("due_date"), // yyyy-mm-dd, used when frequency = "once"
   categoryId: integer("category_id").references(() => financeCategories.id, { onDelete: "set null" }),
   recurring: integer("recurring", { mode: "boolean" }).notNull().default(true),
   archivedAt: text("archived_at"),

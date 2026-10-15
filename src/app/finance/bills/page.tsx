@@ -1,8 +1,9 @@
 import { Wallet } from "lucide-react";
 import { loadFinanceContext } from "@/lib/finance-data";
 import { getBillPayments, getBillsByProfile } from "@/lib/db/repo-finance";
+import { billDueDateInMonth, billNextOccurrence } from "@/lib/finance-bills";
 import { BillFormButton } from "@/components/finance/bill-form";
-import { BillRowItem } from "@/components/finance/bill-row";
+import { BillRowItem, BillUpcomingItem } from "@/components/finance/bill-row";
 import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/finance/ui/card";
 import { Badge } from "@/components/finance/ui/badge";
 import { Progress } from "@/components/finance/ui/progress";
@@ -18,17 +19,23 @@ const MONTH_LABEL = (iso: string) =>
 export default async function BillsPage({ searchParams }: { searchParams: Promise<{ member?: string }> }) {
   const { member } = await searchParams;
   const ctx = await loadFinanceContext(member);
-  const bills = (await getBillsByProfile(ctx.viewingId)).filter((b) => !b.archivedAt);
-  const payments = await getBillPayments(bills.map((b) => b.id));
+  const allBills = (await getBillsByProfile(ctx.viewingId)).filter((b) => !b.archivedAt);
+  const payments = await getBillPayments(allBills.map((b) => b.id));
   const month = ctx.today.slice(0, 7);
   const paymentByBill = new Map(payments.filter((p) => p.month === month).map((p) => [p.billId, p]));
-  const currentDay = Number(ctx.today.slice(8, 10));
+
+  // Bills actually due this month (monthly always, yearly/one-time only in their due month).
+  const bills = allBills.filter((b) => billDueDateInMonth(b, month) !== null);
+  // Yearly/one-time bills not due this month — surfaced separately so nothing slips past months ahead.
+  const upcomingBills = allBills
+    .filter((b) => b.frequency !== "monthly" && billDueDateInMonth(b, month) === null)
+    .sort((a, b) => billNextOccurrence(a, ctx.today).localeCompare(billNextOccurrence(b, ctx.today)));
 
   const totalDue = bills.reduce((s, b) => s + (paymentByBill.get(b.id)?.amountPaid ?? b.amount), 0);
   const paidBills = bills.filter((b) => paymentByBill.get(b.id)?.paidAt);
   const totalPaid = paidBills.reduce((s, b) => s + (paymentByBill.get(b.id)?.amountPaid ?? b.amount), 0);
   const unpaidBills = bills.filter((b) => !paymentByBill.get(b.id)?.paidAt);
-  const overdueBills = unpaidBills.filter((b) => b.dueDay < currentDay);
+  const overdueBills = unpaidBills.filter((b) => (billDueDateInMonth(b, month) ?? `${month}-01`) < ctx.today);
   const pct = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
 
   const monthlyIncome = ctx.budget?.monthlyIncome ?? 0;
@@ -44,7 +51,7 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         {!ctx.readOnly && <BillFormButton categories={ctx.categories} />}
       </div>
 
-      {bills.length === 0 ? (
+      {allBills.length === 0 ? (
         <Card className="flex flex-col items-center gap-3 p-8 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-accent text-primary">
             <Wallet className="h-7 w-7" />
@@ -54,6 +61,8 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
         </Card>
       ) : (
         <>
+          {bills.length > 0 && (
+          <>
           <Card className="@container/card shadow-xs">
             <CardHeader>
               <CardDescription>Bills in {MONTH_LABEL(month)}</CardDescription>
@@ -126,6 +135,21 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
               </CardContent>
             </Card>
           </div>
+          </>
+          )}
+
+          {upcomingBills.length > 0 && (
+            <section className="flex flex-col gap-2">
+              <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Upcoming · {upcomingBills.length}</h2>
+              <Card className="p-2">
+                <ul className="flex flex-col divide-y divide-border">
+                  {upcomingBills.map((b) => (
+                    <BillUpcomingItem key={b.id} bill={b} today={ctx.today} categories={ctx.categories} readOnly={ctx.readOnly} />
+                  ))}
+                </ul>
+              </Card>
+            </section>
+          )}
         </>
       )}
     </div>

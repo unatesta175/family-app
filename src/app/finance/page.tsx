@@ -18,6 +18,7 @@ import {
   projectRunOutDay,
   type DaySpend,
 } from "@/lib/db/repo-finance";
+import { billDueDateInMonth } from "@/lib/finance-bills";
 import { addDays } from "@/lib/date";
 import { QuickAddButton } from "@/components/finance/quick-add";
 import { TransactionFormButton } from "@/components/finance/transaction-form";
@@ -87,9 +88,10 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
   // the schema (they're a separate, amount-less list from Bills), so they're informational only
   // here, not part of the money reserve.
   const bills = ctx.readOnly ? [] : await getBillsByProfile(ctx.viewingId);
-  const activeBills = bills.filter((b) => !b.archivedAt);
+  const thisMonth = today.slice(0, 7);
+  const activeBills = bills.filter((b) => !b.archivedAt && billDueDateInMonth(b, thisMonth) !== null);
   const payments = await getBillPayments(activeBills.map((b) => b.id));
-  const paidThisMonth = new Set(payments.filter((p) => p.month === today.slice(0, 7)).map((p) => p.billId));
+  const paidThisMonth = new Set(payments.filter((p) => p.month === thisMonth).map((p) => p.billId));
   const unpaidBillsTotal = activeBills.filter((b) => !paidThisMonth.has(b.id)).reduce((s, b) => s + b.amount, 0);
   const dailyReserve = remainingDaysToPayday > 0 ? unpaidBillsTotal / remainingDaysToPayday : unpaidBillsTotal;
   const safeToSpendToday = dailyBudget > 0 ? computeSafeToSpendToday(dailyBudget, todaySpend, dailyReserve) : null;
@@ -153,7 +155,12 @@ export default async function FinanceDashboardPage({ searchParams }: { searchPar
           desktop — mirrors a typical finance-app home layout (account card + "this period" detail). */}
       <div className="grid gap-4 lg:grid-cols-2">
         {heroAccounts.length > 0 && (
-          <AccountHeroCarousel accounts={heroAccounts} statsByAccount={statsByAccount} appName={APP_NAME} />
+          <AccountHeroCarousel
+            accounts={heroAccounts}
+            statsByAccount={statsByAccount}
+            appName={APP_NAME}
+            readOnly={ctx.readOnly}
+          />
         )}
 
         {/* Safe to spend today — the single most actionable number: daily budget minus what's

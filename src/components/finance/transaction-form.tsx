@@ -57,6 +57,7 @@ export function TransactionFormModal({
   const [tripId, setTripId] = useState<number | null>(tx?.tripId ?? null);
   const [type, setType] = useState(tx?.type ?? "expense");
   const [amount, setAmount] = useState(tx ? String(tx.amount) : "");
+  const [name, setName] = useState(tx?.name ?? "");
   const [note, setNote] = useState(tx?.note ?? "");
   const [date, setDate] = useState(tx?.date ?? todayIso());
   const [isShared, setIsShared] = useState(tx?.isShared ?? true);
@@ -74,6 +75,7 @@ export function TransactionFormModal({
         tripId,
         type,
         amount: Number(amount) || 0,
+        name: name.trim() || null,
         note: note.trim() || null,
         date,
         isShared,
@@ -132,6 +134,16 @@ export function TransactionFormModal({
             className="w-40 min-w-0 bg-transparent text-center text-4xl font-extrabold text-foreground outline-none placeholder:text-muted-foreground/40"
           />
         </div>
+
+        <label className="flex flex-col gap-2">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Name</span>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={type === "income" ? "Salary, freelance gig…" : "Groceries at Mydin…"}
+            className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none placeholder:font-normal placeholder:text-muted-foreground"
+          />
+        </label>
 
         <div className="flex flex-col gap-2">
           <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Account</p>
@@ -204,7 +216,7 @@ export function TransactionFormModal({
           <Input
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Note (e.g. lunch at mamak)"
+            placeholder="Memo (optional extra detail)"
             className="h-auto rounded-xl border-0 bg-muted px-3.5 py-3 text-sm font-semibold shadow-none placeholder:font-normal placeholder:text-muted-foreground"
           />
         </div>

@@ -51,6 +51,12 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "finance_transactions", column: "trip_id", ddl: "ALTER TABLE finance_transactions ADD COLUMN trip_id INTEGER REFERENCES finance_trips(id) ON DELETE SET NULL" },
   // Overspending-control pass: adaptive daily budget toggle.
   { table: "finance_budget_settings", column: "adaptive_budget", ddl: "ALTER TABLE finance_budget_settings ADD COLUMN adaptive_budget INTEGER NOT NULL DEFAULT 0" },
+  // Transactions get an optional short title, separate from the free-text note.
+  { table: "finance_transactions", column: "name", ddl: "ALTER TABLE finance_transactions ADD COLUMN name TEXT" },
+  // Bills: monthly/yearly/one-time frequency (yearly subscriptions like domain renewals).
+  { table: "finance_bills", column: "frequency", ddl: "ALTER TABLE finance_bills ADD COLUMN frequency TEXT NOT NULL DEFAULT 'monthly'" },
+  { table: "finance_bills", column: "due_month", ddl: "ALTER TABLE finance_bills ADD COLUMN due_month INTEGER" },
+  { table: "finance_bills", column: "due_date", ddl: "ALTER TABLE finance_bills ADD COLUMN due_date TEXT" },
 ];
 
 /**
@@ -449,6 +455,7 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       category_id INTEGER REFERENCES finance_categories(id) ON DELETE SET NULL,
       type TEXT NOT NULL DEFAULT 'expense',
       amount REAL NOT NULL,
+      name TEXT,
       note TEXT,
       date TEXT NOT NULL,
       is_shared INTEGER NOT NULL DEFAULT 1,
@@ -465,6 +472,9 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
       name TEXT NOT NULL,
       amount REAL NOT NULL,
       due_day INTEGER NOT NULL DEFAULT 1,
+      frequency TEXT NOT NULL DEFAULT 'monthly',
+      due_month INTEGER,
+      due_date TEXT,
       category_id INTEGER REFERENCES finance_categories(id) ON DELETE SET NULL,
       recurring INTEGER NOT NULL DEFAULT 1,
       archived_at TEXT,

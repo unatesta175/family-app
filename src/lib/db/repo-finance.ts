@@ -18,6 +18,7 @@ import {
 } from "@/lib/db/schema";
 import type {
   FinanceAccountType,
+  FinanceBillFrequency,
   FinanceCardTheme,
   FinanceCategoryGroup,
   FinanceLendDirection,
@@ -198,6 +199,7 @@ export type TransactionInput = {
   tripId?: number | null;
   type: FinanceTxType;
   amount: number;
+  name: string | null;
   note: string | null;
   date: string;
   isShared: boolean;
@@ -283,7 +285,16 @@ export async function getBill(id: number): Promise<BillRow | null> {
   return row ?? null;
 }
 
-export type BillInput = { name: string; amount: number; dueDay: number; categoryId: number | null; recurring: boolean };
+export type BillInput = {
+  name: string;
+  amount: number;
+  dueDay: number;
+  frequency: FinanceBillFrequency;
+  dueMonth: number | null;
+  dueDate: string | null;
+  categoryId: number | null;
+  recurring: boolean;
+};
 
 export async function createBill(profileId: number, input: BillInput): Promise<BillRow> {
   const [row] = await db.insert(financeBills).values({ profileId, ...input }).returning();
@@ -297,6 +308,8 @@ export async function updateBill(id: number, input: BillInput) {
 export async function archiveBill(id: number) {
   await db.update(financeBills).set({ archivedAt: sql`(current_timestamp)` }).where(eq(financeBills.id, id));
 }
+
+export { billDueDateInMonth, billNextOccurrence } from "@/lib/finance-bills";
 
 export async function deleteBill(id: number) {
   await db.delete(financeBills).where(eq(financeBills.id, id));

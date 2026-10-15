@@ -6,6 +6,7 @@ import { assertOwnProfile, getOwnProfileId } from "@/lib/auth";
 import { todayIso } from "@/lib/date";
 import {
   FINANCE_ACCOUNT_TYPES,
+  FINANCE_BILL_FREQUENCIES,
   FINANCE_CARD_THEMES,
   FINANCE_CATEGORY_GROUPS,
   FINANCE_LEND_DIRECTIONS,
@@ -186,10 +187,11 @@ const transactionSchema = z.object({
   tripId: z.number().int().positive().nullable().optional(),
   type: z.enum(FINANCE_TX_TYPES),
   amount: positiveMoney.refine((v) => v > 0, "Enter an amount."),
+  name: z.string().trim().max(80).nullable().optional(),
   note: z.string().trim().max(240).nullable(),
   date: isoDate,
   isShared: z.boolean(),
-});
+}).transform((v) => ({ ...v, name: v.name || null }));
 
 export async function saveTransactionAction(id: number | null, raw: unknown): Promise<FinanceActionResult> {
   try {
@@ -225,6 +227,7 @@ export async function toggleTransactionSharedAction(id: number): Promise<Finance
       tripId: tx.tripId,
       type: tx.type,
       amount: tx.amount,
+      name: tx.name,
       note: tx.note,
       date: tx.date,
       isShared: !tx.isShared,
@@ -292,13 +295,23 @@ export async function createTransferAction(raw: unknown): Promise<FinanceActionR
 
 // --- Bills -----------------------------------------------------------------------------------
 
-const billSchema = z.object({
-  name,
-  amount: positiveMoney,
-  dueDay: z.number().int().min(1).max(31),
-  categoryId: z.number().int().positive().nullable(),
-  recurring: z.boolean(),
-});
+const billSchema = z
+  .object({
+    name,
+    amount: positiveMoney,
+    dueDay: z.number().int().min(1).max(31),
+    frequency: z.enum(FINANCE_BILL_FREQUENCIES),
+    dueMonth: z.number().int().min(1).max(12).nullable().optional(),
+    dueDate: isoDate.nullable().optional(),
+    categoryId: z.number().int().positive().nullable(),
+  })
+  .transform((v) => ({
+    ...v,
+    dueMonth: v.frequency === "yearly" ? (v.dueMonth ?? 1) : null,
+    dueDate: v.frequency === "once" ? (v.dueDate ?? null) : null,
+    recurring: v.frequency !== "once",
+  }))
+  .refine((v) => v.frequency !== "once" || !!v.dueDate, { message: "Pick a date for a one-time bill.", path: ["dueDate"] });
 
 export async function saveBillAction(id: number | null, raw: unknown): Promise<FinanceActionResult> {
   try {
