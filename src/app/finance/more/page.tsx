@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Settings } from "lucide-react";
 import { loadFinanceContext } from "@/lib/finance-data";
-import { MORE_LINKS, withMemberQuery } from "@/components/finance/finance-nav";
+import { MORE_LINKS, withMemberQuery } from "@/lib/finance-nav-links";
 import { FinanceSignOutRow } from "@/components/finance/finance-signout-row";
 
 export const metadata = { title: "More" };

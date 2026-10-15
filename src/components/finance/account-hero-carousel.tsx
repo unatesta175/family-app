@@ -119,7 +119,7 @@ export function AccountHeroCarousel({
                 {/* Front */}
                 <div
                   className="fin-flip-face relative flex flex-col justify-between overflow-hidden rounded-3xl p-5 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)]"
-                  style={{ background: gradient, color: fg }}
+                  style={{ background: gradient, color: fg, fontFamily: "var(--font-inter), ui-sans-serif, system-ui, sans-serif" }}
                 >
                   <CardTexture />
                   <div
@@ -169,7 +169,7 @@ export function AccountHeroCarousel({
                 {/* Back */}
                 <div
                   className="fin-flip-face fin-flip-back relative flex flex-col justify-between overflow-hidden rounded-3xl p-5 shadow-[0_18px_40px_-12px_rgba(0,0,0,0.45)]"
-                  style={{ background: gradient, color: fg }}
+                  style={{ background: gradient, color: fg, fontFamily: "var(--font-inter), ui-sans-serif, system-ui, sans-serif" }}
                 >
                   <CardTexture />
                   <div className="relative z-10 flex items-start justify-between">

@@ -151,7 +151,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Card Design</span>
             <span className="text-xs font-extrabold">{CARD_THEME_LABEL[colorTheme]}</span>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-1">
+          <div className="flex min-w-0 gap-2.5 overflow-x-auto pb-1">
             {FINANCE_CARD_THEMES.map((t) => (
               <button
                 key={t}
@@ -214,7 +214,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
         {/* Icon */}
         <div className="flex flex-col gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Icon</span>
-          <div className="flex gap-2 overflow-x-auto pb-1">
+          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
             {Object.entries(FINANCE_ACCOUNT_ICONS).map(([key, Icon]) => (
               <button
                 key={key}

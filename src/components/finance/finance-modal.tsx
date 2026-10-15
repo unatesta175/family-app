@@ -37,7 +37,7 @@ export function FinanceModal({
       <DialogContent
         showCloseButton={false}
         className={cn(
-          "min-w-0 max-h-[90dvh] gap-5 overflow-y-auto rounded-[22px] border-border p-7 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.3),0_4px_12px_rgba(0,0,0,0.06)] duration-150 sm:max-w-md md:max-w-lg",
+          "min-w-0 max-h-[90dvh] gap-5 overflow-x-hidden overflow-y-auto rounded-[22px] border-border p-7 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.3),0_4px_12px_rgba(0,0,0,0.06)] duration-150 sm:max-w-md md:max-w-lg",
           className
         )}
       >
@@ -48,7 +48,7 @@ export function FinanceModal({
             <span className="sr-only">Close</span>
           </DialogClose>
         </DialogHeader>
-        <div className="flex flex-col gap-5">{children}</div>
+        <div className="min-w-0 flex flex-col gap-5">{children}</div>
         {onSave && (
           <div className="flex items-center justify-end gap-2">
             <button
