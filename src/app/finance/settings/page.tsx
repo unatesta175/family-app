@@ -7,8 +7,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/finance/u
 
 export const metadata = { title: "Settings" };
 
-export default async function FinanceSettingsPage({ searchParams }: { searchParams: Promise<{ member?: string }> }) {
-  const { member } = await searchParams;
+export default async function FinanceSettingsPage({ searchParams }: { searchParams: Promise<{ member?: string; tab?: string }> }) {
+  const { member, tab } = await searchParams;
   const ctx = await loadFinanceContext(member);
   if (ctx.readOnly) redirect("/finance");
 
@@ -19,7 +19,7 @@ export default async function FinanceSettingsPage({ searchParams }: { searchPara
         <p className="text-sm text-muted-foreground">Currency is MYR (RM). Income and payday drive your daily budget and payday countdown.</p>
       </div>
 
-      <Tabs defaultValue="income">
+      <Tabs defaultValue={tab === "categories" ? "categories" : "income"}>
         <TabsList>
           <TabsTrigger value="income">Income & payday</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
