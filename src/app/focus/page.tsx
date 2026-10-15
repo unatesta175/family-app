@@ -6,7 +6,7 @@ import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getActiveFocusSession, getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
 import { byDay, canCreditFocusTime, focusStreak, formatFocus } from "@/lib/focus";
-import { SessionList } from "@/components/focus/grove-views";
+import { TodaySessionHistory } from "@/components/focus/today-session-history";
 import { FocusMemberStrip, FocusViewerBanner, type FocusMemberCard } from "@/components/focus/focus-members";
 import { GardenView } from "@/components/focus/garden-view";
 import { FocusTree } from "@/components/focus/focus-tree";
@@ -104,7 +104,7 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
         <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-[#1c5a45] to-[#123f31] p-4 shadow-md">
           <GardenView sessions={todayTotals?.sessions ?? []} className="mx-auto w-full max-w-sm" />
         </div>
-        <SessionList sessions={todayTotals?.sessions ?? []} names={names} tz={tz} readOnly={readOnly} />
+        <TodaySessionHistory sessions={todayTotals?.sessions ?? []} names={names} tz={tz} readOnly={readOnly} />
       </section>
     </div>
   );
