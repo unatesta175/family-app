@@ -39,7 +39,7 @@ export function TransactionList({
 
   return (
     <>
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className="min-w-0 flex flex-col divide-y divide-border">
         {transactions.map((tx) => {
           const cat = tx.categoryId ? categoryById.get(tx.categoryId) : null;
           const sign = tx.type === "income" ? "+" : tx.type === "expense" ? "−" : "";

@@ -46,7 +46,7 @@ export function BillRowItem({
   return (
     <li
       className={cn(
-        "flex items-center gap-3 py-3",
+        "min-w-0 flex items-center gap-3 py-3",
         overdue && "!border-t-0 my-1 rounded-xl bg-destructive/10 px-2 first:mt-0 last:mb-0"
       )}
     >
@@ -107,7 +107,7 @@ export function BillUpcomingItem({
   const cat = bill.categoryId ? categories.find((c) => c.id === bill.categoryId) : null;
 
   return (
-    <li className="flex items-center gap-3 py-3">
+    <li className="min-w-0 flex items-center gap-3 py-3">
       <span
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl"
         style={{ background: `${colorHex(cat?.color ?? "steel")}1f`, color: colorHex(cat?.color ?? "steel") }}

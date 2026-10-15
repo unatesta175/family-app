@@ -15,7 +15,7 @@ export function LendingList({ entries }: { entries: LendingRow[] }) {
 
   return (
     <>
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className="min-w-0 flex flex-col divide-y divide-border">
         {entries.map((e) => (
           <li key={e.id}>
             <button type="button" onClick={() => setEditing(e)} className="flex w-full items-center gap-3 py-3 text-left">

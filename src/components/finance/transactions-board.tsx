@@ -96,15 +96,15 @@ export function TransactionsBoard({
         ) : (
           <div className="flex flex-col gap-4">
             {groups.map(([date, rows]) => (
-              <Card key={date} className="p-2">
+              <Card key={date} className="min-w-0 p-2">
                 <p className="px-2 pb-1 pt-1 text-[11px] font-extrabold uppercase tracking-wider text-muted-foreground">{dayLabel(date)}</p>
-                <ul className="flex flex-col divide-y divide-border">
+                <ul className="min-w-0 flex flex-col divide-y divide-border">
                   {rows.map((tx) => {
                     const cat = tx.categoryId ? categoryById.get(tx.categoryId) : null;
                     const sign = tx.type === "income" ? "+" : tx.type === "expense" ? "−" : "";
                     const color = tx.type === "income" ? "text-success" : tx.type === "expense" ? "text-destructive" : "text-muted-foreground";
                     return (
-                      <li key={tx.id} className="relative flex items-center gap-3 px-2 py-2.5">
+                      <li key={tx.id} className="relative min-w-0 flex items-center gap-3 px-2 py-2.5">
                         <span
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
                           style={{ background: `${colorHex(cat?.color ?? "steel")}1f`, color: colorHex(cat?.color ?? "steel") }}

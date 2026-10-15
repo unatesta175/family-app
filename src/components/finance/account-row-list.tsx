@@ -15,9 +15,9 @@ export function AccountRowList({ accounts, readOnly }: { accounts: AccountRow[];
 
   return (
     <>
-      <ul className="flex flex-col divide-y divide-border">
+      <ul className="min-w-0 flex flex-col divide-y divide-border">
         {accounts.map((a, i) => (
-          <li key={a.id} className="relative flex items-center gap-3 p-3">
+          <li key={a.id} className="relative min-w-0 flex items-center gap-3 p-3">
             <span
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
               style={{ backgroundImage: CARD_THEME_GRADIENT[a.colorTheme], color: CARD_THEME_FG[a.colorTheme] }}

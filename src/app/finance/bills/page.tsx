@@ -94,11 +94,11 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
             </CardContent>
           </Card>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-            <section className="flex flex-col gap-2">
+          <div className="min-w-0 grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+            <section className="min-w-0 flex flex-col gap-2">
               <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">To pay · {unpaidBills.length}</h2>
-              <Card className="p-2">
-                <ul className="flex flex-col divide-y divide-border">
+              <Card className="min-w-0 p-2">
+                <ul className="min-w-0 flex flex-col divide-y divide-border">
                   {bills.map((b) => (
                     <BillRowItem
                       key={b.id}
@@ -139,10 +139,10 @@ export default async function BillsPage({ searchParams }: { searchParams: Promis
           )}
 
           {upcomingBills.length > 0 && (
-            <section className="flex flex-col gap-2">
+            <section className="min-w-0 flex flex-col gap-2">
               <h2 className="px-1 text-xs font-extrabold uppercase tracking-wider text-muted-foreground">Upcoming · {upcomingBills.length}</h2>
-              <Card className="p-2">
-                <ul className="flex flex-col divide-y divide-border">
+              <Card className="min-w-0 p-2">
+                <ul className="min-w-0 flex flex-col divide-y divide-border">
                   {upcomingBills.map((b) => (
                     <BillUpcomingItem key={b.id} bill={b} today={ctx.today} categories={ctx.categories} readOnly={ctx.readOnly} />
                   ))}
