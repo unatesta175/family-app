@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Flame, Leaf, Timer, Trees } from "lucide-react";
+import { Crown, Flame, Leaf, Timer, Trees } from "lucide-react";
 import { addDays } from "@/lib/date";
 import { focusToday, tzOffset } from "@/lib/focus-date";
 import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
 import { getActiveFocusSession, getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
-import { byDay, canCreditFocusTime, focusStreak, formatFocus } from "@/lib/focus";
+import { byDay, byHabit, canCreditFocusTime, focusStreak, formatFocus } from "@/lib/focus";
 import { TodaySessionHistory } from "@/components/focus/today-session-history";
 import { FocusMemberStrip, FocusViewerBanner, type FocusMemberCard } from "@/components/focus/focus-members";
 import { GardenView } from "@/components/focus/garden-view";
@@ -31,6 +31,8 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
   const days = byDay(recent.map(toLite));
   const todayTotals = days.get(today);
   const streak = focusStreak(days, today, addDays);
+  // The habit with the most focused time today, for the top banner.
+  const topHabitToday = byHabit(todayTotals?.sessions ?? []).find((h) => h.habitId !== null);
 
   // Each circle member's trees and focus time today, for the switcher.
   const memberCards: FocusMemberCard[] = await Promise.all(
@@ -48,6 +50,24 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
       </div>
 
       {readOnly && <FocusViewerBanner name={viewedName} ownId={ownId} />}
+
+      {topHabitToday && (
+        <div className="h-card flex items-center gap-3 p-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-h-brand-soft text-h-brand">
+            <Crown className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-extrabold">{names.get(topHabitToday.habitId!) ?? "Habit"}</p>
+            <p className="text-[11px] font-semibold text-h-muted">Top habit today</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-sm font-extrabold tabular-nums">{formatFocus(topHabitToday.seconds)}</p>
+            <p className="text-[11px] font-semibold text-h-muted">
+              {topHabitToday.sessions} session{topHabitToday.sessions === 1 ? "" : "s"}
+            </p>
+          </div>
+        </div>
+      )}
 
       <FocusMemberStrip members={memberCards} viewedId={viewedId} />
 
