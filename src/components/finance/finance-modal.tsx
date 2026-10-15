@@ -36,7 +36,10 @@ export function FinanceModal({
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
       <DialogContent
         showCloseButton={false}
-        className={cn("min-w-0 max-h-[90dvh] gap-0 overflow-y-auto rounded-3xl border-border/60 p-6 shadow-xl sm:max-w-md md:max-w-lg", className)}
+        className={cn(
+          "min-w-0 max-h-[90dvh] gap-5 overflow-y-auto rounded-[22px] border-border p-7 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.3),0_4px_12px_rgba(0,0,0,0.06)] duration-150 sm:max-w-md md:max-w-lg",
+          className
+        )}
       >
         <DialogHeader className="flex-row items-center justify-between gap-3 space-y-0 pr-0 text-left">
           <DialogTitle className="text-xl font-bold tracking-tight">{title}</DialogTitle>
@@ -45,9 +48,9 @@ export function FinanceModal({
             <span className="sr-only">Close</span>
           </DialogClose>
         </DialogHeader>
-        <div className="flex flex-col gap-5 pt-5">{children}</div>
+        <div className="flex flex-col gap-5">{children}</div>
         {onSave && (
-          <div className="flex items-center justify-end gap-2 pt-6">
+          <div className="flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={onClose}
