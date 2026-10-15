@@ -61,7 +61,7 @@ export function FinanceBottomNav() {
   const pathname = usePathname();
   const q = useMemberQuery();
   return (
-    <nav className="sticky bottom-0 z-20 flex w-full items-stretch justify-between border-t border-border bg-card/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
+    <nav className="sticky bottom-0 z-20 flex w-full items-stretch justify-between border-t border-border bg-card/95 px-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
       {ITEMS.map(({ href, label, icon: Icon }) => {
         const active = isActive(pathname, href);
         return (
