@@ -68,7 +68,7 @@ export function CategoryManager({ categories }: { categories: CategoryRow[] }) {
                 type="button"
                 onClick={() => setGroup(g)}
                 className={cn(
-                  "rounded-full border px-3 py-1 text-xs font-bold capitalize",
+                  "rounded-xl border px-3 py-1 text-xs font-bold capitalize",
                   group === g ? "border-primary bg-accent text-primary" : "border-border text-muted-foreground"
                 )}
               >

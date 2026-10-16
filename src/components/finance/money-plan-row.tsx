@@ -60,7 +60,7 @@ export function MoneyPlanRow({
           onChange={(e) => setValue(e.target.value)}
           onBlur={save}
           placeholder="0.00"
-          className="h-8 w-28 rounded-md border border-border bg-transparent px-2 text-sm"
+          className="h-8 w-28 rounded-xl border border-border bg-surface px-2 text-sm"
         />
         <span className="text-xs font-semibold text-muted-foreground">planned {pending && "· saving…"}</span>
       </div>

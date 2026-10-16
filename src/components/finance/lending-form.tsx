@@ -75,14 +75,14 @@ export function LendingFormModal({ entry, open, onClose }: { entry?: LendingRow;
       saveDisabled={pending || !counterpartyName.trim() || !amount}
     >
       <div className="flex min-w-0 flex-col gap-5">
-        <div className="flex gap-1 rounded-sm border border-border bg-surface p-1">
+        <div className="flex gap-1 rounded-xl border border-border bg-surface p-1">
           {FINANCE_LEND_DIRECTIONS.map((d) => (
             <button
               key={d}
               type="button"
               onClick={() => setDirection(d)}
               className={cn(
-                "flex-1 rounded-sm px-3 py-1.5 text-xs font-bold capitalize transition-colors",
+                "flex-1 rounded-xl px-3 py-1.5 text-xs font-bold capitalize transition-colors",
                 direction === d ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
               )}
             >

@@ -74,7 +74,7 @@ export function ReminderFormModal({ reminder, open, onClose }: { reminder?: Remi
         <FinanceField label="Note">
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional" />
         </FinanceField>
-        <label className="flex items-center justify-between gap-3 rounded-sm border border-border bg-surface px-4 py-3.5">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3.5">
           <span className="text-sm font-semibold text-foreground">Recurring (yearly)</span>
           <Switch checked={recurring} onCheckedChange={setRecurring} />
         </label>

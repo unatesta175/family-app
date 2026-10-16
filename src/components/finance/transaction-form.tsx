@@ -112,7 +112,7 @@ export function TransactionFormModal({
       saveDisabled={pending || !amount}
     >
       <div className="flex min-w-0 flex-col gap-5">
-        <div className="flex gap-1 rounded-sm border border-border bg-surface p-1">
+        <div className="flex gap-1 rounded-xl border border-border bg-surface p-1">
           {FINANCE_TX_TYPES.map((t) => {
             const { icon: Icon, active } = TYPE_META[t];
             return (
@@ -121,7 +121,7 @@ export function TransactionFormModal({
                 type="button"
                 onClick={() => setType(t)}
                 className={cn(
-                  "flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-2 text-xs font-bold transition-colors",
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition-colors",
                   type === t ? active : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -132,7 +132,7 @@ export function TransactionFormModal({
           })}
         </div>
 
-        <div className="flex flex-col items-center gap-1.5 rounded-sm border border-border bg-surface px-6 py-6 transition-[border-color,box-shadow] focus-within:border-foreground/25 focus-within:bg-background focus-within:ring-4 focus-within:ring-foreground/[0.06]">
+        <div className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface px-6 py-6 transition-[border-color,box-shadow] focus-within:border-foreground/25 focus-within:bg-background focus-within:ring-4 focus-within:ring-foreground/[0.06]">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</span>
           <div className="flex items-baseline justify-center gap-2">
             <span className="text-xl font-bold text-subtle">RM</span>
@@ -166,7 +166,7 @@ export function TransactionFormModal({
                 type="button"
                 onClick={() => setAccountId(a.id)}
                 className={cn(
-                  "shrink-0 rounded-sm px-4 py-2 text-xs font-bold transition-colors",
+                  "shrink-0 rounded-xl px-4 py-2 text-xs font-bold transition-colors",
                   accountId === a.id ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -229,7 +229,7 @@ export function TransactionFormModal({
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional extra detail" />
         </FinanceField>
 
-        <label className="flex items-center justify-between gap-3 rounded-sm border border-border bg-surface px-4 py-3.5">
+        <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3.5">
           <span className="flex items-center gap-3">
             <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="flex flex-col">

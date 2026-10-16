@@ -46,7 +46,7 @@ export function BudgetSettingsForm({ settings }: { settings: BudgetSettingsRow |
         <span className="text-xs font-bold text-muted-foreground">Daily budget override (RM, optional)</span>
         <Input type="number" inputMode="decimal" step="0.01" value={override} onChange={(e) => setOverride(e.target.value)} placeholder="Leave empty to use income ÷ days in month" />
       </label>
-      <label className="flex items-center justify-between gap-3 rounded-sm border border-border bg-surface px-3 py-2.5">
+      <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-3 py-2.5">
         <span className="flex flex-col">
           <span className="text-xs font-bold">Adaptive daily budget</span>
           <span className="text-[11px] text-muted-foreground">Today&apos;s allowance = remaining budget ÷ days left to payday. Overspend one day, tomorrow shrinks; underspend, tomorrow grows.</span>

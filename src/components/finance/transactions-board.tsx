@@ -87,7 +87,7 @@ export function TransactionsBoard({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, note, category, or amount"
-            className="h-10 w-full rounded-xl border border-border bg-card pl-9 pr-3 text-sm font-semibold outline-none focus:border-ring"
+            className="h-10 w-full rounded-xl border border-border bg-surface pl-9 pr-3 text-sm font-semibold outline-none focus:border-ring"
           />
         </div>
 

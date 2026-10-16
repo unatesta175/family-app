@@ -86,7 +86,7 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
       saveDisabled={pending || !name.trim() || !amount}
     >
       <div className="flex min-w-0 flex-col gap-5">
-        <div className="flex flex-col items-center gap-1.5 rounded-sm border border-border bg-surface px-6 py-6 transition-[border-color,box-shadow] focus-within:border-foreground/25 focus-within:bg-background focus-within:ring-4 focus-within:ring-foreground/[0.06]">
+        <div className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface px-6 py-6 transition-[border-color,box-shadow] focus-within:border-foreground/25 focus-within:bg-background focus-within:ring-4 focus-within:ring-foreground/[0.06]">
           <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</span>
           <div className="flex items-baseline justify-center gap-2">
             <span className="text-xl font-bold text-subtle">RM</span>
@@ -109,14 +109,14 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-semibold text-foreground">How often</span>
-          <div className="flex gap-1 rounded-sm border border-border bg-surface p-1">
+          <div className="flex gap-1 rounded-xl border border-border bg-surface p-1">
             {FINANCE_BILL_FREQUENCIES.map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setFrequency(f)}
                 className={cn(
-                  "flex-1 rounded-sm px-3 py-1.5 text-xs font-bold transition-colors",
+                  "flex-1 rounded-xl px-3 py-1.5 text-xs font-bold transition-colors",
                   frequency === f ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}
               >
