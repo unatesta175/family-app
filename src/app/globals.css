@@ -719,53 +719,60 @@ html:has(.habits-app) {
   /* Belanje's actual layout: a near-white page with gray-filled cards/panels on top — the
      reverse of a typical "white card on off-white page" treatment. */
   --h-bg: #ffffff;
-  --h-surface: #f4f4f5;
-  --h-surface-2: #e4e4e7;
-  --h-border: #e4e4e7;
-  --h-fg: #09090b;
-  --h-muted: #71717a;
-  --h-brand: #18181b;
+  --h-surface: #f7f7f7;
+  --h-surface-2: #f0f0f0;
+  --h-border: #e8e8e8;
+  --h-fg: #000000;
+  --h-muted: #626262;
+  --h-brand: #000000;
   --h-brand-fg: #ffffff;
-  --h-brand-soft: #f4f4f5;
-  --h-break: #dc2626;
+  --h-brand-soft: #f7f7f7;
+  --h-break: #ef4444;
   --h-break-soft: #fef2f2;
-  --h-good: #16a34a;
-  --h-bad: #dc2626;
-  --h-shadow: 0 1px 2px rgb(9 9 11 / 0.03), 0 2px 8px rgb(9 9 11 / 0.04);
+  --h-good: #22c55e;
+  --h-bad: #ef4444;
+  --h-shadow: 0 1px 2px rgb(0 0 0 / 0.03), 0 2px 8px rgb(0 0 0 / 0.04);
 
   /*
-   * Real shadcn/ui token set (zinc base), scoped to `.finance-theme` only — NOT a rename of the
-   * `--h-*` tokens above (those stay, other Finance code may still read them). This is the set
+   * Real shadcn/ui token set, scoped to `.finance-theme` only — NOT a rename of the `--h-*`
+   * tokens above (those stay, other Finance code may still read them). This is the set
    * `src/components/finance/ui/*` and the Finance pages are retheme'd onto, so `bg-card`,
    * `text-muted-foreground`, `border-border` etc. carry the same meaning here as in a stock
-   * shadcn app. Overriding `--background`/`--foreground` here is intentional and safe: CSS custom
-   * properties cascade, so only elements inside `.finance-theme` see these values — the rest of
-   * the app keeps the root `--background`/`--foreground` untouched.
+   * shadcn app. Values below are lifted directly from the Belanje reference app's own CSS custom
+   * properties (inspected live), not approximated. Overriding `--background`/`--foreground` here
+   * is intentional and safe: CSS custom properties cascade, so only elements inside
+   * `.finance-theme` see these values — the rest of the app keeps the root
+   * `--background`/`--foreground` untouched.
    */
   --background: #ffffff;
-  --foreground: #09090b;
-  --card: #fafafa;
-  --card-foreground: #09090b;
+  --foreground: #000000;
+  --card: #ffffff;
+  --card-foreground: #000000;
   --popover: #ffffff;
-  --popover-foreground: #09090b;
-  --primary: #18181b;
+  --popover-foreground: #000000;
+  --primary: #000000;
   --primary-foreground: #ffffff;
-  --secondary: #fafafa;
-  --secondary-foreground: #18181b;
-  --muted: #e4e4e7;
-  --muted-foreground: #71717a;
-  --accent: #f4f4f5;
-  --accent-foreground: #18181b;
-  --destructive: #dc2626;
+  --secondary: #f7f7f7;
+  --secondary-foreground: #000000;
+  --muted: #f0f0f0;
+  --muted-foreground: #626262;
+  --accent: #f0f0f0;
+  --accent-foreground: #000000;
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --success: #16a34a;
+  --success: #22c55e;
   --success-foreground: #ffffff;
-  --warning: #dc2626;
-  --warning-foreground: #ffffff;
-  --border: #e4e4e7;
-  --input: #e4e4e7;
-  --ring: #18181b;
-  --radius: 0.75rem;
+  --warning: #f59e0b;
+  --warning-foreground: #000000;
+  --border: #e8e8e8;
+  --border-strong: #c8c8c8;
+  --input: #e8e8e8;
+  --ring: #000000;
+  /* Belanje's own second-tier background, distinct from `--card` (white): pill menu items,
+     table-ish rows and hover states sit on this rather than pure white. */
+  --surface: #f7f7f7;
+  --subtle: #737373;
+  --radius: 1.25rem;
 }
 
 .dark .habits-theme.finance-theme {
@@ -802,12 +809,15 @@ html:has(.habits-app) {
   --destructive-foreground: #09090b;
   --success: #4ade80;
   --success-foreground: #09090b;
-  --warning: #f87171;
+  --warning: #fbbf24;
   --warning-foreground: #09090b;
   --border: #2a2a2e;
+  --border-strong: #3a3a3e;
   --input: #2a2a2e;
   --ring: #fafafa;
-  --radius: 0.75rem;
+  --surface: #1c1c1f;
+  --subtle: #a1a1aa;
+  --radius: 1.25rem;
 }
 
 /*
@@ -836,8 +846,11 @@ html:has(.habits-app) {
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
 }
 
 /*
