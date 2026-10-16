@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Plus, Users } from "lucide-react";
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, Plus, Users } from "lucide-react";
 import { Button } from "@/components/finance/ui/button";
 import { Input } from "@/components/finance/ui/input";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@/components/finance/ui/select";
@@ -14,6 +14,11 @@ import { todayIso, nowTime } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 const TYPE_LABEL: Record<string, string> = { income: "Income", expense: "Expense", transfer: "Transfer" };
+const TYPE_META = {
+  income: { icon: ArrowDownLeft, active: "bg-success/10 text-success" },
+  expense: { icon: ArrowUpRight, active: "bg-destructive/10 text-destructive" },
+  transfer: { icon: ArrowLeftRight, active: "bg-foreground/10 text-foreground" },
+} as const;
 
 export function TransactionFormButton({
   accounts,
@@ -107,34 +112,41 @@ export function TransactionFormModal({
       saveDisabled={pending || !amount}
     >
       <div className="flex min-w-0 flex-col gap-5">
-        <div className="flex gap-1 rounded-full border border-border bg-muted p-1">
-          {FINANCE_TX_TYPES.map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setType(t)}
-              className={cn(
-                "flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
-                type === t ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {TYPE_LABEL[t]}
-            </button>
-          ))}
+        <div className="flex gap-1 rounded-sm border border-border bg-surface p-1">
+          {FINANCE_TX_TYPES.map((t) => {
+            const { icon: Icon, active } = TYPE_META[t];
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setType(t)}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1.5 rounded-sm px-3 py-2 text-xs font-bold transition-colors",
+                  type === t ? active : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {TYPE_LABEL[t]}
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex items-center justify-center gap-2 py-1">
-          <span className="rounded-full bg-muted px-2.5 py-1 text-sm font-bold text-muted-foreground">RM</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            autoFocus
-            className="w-40 min-w-0 bg-transparent text-center text-4xl font-extrabold text-foreground outline-none placeholder:text-muted-foreground/40"
-          />
+        <div className="flex flex-col items-center gap-1.5 rounded-sm border border-border bg-surface px-6 py-6 transition-[border-color,box-shadow] focus-within:border-foreground/25 focus-within:bg-background focus-within:ring-4 focus-within:ring-foreground/[0.06]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</span>
+          <div className="flex items-baseline justify-center gap-2">
+            <span className="text-xl font-bold text-subtle">RM</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              autoFocus
+              className="w-40 min-w-0 bg-transparent text-center text-4xl font-extrabold text-foreground outline-none placeholder:text-muted-foreground/40"
+            />
+          </div>
         </div>
 
         <FinanceField label="Name">
@@ -154,8 +166,8 @@ export function TransactionFormModal({
                 type="button"
                 onClick={() => setAccountId(a.id)}
                 className={cn(
-                  "shrink-0 rounded-full px-4 py-2 text-xs font-bold transition-colors",
-                  accountId === a.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:text-foreground"
+                  "shrink-0 rounded-sm px-4 py-2 text-xs font-bold transition-colors",
+                  accountId === a.id ? "bg-primary text-primary-foreground" : "bg-surface text-muted-foreground hover:text-foreground"
                 )}
               >
                 {a.name}
@@ -217,7 +229,7 @@ export function TransactionFormModal({
           <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Optional extra detail" />
         </FinanceField>
 
-        <label className="flex items-center justify-between gap-3 rounded-xl bg-muted px-4 py-3.5">
+        <label className="flex items-center justify-between gap-3 rounded-sm border border-border bg-surface px-4 py-3.5">
           <span className="flex items-center gap-3">
             <Users className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="flex flex-col">

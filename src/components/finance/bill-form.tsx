@@ -86,18 +86,21 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
       saveDisabled={pending || !name.trim() || !amount}
     >
       <div className="flex min-w-0 flex-col gap-5">
-        <div className="flex items-center justify-center gap-2 py-1">
-          <span className="rounded-full bg-muted px-2.5 py-1 text-sm font-bold text-muted-foreground">RM</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="0.00"
-            autoFocus
-            className="w-40 min-w-0 bg-transparent text-center text-4xl font-extrabold text-foreground outline-none placeholder:text-muted-foreground/40"
-          />
+        <div className="flex flex-col items-center gap-1.5 rounded-sm border border-border bg-surface px-6 py-6 transition-[border-color,box-shadow] focus-within:border-foreground/25 focus-within:bg-background focus-within:ring-4 focus-within:ring-foreground/[0.06]">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Amount</span>
+          <div className="flex items-baseline justify-center gap-2">
+            <span className="text-xl font-bold text-subtle">RM</span>
+            <input
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              placeholder="0.00"
+              autoFocus
+              className="w-40 min-w-0 bg-transparent text-center text-4xl font-extrabold text-foreground outline-none placeholder:text-muted-foreground/40"
+            />
+          </div>
         </div>
 
         <FinanceField label="Name">
@@ -106,14 +109,14 @@ export function BillFormModal({ bill, categories, open, onClose }: { bill?: Bill
 
         <div className="flex flex-col gap-2">
           <span className="text-sm font-semibold text-foreground">How often</span>
-          <div className="flex gap-1 rounded-full border border-border bg-muted p-1">
+          <div className="flex gap-1 rounded-sm border border-border bg-surface p-1">
             {FINANCE_BILL_FREQUENCIES.map((f) => (
               <button
                 key={f}
                 type="button"
                 onClick={() => setFrequency(f)}
                 className={cn(
-                  "flex-1 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
+                  "flex-1 rounded-sm px-3 py-1.5 text-xs font-bold transition-colors",
                   frequency === f ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}
               >

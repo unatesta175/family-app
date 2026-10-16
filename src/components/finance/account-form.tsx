@@ -200,7 +200,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
                   type="button"
                   onClick={() => setType(t)}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-bold transition-colors",
+                    "rounded-sm border px-3 py-1.5 text-xs font-bold transition-colors",
                     type === t ? "border-black bg-black text-white" : "border-border bg-white text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -221,7 +221,7 @@ export function AccountFormModal({ account, open, onClose }: { account?: Account
                 type="button"
                 onClick={() => setIcon(key)}
                 className={cn(
-                  "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border transition-colors",
+                  "flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-sm border transition-colors",
                   icon === key ? "border-black bg-black text-white" : "border-border bg-white text-muted-foreground hover:text-foreground"
                 )}
               >
