@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { Crown, Flame, Leaf, Timer, Trees } from "lucide-react";
-import { addDays } from "@/lib/date";
+import { ChevronLeft, ChevronRight, Crown, Flame, Leaf, Timer, Trees } from "lucide-react";
+import { addDays, parseIso } from "@/lib/date";
 import { focusToday, tzOffset } from "@/lib/focus-date";
 import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
@@ -14,15 +14,22 @@ import { StartPanel } from "@/components/focus/start-panel";
 
 export const metadata = { title: "Focus" };
 
-export default async function FocusHomePage({ searchParams }: { searchParams: Promise<{ habit?: string }> }) {
-  const { habit: rawHabit } = await searchParams;
+export default async function FocusHomePage({ searchParams }: { searchParams: Promise<{ habit?: string; date?: string }> }) {
+  const { habit: rawHabit, date: rawDate } = await searchParams;
   const { ownId, viewedId, readOnly, members, viewedName } = await focusViewer();
 
   const today = await focusToday();
   const tz = await tzOffset();
+  // The day the "grove" card below is showing — today by default, or an earlier day the visitor paged back to.
+  const viewDate = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
+  const atToday = viewDate === today;
   // Only settle (a write) your own session; another member's is read as-is.
   const active = readOnly ? await getActiveFocusSession(viewedId) : await settleActiveSession(viewedId);
-  const [habits, recent] = await Promise.all([getHabits(viewedId), getFocusSessionsInRange(viewedId, addDays(today, -60), today)]);
+  const [habits, recent, viewRows] = await Promise.all([
+    getHabits(viewedId),
+    getFocusSessionsInRange(viewedId, addDays(today, -60), today),
+    atToday ? Promise.resolve(null) : getFocusSessionsInRange(viewedId, viewDate, viewDate),
+  ]);
   // A private habit's name is only shown to its own owner — never on another member's view of this page.
   const names = new Map(habits.filter((h) => !readOnly || !h.private).map((h) => [h.id, h.name]));
   const pickableHabits = habits.filter((h) => !h.systemKey && canCreditFocusTime(h)).map((h) => ({ id: h.id, name: h.name, color: h.color, hidden: h.hidden }));
@@ -33,6 +40,13 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
   const streak = focusStreak(days, today, addDays);
   // The habit with the most focused time today, for the top banner.
   const topHabitToday = byHabit(todayTotals?.sessions ?? []).find((h) => h.habitId !== null);
+  // The sessions for whichever day the grove card is on: today's totals (already fetched above) or a fresh fetch for an earlier day.
+  const viewSessions = atToday ? (todayTotals?.sessions ?? []) : (viewRows ?? []).map(toLite);
+  const groveLink = (d: string) => `/focus?date=${d}`;
+  const prevDate = addDays(viewDate, -1);
+  const nextDate = addDays(viewDate, 1);
+  const canNextDate = nextDate <= today;
+  const viewDateLabel = atToday ? "Today" : parseIso(viewDate).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   // Each circle member's trees and focus time today, for the switcher.
   const memberCards: FocusMemberCard[] = await Promise.all(
@@ -116,15 +130,37 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between px-1">
-          <h2 className="text-xs font-extrabold uppercase tracking-wider text-h-muted">{readOnly ? `${viewedName}'s grove today` : "Today's grove"}</h2>
+          <h2 className="text-xs font-extrabold uppercase tracking-wider text-h-muted">{readOnly ? `${viewedName}'s grove` : "Grove"}</h2>
           <Link href="/focus/grove" className="text-xs font-bold text-h-brand">
             Open grove
           </Link>
         </div>
-        <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-[#1c5a45] to-[#123f31] p-4 shadow-md">
-          <GardenView sessions={todayTotals?.sessions ?? []} className="mx-auto w-full max-w-sm" />
+        <div className="flex items-center justify-between gap-2 px-1">
+          <Link href={groveLink(prevDate)} aria-label="Previous day" className="flex h-8 w-8 items-center justify-center rounded-full bg-h-surface2 text-h-muted transition-colors hover:bg-h-surface2/70 hover:text-h-fg">
+            <ChevronLeft className="h-4 w-4" />
+          </Link>
+          <div className="text-center">
+            <p className="text-sm font-bold text-h-fg">{viewDateLabel}</p>
+            {!atToday && (
+              <Link href={groveLink(today)} className="text-[11px] font-bold text-h-brand">
+                Jump to today
+              </Link>
+            )}
+          </div>
+          {canNextDate ? (
+            <Link href={groveLink(nextDate)} aria-label="Next day" className="flex h-8 w-8 items-center justify-center rounded-full bg-h-surface2 text-h-muted transition-colors hover:bg-h-surface2/70 hover:text-h-fg">
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full text-h-muted/30">
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          )}
         </div>
-        <TodaySessionHistory sessions={todayTotals?.sessions ?? []} names={names} tz={tz} readOnly={readOnly} />
+        <div className="overflow-hidden rounded-3xl bg-gradient-to-b from-[#1c5a45] to-[#123f31] p-4 shadow-md">
+          <GardenView sessions={viewSessions} className="mx-auto w-full max-w-sm" />
+        </div>
+        <TodaySessionHistory sessions={viewSessions} names={names} tz={tz} readOnly={readOnly} />
       </section>
     </div>
   );

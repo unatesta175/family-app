@@ -219,6 +219,11 @@ export function localDateFrom(ms: number, tzOffsetMin: number): string {
   return new Date(ms - tzOffsetMin * 60000).toISOString().slice(0, 10);
 }
 
+/** The hour (0-23) a moment falls on, in the user's zone. */
+export function localHour(ms: number, tzOffsetMin: number): number {
+  return new Date(ms - tzOffsetMin * 60000).getUTCHours();
+}
+
 /** "2:58 PM" for a moment, in the user's zone. */
 export function formatClockTime(ms: number, tzOffsetMin: number): string {
   const d = new Date(ms - tzOffsetMin * 60000);
