@@ -4,7 +4,7 @@ import { addDays, addMonths, parseIso } from "@/lib/date";
 import { focusToday, tzOffset } from "@/lib/focus-date";
 import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
-import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
+import { getFocusSessionsInRange, settleActiveSessions, toLite } from "@/lib/db/repo-focus";
 import { byDay, byHabit, formatFocus, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT, WEEKDAY_SHORT, weekDates } from "@/lib/habits";
 import { Distribution, type DistBar } from "@/components/focus/distribution";
@@ -32,7 +32,7 @@ export default async function GrovePage({ searchParams }: { searchParams: Promis
 
   const { ownId, viewedId, readOnly, viewedName } = await focusViewer();
   const profileId = viewedId;
-  if (!readOnly) await settleActiveSession(profileId);
+  if (!readOnly) await settleActiveSessions(profileId);
 
   // The range the view covers, and where the previous / next buttons go.
   let from = date;

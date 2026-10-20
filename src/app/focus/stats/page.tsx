@@ -4,7 +4,7 @@ import { addDays, parseIso } from "@/lib/date";
 import { focusToday, tzOffset } from "@/lib/focus-date";
 import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
-import { getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
+import { getFocusSessionsInRange, settleActiveSessions, toLite } from "@/lib/db/repo-focus";
 import { byDay, byHabit, focusStreak, formatFocus, hourDistribution, summarize } from "@/lib/focus";
 import { MONTH_SHORT } from "@/lib/habits";
 import { FocusViewerBanner } from "@/components/focus/focus-members";
@@ -26,7 +26,7 @@ export default async function FocusStatsPage({ searchParams }: { searchParams: P
   const range = RANGES.find((r) => String(r.days) === rawRange)?.days ?? 30;
   const { ownId, viewedId, readOnly, viewedName } = await focusViewer();
   const profileId = viewedId;
-  if (!readOnly) await settleActiveSession(profileId);
+  if (!readOnly) await settleActiveSessions(profileId);
 
   const today = await focusToday();
   const tz = await tzOffset();

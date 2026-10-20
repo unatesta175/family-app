@@ -4,13 +4,15 @@ import { addDays, parseIso } from "@/lib/date";
 import { focusToday, tzOffset } from "@/lib/focus-date";
 import { focusViewer } from "@/lib/focus-view";
 import { getHabits } from "@/lib/db/repo-habits";
-import { getActiveFocusSession, getFocusSessionsInRange, settleActiveSession, toLite } from "@/lib/db/repo-focus";
+import { cfgFromRow, getActiveFocusSessions, getFocusSessionsInRange, settleActiveSessions, toLite } from "@/lib/db/repo-focus";
 import { byDay, byHabit, canCreditFocusTime, focusStreak, formatFocus } from "@/lib/focus";
+import { nowMs } from "@/lib/now";
 import { TodaySessionHistory } from "@/components/focus/today-session-history";
 import { FocusMemberStrip, FocusViewerBanner, type FocusMemberCard } from "@/components/focus/focus-members";
 import { GardenView } from "@/components/focus/garden-view";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { StartPanel } from "@/components/focus/start-panel";
+import { SessionTray } from "@/components/focus/session-tray";
 
 export const metadata = { title: "Focus" };
 
@@ -23,8 +25,8 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
   // The day the "grove" card below is showing — today by default, or an earlier day the visitor paged back to.
   const viewDate = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
   const atToday = viewDate === today;
-  // Only settle (a write) your own session; another member's is read as-is.
-  const active = readOnly ? await getActiveFocusSession(viewedId) : await settleActiveSession(viewedId);
+  // Only settle (a write) your own sessions; another member's are read as-is.
+  const activeSessions = readOnly ? await getActiveFocusSessions(viewedId) : await settleActiveSessions(viewedId);
   const [habits, recent, viewRows] = await Promise.all([
     getHabits(viewedId),
     getFocusSessionsInRange(viewedId, addDays(today, -60), today),
@@ -91,32 +93,38 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
         <Tile icon={Flame} value={`${streak}d`} label="Focus streak" />
       </div>
 
-      {active ? (
+      {activeSessions.length > 0 ? (
         readOnly ? (
           <div className="h-card flex items-center gap-4 overflow-hidden bg-gradient-to-br from-h-brand-soft to-h-surface p-4">
-            <FocusTree progress={0.55} species={active.species} className="h-20 w-16 shrink-0" />
+            <FocusTree progress={0.55} species={activeSessions[0].species} className="h-20 w-16 shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="flex items-center gap-1.5 text-sm font-extrabold">
                 <Leaf className="h-4 w-4 text-h-brand" />
                 {viewedName} is focusing now
               </p>
               <p className="text-xs text-h-muted">
-                {formatFocus(active.plannedSeconds)} session{active.habitId ? ` for ${names.get(active.habitId) ?? "a habit"}` : ""}. A tree is growing.
+                {activeSessions.length > 1
+                  ? `${activeSessions.length} sessions going at once.`
+                  : `${formatFocus(activeSessions[0].plannedSeconds)} session${activeSessions[0].habitId ? ` for ${names.get(activeSessions[0].habitId) ?? "a habit"}` : ""}. A tree is growing.`}
               </p>
             </div>
           </div>
         ) : (
-          <Link href="/focus/session" className="h-card flex items-center gap-4 overflow-hidden bg-gradient-to-br from-h-brand-soft to-h-surface p-4">
-            <FocusTree progress={0.55} species={active.species} className="h-20 w-16 shrink-0" />
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-1.5 text-sm font-extrabold">
-                <Leaf className="h-4 w-4 text-h-brand" />A tree is growing
-              </p>
-              <p className="text-xs text-h-muted">
-                {formatFocus(active.plannedSeconds)} session{active.habitId ? ` for ${names.get(active.habitId) ?? "a habit"}` : ""}. Tap to go back to it.
-              </p>
-            </div>
-          </Link>
+          <SessionTray
+            serverNow={nowMs()}
+            sessions={activeSessions.map((s) => ({
+              id: s.id,
+              habitName: s.habitId ? (names.get(s.habitId) ?? "Habit") : null,
+              species: s.species,
+              mode: s.mode,
+              cfg: cfgFromRow(s),
+              startedAt: s.startedAt,
+              plannedSeconds: s.plannedSeconds,
+              pausedSeconds: s.pausedSeconds,
+              pausedAt: s.pausedAt,
+              openEnded: s.openEnded,
+            }))}
+          />
         )
       ) : readOnly ? (
         <div className="h-card flex flex-col items-center gap-1 p-6 text-center">
@@ -124,8 +132,13 @@ export default async function FocusHomePage({ searchParams }: { searchParams: Pr
           <p className="text-sm font-bold">{viewedName} isn&apos;t focusing right now</p>
           <p className="text-xs text-h-muted">Their grove and stats are below.</p>
         </div>
-      ) : (
-        <StartPanel habits={pickableHabits} defaultHabitId={rawHabit && /^\d+$/.test(rawHabit) ? Number(rawHabit) : lastHabitId} />
+      ) : null}
+
+      {!readOnly && (
+        <>
+          {activeSessions.length > 0 && <p className="px-1 text-xs font-extrabold uppercase tracking-wider text-h-muted">Start another session</p>}
+          <StartPanel habits={pickableHabits} defaultHabitId={rawHabit && /^\d+$/.test(rawHabit) ? Number(rawHabit) : lastHabitId} />
+        </>
       )}
 
       <section className="flex flex-col gap-2">

@@ -12,14 +12,14 @@ const ITEMS = [
 ] as const;
 
 function isActive(pathname: string, href: string) {
-  if (href === "/focus") return pathname === "/focus" || pathname === "/focus/session";
+  if (href === "/focus") return pathname === "/focus" || pathname.startsWith("/focus/session");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 /** Phone bottom bar. It steps aside while a session runs, so nothing tempts you away from it. */
 export function FocusBottomNav() {
   const pathname = usePathname();
-  if (pathname === "/focus/session") return null;
+  if (pathname.startsWith("/focus/session")) return null;
   return (
     <nav className="sticky bottom-0 z-20 flex w-full items-stretch justify-between border-t border-h-border bg-h-surface/95 px-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1.5 backdrop-blur md:hidden">
       {ITEMS.map(({ href, label, icon: Icon }) => {

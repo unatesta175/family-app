@@ -8,7 +8,7 @@ import { localDateFrom } from "@/lib/focus";
 import { tzOffset } from "@/lib/focus-date";
 import { nowMs } from "@/lib/now";
 import { getHabit } from "@/lib/db/repo-habits";
-import { attachHabitToSession, cfgFromRow, completeFocusSession, completeOpenEndedSession, createFocusSession, deleteFinishedSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, resumeFocusSession, setFinishedSessionSeconds, settleActiveSession, toLite, witherFocusSession } from "@/lib/db/repo-focus";
+import { attachHabitToSession, cfgFromRow, completeFocusSession, completeOpenEndedSession, createFocusSession, deleteFinishedSession, deleteFocusSession, effectiveNow, extendCompletedSession, getFocusSession, getFocusSessionsInRange, pauseFocusSession, pauseOtherRunningSessions, resumeFocusSession, setFinishedSessionSeconds, settleActiveSessions, toLite, witherFocusSession } from "@/lib/db/repo-focus";
 import { FOCUS_SPECIES, GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, byDay, canCreditFocusTime, focusStreak, formatFocus, timeline, type PomodoroConfig } from "@/lib/focus";
 
 export type FocusResult<T = undefined> = ({ ok: true } & (T extends undefined ? object : { data: T })) | { ok: false; error: string };
@@ -65,12 +65,13 @@ const startSchema = z
 /** An open-ended session's `plannedSeconds` just needs to be large enough that it never "runs out". */
 const OPEN_ENDED_SENTINEL_SECONDS = 24 * 60 * 60;
 
-/** Starts growing a tree. Only one session can run at a time. */
+/** Starts growing a tree. Any session already running is paused first, so only one clock ticks at once. */
 export async function startFocusAction(input: z.input<typeof startSchema>): Promise<FocusResult<{ id: number }>> {
   try {
     const v = startSchema.parse(input);
     const profileId = await ownProfile();
-    if (await settleActiveSession(profileId)) return { ok: false, error: "A focus session is already running." };
+    await settleActiveSessions(profileId);
+    await pauseOtherRunningSessions(profileId, null);
     if (v.habitId !== null) {
       const habit = await getHabit(v.habitId);
       if (!habit || habit.profileId !== profileId) throw new Error("Habit not found.");
@@ -230,20 +231,26 @@ export async function pauseFocusAction(id: number): Promise<FocusResult<{ paused
     if (row.pausedAt !== null) return { ok: true, data: { pausedAt: row.pausedAt } };
     const at = await pauseFocusSession(id);
     if (at === null) throw new Error("Couldn't pause the session.");
+    refresh();
     return { ok: true, data: { pausedAt: at } };
   } catch (err) {
     return fail(err);
   }
 }
 
-/** Resumes a paused session: the time it sat paused is banked and the timer carries on. */
+/**
+ * Resumes a paused session: the time it sat paused is banked and the timer carries on. Whichever other
+ * session was running gets paused first, so switching between sessions is just resuming the one you want.
+ */
 export async function resumeFocusAction(id: number): Promise<FocusResult<{ pausedSeconds: number }>> {
   try {
     const profileId = await ownProfile();
     const row = await getFocusSession(id);
     if (!row || row.profileId !== profileId) throw new Error("Session not found.");
     if (row.status !== "active") throw new Error("This session already ended.");
+    await pauseOtherRunningSessions(profileId, id);
     const pausedSeconds = await resumeFocusSession(row);
+    refresh();
     return { ok: true, data: { pausedSeconds } };
   } catch (err) {
     return fail(err);

@@ -37,14 +37,23 @@ export async function getFocusSession(id: number) {
   return row ?? null;
 }
 
-export async function getActiveFocusSession(profileId: number) {
-  const [row] = await db
+/** Every session a profile has going at once (running or paused), oldest first. */
+export async function getActiveFocusSessions(profileId: number): Promise<FocusSessionRow[]> {
+  return db
     .select()
     .from(focusSessions)
     .where(and(eq(focusSessions.profileId, profileId), eq(focusSessions.status, "active")))
-    .orderBy(desc(focusSessions.startedAt))
-    .limit(1);
-  return row ?? null;
+    .orderBy(focusSessions.startedAt);
+}
+
+/**
+ * Pauses whichever session(s) are actually running (not already paused) for a profile, so only one
+ * session's clock ever ticks at a time. Pass the session you're switching to so it's left alone.
+ */
+export async function pauseOtherRunningSessions(profileId: number, exceptId: number | null): Promise<void> {
+  const conditions = [eq(focusSessions.profileId, profileId), eq(focusSessions.status, "active"), isNull(focusSessions.pausedAt)];
+  if (exceptId !== null) conditions.push(ne(focusSessions.id, exceptId));
+  await db.update(focusSessions).set({ pausedAt: Date.now() }).where(and(...conditions));
 }
 
 export async function createFocusSession(input: {
@@ -232,19 +241,18 @@ export async function getRecentEndedSession(profileId: number, withinMs: number)
 }
 
 /**
- * If the profile's active session has run its whole course (say the tab was closed), finish it now.
- * Returns the session still running, or null.
+ * Any of the profile's active sessions that have run their whole course (say the tab was closed) are
+ * finished now. Returns the sessions still going (running or paused), settled ones left out.
  */
-export async function settleActiveSession(profileId: number): Promise<FocusSessionRow | null> {
-  const active = await getActiveFocusSession(profileId);
-  if (!active) return null;
-  // Open-ended sessions have no target to run out, so they're never auto-completed here.
-  if (active.openEnded) return active;
-  // A paused session's clock is held still, so effectiveNow freezes it and it never auto-completes.
-  const tl = timeline(active.startedAt, active.plannedSeconds, active.mode, effectiveNow(active), cfgFromRow(active));
-  if (tl.done) {
-    await completeFocusSession(active);
-    return null;
+export async function settleActiveSessions(profileId: number): Promise<FocusSessionRow[]> {
+  const active = await getActiveFocusSessions(profileId);
+  const stillActive: FocusSessionRow[] = [];
+  for (const row of active) {
+    // Open-ended sessions have no target to run out, so they're never auto-completed here.
+    // A paused session's clock is held still, so effectiveNow freezes it and it never auto-completes.
+    const tl = row.openEnded ? null : timeline(row.startedAt, row.plannedSeconds, row.mode, effectiveNow(row), cfgFromRow(row));
+    if (tl?.done) await completeFocusSession(row);
+    else stillActive.push(row);
   }
-  return active;
+  return stillActive;
 }

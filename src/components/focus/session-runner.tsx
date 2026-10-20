@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeftRight, Check, Clock, Coffee, Flame, Home, Loader2, Pause, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
 import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, finishOpenEndedAction, pauseFocusAction, resumeFocusAction, type FinishSummary } from "@/lib/focus-actions";
 import { GRACE_SECONDS, clock, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
@@ -518,6 +518,12 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
         <p className="text-[11px] font-medium text-white/65">
           {paused ? "Paused — tap play to carry on" : session.openEnded ? (grace ? "Finish after the first 30 seconds to keep a tree" : "Finish anytime — your tree keeps whatever you've grown") : grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}
         </p>
+        {paused && (
+          <Link href="/focus" className="flex items-center gap-1.5 text-[11px] font-bold text-white/90 underline underline-offset-2">
+            <ArrowLeftRight className="h-3 w-3" />
+            Switch to another session
+          </Link>
+        )}
       </div>
 
       {confirming && (

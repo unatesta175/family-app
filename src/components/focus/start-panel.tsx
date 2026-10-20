@@ -162,7 +162,7 @@ export function StartPanel({ habits, defaultHabitId }: { habits: TimerHabit[]; d
           : undefined,
       });
       if (!res.ok) return setError(res.error);
-      router.push("/focus/session");
+      router.push(`/focus/session/${res.data.id}`);
     });
   }
 
