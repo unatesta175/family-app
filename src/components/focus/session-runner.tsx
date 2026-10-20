@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeftRight, Check, Clock, Coffee, Flame, Home, Loader2, Pause, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
+import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
 import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, finishOpenEndedAction, pauseFocusAction, resumeFocusAction, type FinishSummary } from "@/lib/focus-actions";
 import { GRACE_SECONDS, clock, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
@@ -218,6 +218,31 @@ function FocusAura({ progress, tier, resting }: { progress: number; tier: TreeTi
 }
 
 /**
+ * The big clock, each character its own element keyed by its value: when a digit changes, React swaps
+ * it for a new node and its enter animation (`nrg-digit`, in globals.css) plays — a soft roll-and-fade
+ * on every tick, not just a flat re-render.
+ */
+function Countdown({ seconds }: { seconds: number }) {
+  return (
+    <p className="fx-clock flex items-baseline justify-center text-[5.5rem] leading-none tracking-wider" aria-label={clock(seconds)}>
+      {clock(seconds)
+        .split("")
+        .map((ch, i) =>
+          ch === ":" ? (
+            <span key={`colon-${i}`} className="px-0.5 opacity-70">
+              {ch}
+            </span>
+          ) : (
+            <span key={`${i}-${ch}`} className="nrg-digit inline-block tabular-nums">
+              {ch}
+            </span>
+          )
+        )}
+    </p>
+  );
+}
+
+/**
  * The running session: a quiet full-screen forest, the tree growing a little every second, and a big
  * clock. The time comes from the session's start time, so a reload (or a phone that slept) lands on
  * exactly the right moment.
@@ -260,6 +285,8 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
   // exactly where it left off. The same maths runs on the server, so a reload lands on the right moment.
   const effectiveNow = now - pausedMsAt(pausedSeconds, pausedAt, now);
   const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, effectiveNow, session.cfg);
+  // Open-ended has no target to count down to, so the clock (and the tab title) counts up from 0 instead.
+  const readout = session.openEnded ? tl.focusElapsed : tl.phaseRemaining;
   // An open-ended session has no target: the tree's tier and growth follow elapsed time directly.
   const openGrowth = session.openEnded ? openEndedGrowth(tl.focusElapsed) : null;
   // Each focus block grows its own tree, so the live tree takes the current block's tier and growth.
@@ -314,8 +341,8 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
   }, []);
 
   useEffect(() => {
-    document.title = outcome ? "Focus" : `${clock(tl.phaseRemaining)} · ${tl.phase === "break" ? "Break" : "Focus"}`;
-  }, [tl.phaseRemaining, tl.phase, outcome]);
+    document.title = outcome ? "Focus" : `${clock(readout)} · ${tl.phase === "break" ? "Break" : "Focus"}`;
+  }, [readout, tl.phase, outcome]);
 
   /** Pause or resume. The clock updates at once (optimistic); the server banks the real paused time. */
   function togglePause() {
@@ -440,9 +467,14 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
             {resting ? "Break: your tree is resting" : tl.blocks > 1 ? `Focus ${tl.block} of ${tl.blocks}` : "I'm focusing on…"}
           </p>
         </div>
-        <button type="button" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Sound on" : "Mute"} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
-          {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link href="/focus" aria-label="Back to Focus home" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm transition-transform active:scale-90">
+            <Home className="h-4 w-4" />
+          </Link>
+          <button type="button" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Sound on" : "Mute"} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+          </button>
+        </div>
       </div>
 
       <div className="flex flex-1 items-center justify-center py-3">
@@ -454,7 +486,7 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
       </div>
 
       <div className="flex flex-col items-center gap-4 text-center">
-        <p className="text-[5.5rem] font-extralight leading-none tabular-nums tracking-wider">{clock(session.openEnded ? tl.focusElapsed : tl.phaseRemaining)}</p>
+        <Countdown seconds={readout} />
         <p className="flex items-center gap-2 rounded-full bg-white/12 px-3.5 py-1.5 text-xs font-bold backdrop-blur-md" aria-live="off">
           {paused ? (
             <span className="flex items-center gap-1.5">
@@ -516,14 +548,8 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
           )}
         </div>
         <p className="text-[11px] font-medium text-white/65">
-          {paused ? "Paused — tap play to carry on" : session.openEnded ? (grace ? "Finish after the first 30 seconds to keep a tree" : "Finish anytime — your tree keeps whatever you've grown") : grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}
+          {paused ? "Paused — tap play to carry on, or go home to switch sessions" : session.openEnded ? (grace ? "Finish after the first 30 seconds to keep a tree" : "Finish anytime — your tree keeps whatever you've grown") : grace ? "Cancel in the first 30 seconds costs nothing" : "Stopping now withers your tree"}
         </p>
-        {paused && (
-          <Link href="/focus" className="flex items-center gap-1.5 text-[11px] font-bold text-white/90 underline underline-offset-2">
-            <ArrowLeftRight className="h-3 w-3" />
-            Switch to another session
-          </Link>
-        )}
       </div>
 
       {confirming && (

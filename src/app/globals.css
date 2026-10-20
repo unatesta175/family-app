@@ -966,6 +966,17 @@ html:has(.habits-app) {
   .nrg-breathe, .nrg-sway, .nrg-dot, .nrg-verb { animation: none; }
 }
 
+/* Focus session: the big clock's typeface, and each digit rolling softly into place as it changes. */
+.fx-clock { font-family: var(--font-countdown), ui-monospace, monospace; font-weight: 300; }
+@keyframes nrg-digit {
+  0% { transform: translateY(0.3em) scale(0.92); opacity: 0; filter: blur(3px); }
+  100% { transform: translateY(0) scale(1); opacity: 1; filter: blur(0); }
+}
+.nrg-digit { animation: nrg-digit 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) {
+  .nrg-digit { animation: none; }
+}
+
 /* ---------- /welcome landing page (scoped: .lp-*) ---------- */
 @keyframes lp-rise {
   0% { transform: translateY(16px); opacity: 0; }
