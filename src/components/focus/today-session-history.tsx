@@ -1,22 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { SessionList, type HabitNames } from "@/components/focus/grove-views";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/habits/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/habits/ui/popover";
+import { TimeRangeSlider, inTimeRange, timeFilterLabel, type TimeFilterValue } from "@/components/focus/time-range-slider";
 import { localHour, type SessionLite } from "@/lib/focus";
 import { cn } from "@/lib/utils";
-
-const TIME_RANGES = [
-  { value: "morning", label: "Morning", sub: "5am–12pm", test: (h: number) => h >= 5 && h < 12 },
-  { value: "afternoon", label: "Afternoon", sub: "12–5pm", test: (h: number) => h >= 12 && h < 17 },
-  { value: "evening", label: "Evening", sub: "5–9pm", test: (h: number) => h >= 17 && h < 21 },
-  { value: "night", label: "Night", sub: "9pm–5am", test: (h: number) => h >= 21 || h < 5 },
-] as const;
 
 /** Session history with dropdowns to filter down to one habit (or "No habit") and/or one time of day. */
 export function TodaySessionHistory({ sessions, names, tz, readOnly = false }: { sessions: SessionLite[]; names: HabitNames; tz: number; readOnly?: boolean }) {
   const [habitFilter, setHabitFilter] = useState("all");
-  const [timeFilter, setTimeFilter] = useState("all");
+  const [timeFilter, setTimeFilter] = useState<TimeFilterValue>("all");
 
   const done = useMemo(() => sessions.filter((s) => s.status !== "active"), [sessions]);
 
@@ -32,11 +28,7 @@ export function TodaySessionHistory({ sessions, names, tz, readOnly = false }: {
 
   const showHabitFilter = habitOptions.length > 1;
   const byHabit = (s: SessionLite) => habitFilter === "all" || (habitFilter === "none" ? s.habitId === null : s.habitId === Number(habitFilter));
-  const byTime = (s: SessionLite) => {
-    if (timeFilter === "all") return true;
-    const range = TIME_RANGES.find((r) => r.value === timeFilter);
-    return range ? range.test(localHour(s.startedAt, tz)) : true;
-  };
+  const byTime = (s: SessionLite) => timeFilter === "all" || inTimeRange(localHour(s.startedAt, tz), timeFilter);
   const filtered = done.filter((s) => byHabit(s) && byTime(s));
 
   return (
@@ -57,19 +49,18 @@ export function TodaySessionHistory({ sessions, names, tz, readOnly = false }: {
             </SelectContent>
           </Select>
         )}
-        <Select value={timeFilter} onValueChange={setTimeFilter}>
-          <SelectTrigger aria-label="Filter sessions by time of day" className="font-bold">
-            <SelectValue placeholder="All times" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All times</SelectItem>
-            {TIME_RANGES.map((r) => (
-              <SelectItem key={r.value} value={r.value}>
-                {r.label} <span className="font-normal text-h-muted">· {r.sub}</span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger
+            aria-label="Filter sessions by time of day"
+            className="flex h-10 w-full items-center justify-between gap-2 rounded-xl border border-h-border bg-h-surface2 px-3 text-left text-sm font-bold text-h-fg outline-none transition-colors hover:border-h-muted/40 focus-visible:border-h-brand focus-visible:ring-2 focus-visible:ring-h-brand/25 data-[state=open]:border-h-brand"
+          >
+            <span className="truncate">{timeFilterLabel(timeFilter)}</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-h-muted" />
+          </PopoverTrigger>
+          <PopoverContent>
+            <TimeRangeSlider value={timeFilter} onChange={setTimeFilter} />
+          </PopoverContent>
+        </Popover>
       </div>
       {filtered.length > 0 ? (
         <SessionList sessions={filtered} names={names} tz={tz} readOnly={readOnly} />
