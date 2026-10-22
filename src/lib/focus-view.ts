@@ -12,7 +12,7 @@ export type FocusMemberLite = { id: number; name: string };
  * household; the "Circle" switcher and viewer banner disappear too since they only ever see one
  * member (themselves).
  */
-const CIRCLE_CAN_VIEW_FOCUS = false;
+const CIRCLE_CAN_VIEW_FOCUS = true;
 
 /**
  * Who the Focus pages are being shown for. When `CIRCLE_CAN_VIEW_FOCUS` is on, circle members can
