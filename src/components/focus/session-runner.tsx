@@ -857,6 +857,12 @@ function Celebration({
                 It&apos;s been <span className="font-extrabold tabular-nums">{clock(overtimeSec)}</span> since this session finished. Add that time so it counts.
                 {addedSec > 0 && <> You&apos;ve added {formatFocus(addedSec)} so far.</>}
               </p>
+              {session.pausedSeconds > 0 && (
+                <p className="mt-1.5 flex items-center gap-1.5 border-t border-white/15 pt-1.5 text-[11px] text-white/70">
+                  <Pause className="h-3 w-3 shrink-0" />
+                  That&apos;s separate from the <span className="font-extrabold tabular-nums">{formatFocus(session.pausedSeconds)}</span> you paused during the session itself.
+                </p>
+              )}
               <div className="mt-2 flex items-center gap-2">
                 <button
                   type="button"
