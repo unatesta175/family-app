@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Pencil, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
 import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, editFocusSessionTimeAction, finishFocusAction, finishOpenEndedAction, pauseFocusAction, resumeFocusAction, startFocusAction, type FinishSummary } from "@/lib/focus-actions";
 import { GRACE_SECONDS, MIN_MINUTES, clock, formatClockTime, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
@@ -478,9 +479,16 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
           <Link href="/focus" aria-label="Back to Focus home" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm transition-transform active:scale-90">
             <Home className="h-4 w-4" />
           </Link>
-          <button type="button" onClick={() => setMuted((m) => !m)} aria-label={muted ? "Sound on" : "Mute"} className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+          <motion.button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            aria-label={muted ? "Sound on" : "Mute"}
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.9 }}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm"
+          >
             {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-          </button>
+          </motion.button>
         </div>
       </div>
 
@@ -530,34 +538,51 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
         )}
         {error && <p className="text-xs font-bold text-red-200">{error}</p>}
         <div className="mt-1 flex items-center gap-4">
-          <button
+          <motion.button
             type="button"
             onClick={togglePause}
             aria-label={paused ? "Resume session" : "Pause session"}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#0b5a43] shadow-lg ring-1 ring-white/40 transition-transform active:scale-90"
+            whileHover={{ scale: 1.06 }}
+            whileTap={{ scale: 0.88 }}
+            className="relative flex h-14 w-14 items-center justify-center overflow-hidden rounded-full bg-white text-[#0b5a43] shadow-lg ring-1 ring-white/40"
           >
-            {paused ? <Play className="h-5 w-5" fill="currentColor" /> : <Pause className="h-5 w-5" fill="currentColor" />}
-          </button>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={paused ? "play" : "pause"}
+                initial={{ opacity: 0, scale: 0.5, rotate: -45 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
+                transition={{ duration: 0.18 }}
+                className="flex items-center justify-center"
+              >
+                {paused ? <Play className="h-5 w-5" fill="currentColor" /> : <Pause className="h-5 w-5" fill="currentColor" />}
+              </motion.span>
+            </AnimatePresence>
+          </motion.button>
           {session.openEnded ? (
-            <button
+            <motion.button
               type="button"
               onClick={finishOpen}
               disabled={pending}
               aria-label="Finish session"
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.88 }}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md disabled:opacity-60"
             >
               <Check className="h-5 w-5" strokeWidth={3} />
-            </button>
+            </motion.button>
           ) : (
-            <button
+            <motion.button
               type="button"
               onClick={() => setConfirming(true)}
               disabled={pending}
               aria-label={grace ? "Cancel session" : "Give up"}
-              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md transition-transform active:scale-90 disabled:opacity-60"
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.88 }}
+              className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-white shadow-lg ring-1 ring-white/30 backdrop-blur-md disabled:opacity-60"
             >
               <Square className="h-5 w-5" fill="currentColor" />
-            </button>
+            </motion.button>
           )}
         </div>
         <p className="text-[11px] font-medium text-white/65">
@@ -779,8 +804,10 @@ function Celebration({
         {count > 1 ? (
           <div className="my-3 flex flex-col items-center gap-2">
             <TreeOnIsland>
-              <span className="fx-ring h-52 w-52 border-2 border-white/60" />
-              <span className="fx-ring h-52 w-52 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
+              {/* Sized as a share of the tree's own box (not a fixed pixel size), so the ring always
+                  hugs the tree the same way, on any screen or window size. */}
+              <span className="fx-ring h-[82%] w-[82%] border-2 border-white/60" />
+              <span className="fx-ring h-[82%] w-[82%] border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
               <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-[24svh] max-h-56 min-h-32 w-auto" />
             </TreeOnIsland>
             <div className="flex items-end justify-center gap-1">
@@ -792,8 +819,8 @@ function Celebration({
           </div>
         ) : (
           <TreeOnIsland className="my-3">
-            <span className="fx-ring h-52 w-52 border-2 border-white/60" />
-            <span className="fx-ring h-52 w-52 border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
+            <span className="fx-ring h-[82%] w-[82%] border-2 border-white/60" />
+            <span className="fx-ring h-[82%] w-[82%] border-2 border-white/40" style={{ animationDelay: "1.3s" }} />
             <FocusTree progress={1} species={session.species} tier={tier} className="fx-pop relative z-10 h-[28svh] max-h-64 min-h-36 w-auto" />
           </TreeOnIsland>
         )}
@@ -849,47 +876,72 @@ function Celebration({
           )}
 
           {saved === "saved" && (
-            <div className="fx-rise rounded-2xl bg-white/15 p-3 text-left backdrop-blur-md" style={{ animationDelay: "0.52s" }}>
-              {editingDuration ? (
-                <>
-                  <p className="text-xs font-bold">Edit this session&apos;s duration</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={Math.ceil(maxEditSeconds / 60)}
-                      value={durationInput}
-                      onChange={(e) => setDurationInput(e.target.value)}
-                      className="w-20 rounded-full bg-white/90 px-3 py-1.5 text-center text-sm font-extrabold text-[#0b5a43]"
-                    />
-                    <span className="text-xs font-bold text-white/80">minutes · up to {formatFocus(maxEditSeconds)}</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={saveDuration}
-                      disabled={savingDuration}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-[#0b5a43] disabled:opacity-60"
-                    >
-                      {savingDuration ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                      Save
-                    </button>
-                    <button type="button" onClick={() => setEditingDuration(false)} className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold hover:bg-white/25">
-                      Cancel
-                    </button>
-                  </div>
-                  {durationError && <p className="mt-1.5 text-[11px] font-bold text-red-200">{durationError}</p>}
-                </>
-              ) : (
-                <button type="button" onClick={openEditDuration} className="flex w-full items-center justify-between gap-2 text-left">
-                  <span className="text-xs font-bold">Not quite right?</span>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold">
-                    <Pencil className="h-3.5 w-3.5" /> Edit duration
-                  </span>
-                </button>
-              )}
-            </div>
+            <motion.div className="fx-rise overflow-hidden rounded-2xl bg-white/15 text-left backdrop-blur-md" style={{ animationDelay: "0.52s" }}>
+              <AnimatePresence mode="wait" initial={false}>
+                {editingDuration ? (
+                  <motion.div
+                    key="edit"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.22, ease: "easeInOut" }}
+                    className="p-3"
+                  >
+                    <p className="text-xs font-bold">Edit this session&apos;s duration</p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        min={0}
+                        max={Math.ceil(maxEditSeconds / 60)}
+                        value={durationInput}
+                        onChange={(e) => setDurationInput(e.target.value)}
+                        autoFocus
+                        className="w-20 rounded-full bg-white/90 px-3 py-1.5 text-center text-sm font-extrabold text-[#0b5a43]"
+                      />
+                      <span className="text-xs font-bold text-white/80">minutes · up to {formatFocus(maxEditSeconds)}</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2">
+                      <motion.button
+                        type="button"
+                        onClick={saveDuration}
+                        disabled={savingDuration}
+                        whileTap={{ scale: 0.95 }}
+                        className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-[#0b5a43] disabled:opacity-60"
+                      >
+                        {savingDuration ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                        Save
+                      </motion.button>
+                      <motion.button
+                        type="button"
+                        onClick={() => setEditingDuration(false)}
+                        whileTap={{ scale: 0.95 }}
+                        className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold hover:bg-white/25"
+                      >
+                        Cancel
+                      </motion.button>
+                    </div>
+                    {durationError && <p className="mt-1.5 text-[11px] font-bold text-red-200">{durationError}</p>}
+                  </motion.div>
+                ) : (
+                  <motion.button
+                    key="prompt"
+                    type="button"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.22, ease: "easeInOut" }}
+                    onClick={openEditDuration}
+                    className="flex w-full items-center justify-between gap-2 p-3 text-left"
+                  >
+                    <span className="text-xs font-bold">Not quite right?</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold">
+                      <Pencil className="h-3.5 w-3.5" /> Edit duration
+                    </span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </motion.div>
           )}
 
           {!habitName && timerHabits.length > 0 && saved === "saved" && (
@@ -907,15 +959,30 @@ function Celebration({
           )}
 
           <div className="fx-rise grid gap-2" style={{ animationDelay: "0.6s" }}>
-            <button
+            <motion.button
               type="button"
               onClick={startSameAgain}
               disabled={restarting}
-              className="flex items-center justify-center gap-2 rounded-full bg-lime-300 py-3.5 text-base font-extrabold text-[#0b5a43] shadow-lg transition-transform active:scale-[0.98] disabled:opacity-60"
+              whileHover={{ scale: 1.015 }}
+              whileTap={{ scale: 0.97 }}
+              animate={{ boxShadow: ["0 8px 26px -8px rgba(52,211,153,0.55)", "0 10px 32px -6px rgba(52,211,153,0.8)", "0 8px 26px -8px rgba(52,211,153,0.55)"] }}
+              transition={{ boxShadow: { duration: 2.6, repeat: Infinity, ease: "easeInOut" } }}
+              className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#86efac] to-[#2fb380] py-3.5 text-base font-extrabold text-[#06301f] ring-1 ring-white/40 disabled:opacity-60"
             >
-              {restarting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" fill="currentColor" />}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.span
+                  key={restarting ? "loading" : "idle"}
+                  initial={{ opacity: 0, scale: 0.6 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.6 }}
+                  transition={{ duration: 0.15 }}
+                  className="flex items-center justify-center"
+                >
+                  {restarting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" fill="currentColor" />}
+                </motion.span>
+              </AnimatePresence>
               Start the same session again
-            </button>
+            </motion.button>
             {restartError && <p className="text-xs font-bold text-red-200">{restartError}</p>}
             <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-base font-extrabold text-[#0b5a43] shadow-lg transition-transform active:scale-[0.98]">
               <Home className="h-5 w-5" />
