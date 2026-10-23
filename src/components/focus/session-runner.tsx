@@ -3,9 +3,9 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
-import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, finishFocusAction, finishOpenEndedAction, pauseFocusAction, resumeFocusAction, type FinishSummary } from "@/lib/focus-actions";
-import { GRACE_SECONDS, clock, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
+import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Pencil, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
+import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, editFocusSessionTimeAction, finishFocusAction, finishOpenEndedAction, pauseFocusAction, resumeFocusAction, startFocusAction, type FinishSummary } from "@/lib/focus-actions";
+import { GRACE_SECONDS, MIN_MINUTES, clock, formatClockTime, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ export type RunningSession = {
   cfg: PomodoroConfig;
   species: FocusSpecies;
   habitName: string | null;
+  habitId: number | null;
   /** Seconds focused so far (known once a session has ended). */
   focusedSeconds?: number;
   /** Seconds already banked as paused time, and the moment (epoch ms) a pause began (null while running). */
@@ -283,7 +284,9 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
   const paused = pausedAt !== null;
   // Paused time is subtracted from the wall clock, so the timer holds still while paused and resumes
   // exactly where it left off. The same maths runs on the server, so a reload lands on the right moment.
-  const effectiveNow = now - pausedMsAt(pausedSeconds, pausedAt, now);
+  const pausedMs = pausedMsAt(pausedSeconds, pausedAt, now);
+  const pausedTotalSeconds = Math.floor(pausedMs / 1000);
+  const effectiveNow = now - pausedMs;
   const tl = timeline(session.startedAt, session.plannedSeconds, session.mode, effectiveNow, session.cfg);
   // Open-ended has no target to count down to, so the clock (and the tab title) counts up from 0 instead.
   const readout = session.openEnded ? tl.focusElapsed : tl.phaseRemaining;
@@ -466,6 +469,10 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
           <p className="mt-0.5 text-xs font-semibold text-white/75">
             {resting ? "Break: your tree is resting" : tl.blocks > 1 ? `Focus ${tl.block} of ${tl.blocks}` : "I'm focusing on…"}
           </p>
+          <p className="mt-0.5 flex items-center gap-1 text-[11px] font-semibold text-white/60">
+            <Clock className="h-3 w-3" />
+            Started at {formatClockTime(session.startedAt, new Date().getTimezoneOffset())}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Link href="/focus" aria-label="Back to Focus home" className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm transition-transform active:scale-90">
@@ -508,6 +515,12 @@ export function SessionRunner({ session, serverNow, initialOutcome, timerHabits:
           {session.openEnded ? <>{tierInfo(tier).name} · {formatFocus(tl.focusElapsed)} focused so far</> : <>{tierInfo(tier).name} · {stageName(tl.blockProgress)} · {formatFocus(tl.focusElapsed)} of {formatFocus(session.plannedSeconds)}</>}
           {!session.openEnded && tl.blocks > 1 && ` · ${clock(tl.wallTotal - tl.wallElapsed)} left in all`}
         </p>
+        {pausedTotalSeconds > 0 && (
+          <p className="flex items-center gap-1.5 text-[11px] font-semibold text-white/60">
+            <Pause className="h-3 w-3" />
+            Paused {clock(pausedTotalSeconds)} so far
+          </p>
+        )}
         {tl.blocks > 1 && (
           <div className="flex gap-1.5" aria-hidden>
             {Array.from({ length: tl.blocks }, (_, i) => (
@@ -634,6 +647,7 @@ function Celebration({
   endedAtMs: number;
   onSummary: (s: FinishSummary) => void;
 }) {
+  const router = useRouter();
   const count = trees.length;
   const multiBlock = count > 1;
   // Overtime folds extra minutes into a single session, so its length (and tree tier) can grow.
@@ -680,6 +694,61 @@ function Celebration({
       else setLinkError(res.error);
     });
   }
+
+  // Editing the recorded duration after the fact (a forgotten pause, or anything else that threw it off).
+  const [editingDuration, setEditingDuration] = useState(false);
+  const [durationInput, setDurationInput] = useState("");
+  const [durationError, setDurationError] = useState<string | null>(null);
+  const [savingDuration, startSavingDuration] = useTransition();
+  const maxEditSeconds = Math.max(0, Math.floor((since - session.startedAt) / 1000));
+  function openEditDuration() {
+    setDurationInput(String(Math.round(planned / 60)));
+    setDurationError(null);
+    setEditingDuration(true);
+  }
+  function saveDuration() {
+    const mins = Number(durationInput);
+    if (!Number.isFinite(mins) || mins < 0) return setDurationError("Enter a valid number of minutes.");
+    const seconds = Math.round(mins * 60);
+    if (seconds > maxEditSeconds) return setDurationError(`Can't be more than ${formatFocus(maxEditSeconds)} — that's as long as the session ran.`);
+    setDurationError(null);
+    startSavingDuration(async () => {
+      const res = await editFocusSessionTimeAction({ id: session.id, seconds });
+      if (res.ok) {
+        setPlanned(res.data.seconds);
+        setEditingDuration(false);
+      } else setDurationError(res.error);
+    });
+  }
+
+  // One tap to run the exact same program again: same mode, length, rhythm, species and habit.
+  const [restarting, startRestart] = useTransition();
+  const [restartError, setRestartError] = useState<string | null>(null);
+  function startSameAgain() {
+    setRestartError(null);
+    startRestart(async () => {
+      const res = await startFocusAction({
+        habitId: session.habitId,
+        minutes: session.openEnded ? MIN_MINUTES : session.mode === "pomodoro" ? Math.round(session.cfg.focus / 60) : Math.round(session.plannedSeconds / 60),
+        mode: session.openEnded ? "single" : session.mode,
+        species: session.species,
+        openEnded: session.openEnded,
+        pomodoro:
+          !session.openEnded && session.mode === "pomodoro"
+            ? {
+                focusMin: Math.round(session.cfg.focus / 60),
+                breakMin: Math.round(session.cfg.short / 60),
+                longBreakMin: Math.round(session.cfg.long / 60),
+                every: session.cfg.every,
+                cycles: Math.max(1, Math.round(session.plannedSeconds / session.cfg.focus)),
+              }
+            : undefined,
+      });
+      if (!res.ok) return setRestartError(res.error);
+      router.push(`/focus/session/${res.data.id}`);
+    });
+  }
+
   return (
     <Scene>
       <Confetti />
@@ -699,6 +768,11 @@ function Celebration({
             {count > 1
               ? `${count} ${tierInfo(tier).name.toLowerCase()}s are fully grown and now part of your grove.`
               : `Your ${tierInfo(tier).name.toLowerCase()} is fully grown and now part of your grove.`}
+          </p>
+          <p className="mx-auto mt-2 flex items-center justify-center gap-1.5 text-[11px] font-semibold text-white/60">
+            <Clock className="h-3 w-3" />
+            Started at {formatClockTime(session.startedAt, new Date().getTimezoneOffset())}
+            {session.pausedSeconds > 0 && ` · Paused ${formatFocus(session.pausedSeconds)} total`}
           </p>
         </div>
 
@@ -774,6 +848,50 @@ function Celebration({
             </div>
           )}
 
+          {saved === "saved" && (
+            <div className="fx-rise rounded-2xl bg-white/15 p-3 text-left backdrop-blur-md" style={{ animationDelay: "0.52s" }}>
+              {editingDuration ? (
+                <>
+                  <p className="text-xs font-bold">Edit this session&apos;s duration</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={Math.ceil(maxEditSeconds / 60)}
+                      value={durationInput}
+                      onChange={(e) => setDurationInput(e.target.value)}
+                      className="w-20 rounded-full bg-white/90 px-3 py-1.5 text-center text-sm font-extrabold text-[#0b5a43]"
+                    />
+                    <span className="text-xs font-bold text-white/80">minutes · up to {formatFocus(maxEditSeconds)}</span>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={saveDuration}
+                      disabled={savingDuration}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-[#0b5a43] disabled:opacity-60"
+                    >
+                      {savingDuration ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                      Save
+                    </button>
+                    <button type="button" onClick={() => setEditingDuration(false)} className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold hover:bg-white/25">
+                      Cancel
+                    </button>
+                  </div>
+                  {durationError && <p className="mt-1.5 text-[11px] font-bold text-red-200">{durationError}</p>}
+                </>
+              ) : (
+                <button type="button" onClick={openEditDuration} className="flex w-full items-center justify-between gap-2 text-left">
+                  <span className="text-xs font-bold">Not quite right?</span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-xs font-bold">
+                    <Pencil className="h-3.5 w-3.5" /> Edit duration
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+
           {!habitName && timerHabits.length > 0 && saved === "saved" && (
             <div className="fx-rise rounded-2xl bg-white/15 p-3 text-left backdrop-blur-md" style={{ animationDelay: "0.55s" }}>
               <p className="text-xs font-bold">Count these {formatFocus(planned)} towards a habit?</p>
@@ -789,6 +907,16 @@ function Celebration({
           )}
 
           <div className="fx-rise grid gap-2" style={{ animationDelay: "0.6s" }}>
+            <button
+              type="button"
+              onClick={startSameAgain}
+              disabled={restarting}
+              className="flex items-center justify-center gap-2 rounded-full bg-lime-300 py-3.5 text-base font-extrabold text-[#0b5a43] shadow-lg transition-transform active:scale-[0.98] disabled:opacity-60"
+            >
+              {restarting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" fill="currentColor" />}
+              Start the same session again
+            </button>
+            {restartError && <p className="text-xs font-bold text-red-200">{restartError}</p>}
             <Link href="/focus" className="flex items-center justify-center gap-2 rounded-full bg-white py-3.5 text-base font-extrabold text-[#0b5a43] shadow-lg transition-transform active:scale-[0.98]">
               <Home className="h-5 w-5" />
               Back to home

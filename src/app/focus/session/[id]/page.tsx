@@ -31,7 +31,7 @@ export default async function FocusSessionPage({ params }: { params: Promise<{ i
       serverNow={nowMs()}
       timerHabits={pickableHabits}
       initialOutcome={row.status === "active" ? undefined : row.status === "completed" ? "done" : "withered"}
-      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, cfg: cfgFromRow(row), species: row.species, habitName: habit?.name ?? null, focusedSeconds: row.focusedSeconds, pausedSeconds: row.pausedSeconds, pausedAt: row.pausedAt, endedAt: row.endedAt ?? undefined, openEnded: row.openEnded }}
+      session={{ id: row.id, startedAt: row.startedAt, plannedSeconds: row.plannedSeconds, mode: row.mode, cfg: cfgFromRow(row), species: row.species, habitName: habit?.name ?? null, habitId: row.habitId, focusedSeconds: row.focusedSeconds, pausedSeconds: row.pausedSeconds, pausedAt: row.pausedAt, endedAt: row.endedAt ?? undefined, openEnded: row.openEnded }}
     />
   );
 }
