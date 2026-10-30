@@ -5,7 +5,7 @@ import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Sheet } from "@/components/habits/sheet";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { deleteFocusSessionAction, editFocusSessionTimeAction } from "@/lib/focus-actions";
-import { formatFocus } from "@/lib/focus";
+import { MAX_MINUTES, formatFocus } from "@/lib/focus";
 
 type Props = {
   id: number;
@@ -16,11 +16,11 @@ type Props = {
 };
 
 /** Per-row "..." menu on a finished session: edit its recorded time or delete it entirely. */
-export function SessionRowActions({ id, status, startedAt, endedAt, seconds }: Props) {
+export function SessionRowActions({ id, status, seconds }: Props) {
   const [open, setOpen] = useState<"menu" | "edit" | "delete" | null>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const maxSeconds = endedAt !== null ? Math.max(0, Math.floor((endedAt - startedAt) / 1000)) : seconds;
+  const maxSeconds = MAX_MINUTES * 60;
   const [minutes, setMinutes] = useState(() => String(Math.round(seconds / 60)));
 
   function submitEdit() {
