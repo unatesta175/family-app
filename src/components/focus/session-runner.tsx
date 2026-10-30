@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Clock, Coffee, Flame, Home, Loader2, Pause, Pencil, Play, Plus, RotateCw, Sprout, Square, Trees, Volume2, VolumeX } from "lucide-react";
 import { addFocusOvertimeAction, attachFocusHabitAction, cancelFocusAction, editFocusSessionTimeAction, finishFocusAction, finishOpenEndedAction, pauseFocusAction, resumeFocusAction, startFocusAction, type FinishSummary } from "@/lib/focus-actions";
-import { GRACE_SECONDS, MIN_MINUTES, clock, formatClockTime, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
+import { GRACE_SECONDS, MAX_MINUTES, MIN_MINUTES, clock, formatClockTime, formatFocus, openEndedGrowth, pausedMsAt, sessionTrees, stageName, tierInfo, timeline, treeTier, type FocusMode, type FocusSpecies, type PomodoroConfig, type Tree, type TreeTier } from "@/lib/focus";
 import { FocusTree } from "@/components/focus/focus-tree";
 import { ConfirmDialog } from "@/components/habits/confirm-dialog";
 import { cn } from "@/lib/utils";
@@ -725,7 +725,7 @@ function Celebration({
   const [durationInput, setDurationInput] = useState("");
   const [durationError, setDurationError] = useState<string | null>(null);
   const [savingDuration, startSavingDuration] = useTransition();
-  const maxEditSeconds = Math.max(0, Math.floor((since - session.startedAt) / 1000));
+  const maxEditSeconds = MAX_MINUTES * 60;
   function openEditDuration() {
     setDurationInput(String(Math.round(planned / 60)));
     setDurationError(null);
@@ -735,7 +735,7 @@ function Celebration({
     const mins = Number(durationInput);
     if (!Number.isFinite(mins) || mins < 0) return setDurationError("Enter a valid number of minutes.");
     const seconds = Math.round(mins * 60);
-    if (seconds > maxEditSeconds) return setDurationError(`Can't be more than ${formatFocus(maxEditSeconds)} — that's as long as the session ran.`);
+    if (seconds > maxEditSeconds) return setDurationError(`Can't be more than ${formatFocus(maxEditSeconds)}.`);
     setDurationError(null);
     startSavingDuration(async () => {
       const res = await editFocusSessionTimeAction({ id: session.id, seconds });
