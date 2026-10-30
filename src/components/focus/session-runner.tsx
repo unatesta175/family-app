@@ -973,7 +973,7 @@ function Celebration({
               whileTap={{ scale: 0.97 }}
               animate={{ boxShadow: ["0 8px 26px -8px rgba(52,211,153,0.55)", "0 10px 32px -6px rgba(52,211,153,0.8)", "0 8px 26px -8px rgba(52,211,153,0.55)"] }}
               transition={{ boxShadow: { duration: 2.6, repeat: Infinity, ease: "easeInOut" } }}
-              className="flex items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#86efac] to-[#2fb380] py-3.5 text-base font-extrabold text-[#06301f] ring-1 ring-white/40 disabled:opacity-60"
+              className="flex items-center justify-center gap-2 rounded-full bg-[#4ade80] py-3.5 text-base font-extrabold text-[#06301f] ring-1 ring-white/40 disabled:opacity-60"
             >
               <AnimatePresence mode="wait" initial={false}>
                 <motion.span
