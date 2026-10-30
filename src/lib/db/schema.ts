@@ -284,6 +284,8 @@ export const habits = sqliteTable("habits", {
   checklist: text("checklist").notNull().default("[]"), // JSON [{id,title}]
   goals: text("goals").notNull().default("[]"), // JSON [{period,op,value}]
   archivedAt: text("archived_at"),
+  // A daily push reminder, "HH:MM" in the owner's own timezone; null means no reminder is set.
+  reminderTime: text("reminder_time"),
   // Habits the app keeps for you (the five daily prayers, "prayer:fajr" ...). Their days come from the
   // Prayer module, so they cannot be edited, deleted or logged from the Habits module.
   systemKey: text("system_key"),
@@ -891,4 +893,20 @@ export const notificationSends = sqliteTable(
       .default(sql`(current_timestamp)`),
   },
   (table) => [uniqueIndex("notification_sends_unique").on(table.profileId, table.date, table.prayer, table.kind)]
+);
+
+/** Same idempotency role as `notificationSends`, for habit reminders (one per habit per day). */
+export const habitReminderSends = sqliteTable(
+  "habit_reminder_sends",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    habitId: integer("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    date: text("date").notNull(), // yyyy-mm-dd in the owner's timezone
+    sentAt: text("sent_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [uniqueIndex("habit_reminder_sends_unique").on(table.habitId, table.date)]
 );

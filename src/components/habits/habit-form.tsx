@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Ban, Lock, Sprout, Users, X } from "lucide-react";
+import { Ban, Bell, Lock, Sprout, Users, X } from "lucide-react";
 import { createHabitAction, updateHabitAction, type HabitFormInput } from "@/lib/habit-actions";
 import { colorHex } from "@/lib/habits";
 import { emptyHabit, type HabitFormValues } from "@/lib/habit-form-values";
@@ -113,6 +113,7 @@ export function HabitFormSheet({
       goalId: v.goalId,
       private: v.private,
       hidden: v.hidden,
+      reminderTime: v.reminderTime,
     };
     startTransition(async () => {
       const res = editing ? await updateHabitAction(initial.id!, payload) : await createHabitAction(payload);
@@ -293,6 +294,36 @@ export function HabitFormSheet({
               className="max-w-28"
             />
             <span className="text-[11px] leading-snug text-h-muted">1 is the highest priority and sits at the top of your list.</span>
+          </label>
+        </FormSection>
+
+        <FormSection title="Reminder" description="A daily push notification if it&apos;s still due.">
+          <label className="flex flex-col gap-1">
+            <Caption>Reminder time (optional)</Caption>
+            <div className="relative max-w-40">
+              <input
+                type="time"
+                value={v.reminderTime ?? ""}
+                onChange={(e) => set("reminderTime", e.target.value || null)}
+                className={cn(inputClass, v.reminderTime && "pr-9")}
+              />
+              {v.reminderTime && (
+                <button
+                  type="button"
+                  aria-label="Clear reminder"
+                  onClick={() => set("reminderTime", null)}
+                  className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-h-muted hover:bg-h-border hover:text-h-fg"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            {v.reminderTime && (
+              <p className="flex items-center gap-1.5 text-[11px] font-semibold text-h-muted">
+                <Bell className="h-3.5 w-3.5" />
+                Nudges you at {v.reminderTime} on days this is due, unless it&apos;s already done.
+              </p>
+            )}
           </label>
         </FormSection>
 

@@ -3,13 +3,18 @@ import { getDayLog, getProfile } from "@/lib/db/repo";
 import {
   getPrefs,
   getSubscriptionsForProfile,
+  habitReminderSentFor,
   prefsPrayers,
   profilesWithReminders,
+  recordHabitReminderSend,
   recordSend,
   sentKeysFor,
 } from "@/lib/db/repo-notifications";
+import { getHabitLogsInRange, getHabitsWithReminders, type HabitRow } from "@/lib/db/repo-habits";
 import { computePrayerTimes } from "@/lib/prayer-times";
 import { dueReminders } from "@/lib/prayer-reminders";
+import { isHabitReminderDue, parseReminderTime } from "@/lib/habit-reminders";
+import { dayState, scheduledOn } from "@/lib/habits";
 import { pushConfigured, sendToSubscriptions, type PushPayload } from "@/lib/push";
 import { PRAYERS, type Prayer } from "@/lib/db/schema";
 
@@ -83,6 +88,63 @@ export async function runReminderTick(now: Date = new Date()): Promise<{ scanned
   return { scanned: ids.length, sent };
 }
 
+function habitPayload(habit: { id: number; name: string }): PushPayload {
+  return { title: "Habit reminder", body: `Time for "${habit.name}". Tap to log it.`, url: "/habits", tag: `habit-${habit.id}` };
+}
+
+/**
+ * One pass of the habit reminder engine: every habit with a reminder time, grouped by owner, checked
+ * against that owner's local clock. Same idempotency pattern as `runReminderTick` — a reminder is
+ * claimed in `habit_reminder_sends` before it goes out, so overlapping ticks never double-send.
+ */
+export async function runHabitReminderTick(now: Date = new Date()): Promise<{ scanned: number; sent: number }> {
+  if (!pushConfigured()) return { scanned: 0, sent: 0 };
+  const habits = await getHabitsWithReminders();
+  if (habits.length === 0) return { scanned: 0, sent: 0 };
+
+  const byProfile = new Map<number, HabitRow[]>();
+  for (const h of habits) {
+    const list = byProfile.get(h.profileId);
+    if (list) list.push(h);
+    else byProfile.set(h.profileId, [h]);
+  }
+
+  let sent = 0;
+  for (const [profileId, list] of byProfile) {
+    try {
+      const profile = await getProfile(profileId);
+      if (!profile || !profile.timezone) continue;
+      const subs = await getSubscriptionsForProfile(profileId);
+      if (subs.length === 0) continue;
+
+      const date = localDateInTz(now, profile.timezone);
+      const logsByHabit = await getHabitLogsInRange(profileId, date, date);
+
+      for (const habit of list) {
+        if (!habit.reminderTime) continue;
+        const reminderMinute = parseReminderTime(habit.reminderTime);
+        if (reminderMinute === null) continue;
+        if (date < habit.startDate || (habit.endDate !== null && date > habit.endDate)) continue;
+        if (!scheduledOn(habit, date)) continue;
+
+        const state = dayState(habit, logsByHabit[habit.id] ?? {}, date, date);
+        const done = state === "done" || state === "skipped";
+        const alreadySent = await habitReminderSentFor(habit.id, date);
+        const due = isHabitReminderDue({ reminderMinute, nowMs: now.getTime(), timezone: profile.timezone, alreadySent, done });
+        if (!due) continue;
+
+        // Claim the slot first: if another tick already took it, recordHabitReminderSend returns false.
+        if (!(await recordHabitReminderSend(habit.id, date))) continue;
+        sent += await sendToSubscriptions(subs, habitPayload(habit));
+      }
+    } catch (err) {
+      console.error(`[habit-reminders] profile ${profileId} failed`, err);
+    }
+  }
+
+  return { scanned: habits.length, sent };
+}
+
 // --- In-process ticker -----------------------------------------------------------------------
 // A single interval on the long-running Node server (started from instrumentation.ts). The guard
 // means a reload or a second worker never starts a second ticker. A tick is a cheap SQLite scan plus
@@ -101,6 +163,7 @@ export function startReminderTicker() {
   started = true;
   const tick = () => {
     runReminderTick().catch((err) => console.error("[reminders] tick failed", err));
+    runHabitReminderTick().catch((err) => console.error("[habit-reminders] tick failed", err));
   };
   // A small initial delay so startup migrations/seeding settle before the first scan.
   setTimeout(() => {

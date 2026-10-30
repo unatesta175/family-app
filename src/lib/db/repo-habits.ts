@@ -96,6 +96,7 @@ export type HabitInput = {
   goals?: string; // JSON
   private?: boolean;
   hidden?: boolean;
+  reminderTime?: string | null; // "HH:MM" in the owner's timezone, null = no reminder
 };
 
 export async function getHabits(profileId: number, opts: { includeArchived?: boolean } = {}) {
@@ -113,6 +114,15 @@ export async function getHabits(profileId: number, opts: { includeArchived?: boo
 export async function getHabit(id: number) {
   const [row] = await db.select().from(habits).where(eq(habits.id, id));
   return row ?? null;
+}
+
+/** Every active, non-system habit (across all profiles) that has a reminder time set — for the push
+ *  reminder scheduler, which groups them by profile itself. */
+export async function getHabitsWithReminders(): Promise<HabitRow[]> {
+  return db
+    .select()
+    .from(habits)
+    .where(and(isNotNull(habits.reminderTime), isNull(habits.archivedAt), isNull(habits.systemKey)));
 }
 
 export async function createHabit(profileId: number, input: HabitInput): Promise<HabitRow> {

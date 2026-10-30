@@ -59,6 +59,8 @@ const REQUIRED_COLUMNS: { table: string; column: string; ddl: string }[] = [
   { table: "finance_bills", column: "frequency", ddl: "ALTER TABLE finance_bills ADD COLUMN frequency TEXT NOT NULL DEFAULT 'monthly'" },
   { table: "finance_bills", column: "due_month", ddl: "ALTER TABLE finance_bills ADD COLUMN due_month INTEGER" },
   { table: "finance_bills", column: "due_date", ddl: "ALTER TABLE finance_bills ADD COLUMN due_date TEXT" },
+  // Per-habit daily push reminder.
+  { table: "habits", column: "reminder_time", ddl: "ALTER TABLE habits ADD COLUMN reminder_time TEXT" },
 ];
 
 /**
@@ -275,6 +277,19 @@ const REQUIRED_TABLES: { table: string; ddl: string }[] = [
   {
     table: "notification_sends_unique",
     ddl: `CREATE UNIQUE INDEX IF NOT EXISTS notification_sends_unique ON notification_sends (profile_id, date, prayer, kind)`,
+  },
+  {
+    table: "habit_reminder_sends",
+    ddl: `CREATE TABLE IF NOT EXISTS habit_reminder_sends (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      habit_id INTEGER NOT NULL REFERENCES habits(id) ON DELETE CASCADE,
+      date TEXT NOT NULL,
+      sent_at TEXT NOT NULL DEFAULT (current_timestamp)
+    )`,
+  },
+  {
+    table: "habit_reminder_sends_unique",
+    ddl: `CREATE UNIQUE INDEX IF NOT EXISTS habit_reminder_sends_unique ON habit_reminder_sends (habit_id, date)`,
   },
   // --- Goals module -------------------------------------------------------------------------
   {

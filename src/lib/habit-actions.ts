@@ -234,9 +234,12 @@ const habitSchema = z
     hidden: z.boolean().default(false),
     // Link the habit to one of your life goals (null = none, undefined = leave as is).
     goalId: z.number().int().positive().nullable().optional(),
+    // "HH:MM" in the owner's timezone, or null/empty for no reminder.
+    reminderTime: z.string().trim().max(5).nullable().optional(),
   })
   .superRefine((v, ctx) => {
     const issue = (message: string, path: string) => ctx.addIssue({ code: "custom", message, path: [path] });
+    if (v.reminderTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(v.reminderTime)) issue("Pick a valid time.", "reminderTime");
     if (v.schedule === "weekdays" && v.weekdays.length === 0) issue("Pick at least one day of the week.", "weekdays");
     if (v.schedule === "month_days" && v.monthDays.length === 0) issue("Pick at least one day of the month.", "monthDays");
     if (v.schedule === "year_days" && v.yearDays.length === 0) issue("Add at least one date.", "yearDays");
@@ -308,6 +311,7 @@ async function habitInput(raw: HabitFormInput, profileId: number) {
     goals: JSON.stringify(measured ? v.goals : []),
     private: v.private,
     hidden: v.hidden,
+    reminderTime: v.reminderTime?.trim() || null,
   };
 }
 

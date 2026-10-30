@@ -50,6 +50,8 @@ export type HabitFormValues = {
   private: boolean;
   /** Hidden from the owner's own display until revealed via the header eye toggle. */
   hidden: boolean;
+  /** "HH:MM" in the owner's own timezone; null means no daily push reminder. */
+  reminderTime: string | null;
 };
 
 export function emptyHabit(): HabitFormValues {
@@ -81,6 +83,7 @@ export function emptyHabit(): HabitFormValues {
     goalId: null,
     private: false,
     hidden: false,
+    reminderTime: null,
   };
 }
 
@@ -120,6 +123,7 @@ export type HabitFormSource = {
   priority: number;
   private: boolean;
   hidden: boolean;
+  reminderTime: string | null;
 };
 
 export function habitToFormValues(h: HabitFormSource, goalId: number | null = null): HabitFormValues {
@@ -152,5 +156,6 @@ export function habitToFormValues(h: HabitFormSource, goalId: number | null = nu
     goalId,
     private: h.private,
     hidden: h.hidden,
+    reminderTime: h.reminderTime,
   };
 }

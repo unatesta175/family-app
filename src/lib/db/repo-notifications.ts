@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { notificationPrefs, notificationSends, pushSubscriptions, PRAYERS } from "@/lib/db/schema";
+import { habitReminderSends, notificationPrefs, notificationSends, pushSubscriptions, PRAYERS } from "@/lib/db/schema";
 import type { Prayer, ReminderKind } from "@/lib/db/schema";
 
 export type PushSubscriptionRow = typeof pushSubscriptions.$inferSelect;
@@ -103,6 +103,29 @@ export async function recordSend(profileId: number, date: string, prayer: Prayer
     .values({ profileId, date, prayer, kind })
     .onConflictDoNothing()
     .returning({ id: notificationSends.id });
+  return res.length > 0;
+}
+
+/** Whether a habit's reminder has already gone out for a given local date. */
+export async function habitReminderSentFor(habitId: number, date: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: habitReminderSends.id })
+    .from(habitReminderSends)
+    .where(and(eq(habitReminderSends.habitId, habitId), eq(habitReminderSends.date, date)));
+  return !!row;
+}
+
+/**
+ * Records that a habit's reminder was sent. The unique index makes this idempotent, same as
+ * `recordSend`: a second insert for the same (habit, date) is ignored. Returns true only for the
+ * insert that actually claimed the slot.
+ */
+export async function recordHabitReminderSend(habitId: number, date: string): Promise<boolean> {
+  const res = await db
+    .insert(habitReminderSends)
+    .values({ habitId, date })
+    .onConflictDoNothing()
+    .returning({ id: habitReminderSends.id });
   return res.length > 0;
 }
 
